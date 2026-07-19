@@ -1,0 +1,198 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* TheLifeHolics — Calming Spiritual Palette */
+    --background: 40 33% 98%;            /* warm white */
+    --background-2: 38 40% 96%;          /* cream */
+    --foreground: 30 10% 18%;            /* deep warm brown */
+
+    --card: 40 33% 99%;
+    --card-foreground: 30 10% 18%;
+
+    --popover: 40 33% 99%;
+    --popover-foreground: 30 10% 18%;
+
+    --primary: 30 25% 32%;               /* light brown / espresso */
+    --primary-foreground: 40 33% 98%;
+
+    --secondary: 38 40% 95%;             /* sand */
+    --secondary-foreground: 30 20% 25%;
+
+    --muted: 38 30% 93%;                 /* off white */
+    --muted-foreground: 30 8% 42%;
+
+    --accent: 90 14% 68%;                /* muted sage */
+    --accent-foreground: 30 25% 22%;
+
+    --gold: 41 50% 72%;                  /* very light gold */
+    --gold-foreground: 30 25% 22%;
+
+    --destructive: 8 60% 58%;
+    --destructive-foreground: 40 33% 98%;
+
+    --success: 142 28% 52%;
+    --success-foreground: 40 33% 98%;
+
+    --warning: 38 70% 60%;
+    --warning-foreground: 30 25% 18%;
+
+    --border: 38 22% 88%;
+    --input: 38 22% 88%;
+    --ring: 30 25% 32%;
+
+    --radius: 1.25rem;
+
+    --chart-1: 90 14% 68%;
+    --chart-2: 41 50% 72%;
+    --chart-3: 30 25% 55%;
+    --chart-4: 38 40% 80%;
+    --chart-5: 142 28% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv01", "cv11";
+  }
+  ::selection {
+    background: hsl(var(--accent) / 0.35);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  .bg-grain {
+    background-image:
+      radial-gradient(transparent 0, hsl(var(--background)) 100%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .glass {
+    background: hsl(var(--card) / 0.55);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+
+  .glass-strong {
+    background: hsl(var(--card) / 0.78);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid hsl(var(--border) / 0.7);
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(120deg, hsl(30 25% 32%), hsl(41 50% 62%), hsl(90 14% 55%));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .shadow-soft {
+    box-shadow: 0 1px 2px hsl(30 20% 20% / 0.04), 0 8px 30px hsl(30 20% 20% / 0.06);
+  }
+  .shadow-float {
+    box-shadow: 0 2px 8px hsl(30 20% 20% / 0.05), 0 24px 60px -12px hsl(30 20% 20% / 0.12);
+  }
+  .shadow-glow {
+    box-shadow: 0 0 0 1px hsl(41 50% 72% / 0.25), 0 12px 40px -8px hsl(41 50% 72% / 0.35);
+  }
+
+  .bg-aurora {
+    background:
+      radial-gradient(60% 50% at 20% 10%, hsl(90 18% 82% / 0.55), transparent 60%),
+      radial-gradient(55% 45% at 85% 15%, hsl(41 50% 80% / 0.5), transparent 60%),
+      radial-gradient(60% 60% at 50% 100%, hsl(30 25% 88% / 0.6), transparent 60%),
+      hsl(var(--background));
+  }
+
+  .mask-fade-b {
+    -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+}
+
+@layer base {
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background-2));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.35);
+    border-radius: 9999px;
+    border: 2px solid hsl(var(--background-2));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.55);
+  }
+}
+
+/* Keyframes for ambient motion */
+@keyframes float-slow {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(0, -22px, 0) scale(1.04); }
+}
+@keyframes float-slower {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(14px, 18px, 0) scale(1.06); }
+}
+@keyframes drift {
+  0% { transform: translate3d(0,0,0); }
+  100% { transform: translate3d(40px,-30px,0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.12); opacity: 0.85; }
+}
+@keyframes gradient-pan {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes stroke-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+.animate-float-slow { animation: float-slow 9s ease-in-out infinite; }
+.animate-float-slower { animation: float-slower 12s ease-in-out infinite; }
+.animate-breathe { animation: breathe 7s ease-in-out infinite; }
+.animate-gradient-pan {
+  background-size: 200% 200%;
+  animation: gradient-pan 14s ease infinite;
+}
+
+/* Reveal helper (used with framer motion fallback) */
+.reveal-init {
+  opacity: 0;
+  transform: translateY(24px);
+}

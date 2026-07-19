@@ -1,0 +1,101 @@
+'use client';
+
+import Link from 'next/link';
+import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { useCart } from '@/components/providers/cart-provider';
+import { Button } from '@/components/ui/button';
+import { formatPrice } from '@/lib/format';
+
+export function CartView() {
+  const { items, setQuantity, remove, subtotal, clear, count } = useCart();
+
+  if (count === 0) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+        <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+          <ShoppingBag className="h-7 w-7" />
+        </span>
+        <h1 className="mt-6 font-display text-3xl font-medium text-foreground">Your bag is empty</h1>
+        <p className="mt-3 max-w-sm text-pretty text-muted-foreground">
+          Explore the shop for meditations, journals and ritual objects to support your practice.
+        </p>
+        <Button asChild className="mt-6 rounded-full">
+          <Link href="/shop">Browse the shop <ArrowRight className="ml-1 h-4 w-4" /></Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const shipping = subtotal > 1500 || items.every((i) => i.type === 'digital') ? 0 : 149;
+  const total = subtotal + shipping;
+
+  return (
+    <div>
+      <h1 className="font-display text-4xl font-medium tracking-tight text-foreground">Your bag</h1>
+      <p className="mt-2 text-sm text-muted-foreground">{count} {count === 1 ? 'item' : 'items'}</p>
+
+      <div className="mt-10 grid gap-10 lg:grid-cols-[1.5fr_1fr]">
+        <div className="space-y-4">
+          {items.map((i) => (
+            <div key={i.id} className="flex gap-4 rounded-3xl border border-border/60 bg-card/60 p-4 shadow-soft">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={i.image} alt={i.name} className="h-24 w-24 rounded-2xl object-cover" />
+              <div className="flex flex-1 flex-col">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-foreground">{i.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{i.type}</p>
+                  </div>
+                  <button
+                    onClick={() => remove(i.id)}
+                    aria-label="Remove"
+                    className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="mt-auto flex items-center justify-between">
+                  {i.type === 'physical' ? (
+                    <div className="inline-flex items-center rounded-full border border-border bg-card">
+                      <button onClick={() => setQuantity(i.id, i.quantity - 1)} className="inline-flex h-9 w-9 items-center justify-center rounded-l-full hover:bg-secondary" aria-label="Decrease">
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <span className="w-8 text-center text-sm">{i.quantity}</span>
+                      <button onClick={() => setQuantity(i.id, i.quantity + 1)} className="inline-flex h-9 w-9 items-center justify-center rounded-r-full hover:bg-secondary" aria-label="Increase">
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Digital · {i.quantity} ×</span>
+                  )}
+                  <span className="font-medium text-foreground">{formatPrice(i.price * i.quantity, 'INR')}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+          <div className="flex justify-between">
+            <Button variant="ghost" onClick={clear} className="rounded-full text-muted-foreground">
+              <Trash2 className="mr-1 h-4 w-4" /> Clear bag
+            </Button>
+            <Button asChild variant="ghost" className="rounded-full">
+              <Link href="/shop">Continue shopping</Link>
+            </Button>
+          </div>
+        </div>
+
+        <aside className="h-fit rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft lg:sticky lg:top-28">
+          <h2 className="font-display text-xl font-medium text-foreground">Order summary</h2>
+          <dl className="mt-5 space-y-3 text-sm">
+            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(subtotal, 'INR')}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{shipping === 0 ? 'Free' : formatPrice(shipping, 'INR')}</dd></div>
+            <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, 'INR')}</dd></div>
+          </dl>
+          <Button asChild className="mt-6 w-full rounded-full" size="lg">
+            <Link href="/shop/checkout">Proceed to checkout <ArrowRight className="ml-1 h-4 w-4" /></Link>
+          </Button>
+          <p className="mt-3 text-center text-xs text-muted-foreground">Secure checkout · Razorpay (INR) · Stripe (USD)</p>
+        </aside>
+      </div>
+    </div>
+  );
+}
