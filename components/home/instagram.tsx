@@ -33,7 +33,7 @@ export function HomeInstagram() {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group relative aspect-square overflow-hidden rounded-2xl border border-border/60"
+                className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10 shadow-soft hover:shadow-glow hover:-translate-y-1 transition-all duration-500"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img

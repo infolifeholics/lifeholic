@@ -33,7 +33,7 @@ export function HomeAboutPreview() {
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <div className="overflow-hidden rounded-2xl border border-gold/30 bg-card/80 p-5 shadow-soft">
+                <div className="overflow-hidden rounded-2xl glass-card glow-border p-5 shadow-glow backdrop-blur-md border border-white/10">
                   <p className="font-display text-3xl font-medium text-foreground">9+ yrs</p>
                   <p className="mt-0.5 text-xs uppercase tracking-wider text-muted-foreground">of dedicated practice</p>
                   <div className="mt-3 h-px w-full bg-gradient-to-r from-gold/40 to-transparent" />
@@ -86,7 +86,7 @@ export function HomeAboutPreview() {
                   ['Confidential', 'A space held with complete trust.'],
                   ['Global', 'Clients across 14 countries and counting.'],
                 ].map(([title, desc]) => (
-                  <div key={title} className="rounded-2xl border border-border/60 bg-card/50 p-4">
+                  <div key={title} className="rounded-2xl glass-card glow-border p-4 shadow-soft hover:shadow-glow backdrop-blur-sm border border-white/5">
                     <p className="font-medium text-foreground">{title}</p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{desc}</p>
                   </div>

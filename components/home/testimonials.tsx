@@ -38,7 +38,7 @@ export function HomeTestimonials({ items }: { items: Testimonial[] }) {
           <div className="flex">
             {items.map((t) => (
               <div key={t.id} className="min-w-0 flex-[0_0_88%] pr-5 sm:flex-[0_0_48%] lg:flex-[0_0_32%]">
-                <figure className="flex h-full flex-col rounded-3xl border border-border/60 bg-card/60 p-7 shadow-soft">
+                <figure className="flex h-full flex-col rounded-3xl glass-card glow-border reflection-sweep p-7 shadow-glow backdrop-blur-md border border-white/5">
                   <Quote className="h-8 w-8 text-gold/50" />
                   <blockquote className="mt-4 flex-1 text-pretty font-display text-lg leading-relaxed text-foreground">
                     “{t.quote}”
@@ -68,7 +68,7 @@ export function HomeTestimonials({ items }: { items: Testimonial[] }) {
           <button
             onClick={() => embla?.scrollPrev()}
             aria-label="Previous"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-secondary"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 glass text-foreground transition-all hover:bg-white/10 hover:scale-105"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -86,7 +86,7 @@ export function HomeTestimonials({ items }: { items: Testimonial[] }) {
           <button
             onClick={() => embla?.scrollNext()}
             aria-label="Next"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-secondary"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 glass text-foreground transition-all hover:bg-white/10 hover:scale-105"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

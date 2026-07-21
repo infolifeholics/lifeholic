@@ -1,4 +1,4 @@
-import { Reveal, RevealText } from '@/components/site/reveal';
+import { Reveal, RevealText, ScrollStory } from '@/components/site/reveal';
 import { StatCounter } from '@/components/site/stat-counter';
 
 const STATS = [
@@ -11,8 +11,8 @@ const STATS = [
 export function HomeStats() {
   return (
     <section className="relative py-20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="overflow-hidden rounded-[2.5rem] border border-border/60 bg-gradient-to-br from-secondary/70 via-card to-background-2/60 p-10 shadow-soft sm:p-14">
+      <ScrollStory className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="overflow-hidden rounded-[2.5rem] glass-card glow-border p-10 shadow-glow sm:p-14 backdrop-blur-lg border border-white/10">
           <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.2fr]">
             <div>
               <RevealText
@@ -27,9 +27,9 @@ export function HomeStats() {
               </Reveal>
             </div>
             <Reveal delay={0.25}>
-              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/5 sm:grid-cols-4">
                 {STATS.map((s) => (
-                  <div key={s.label} className="bg-card/80 p-6 text-center">
+                  <div key={s.label} className="bg-white/5 p-6 text-center backdrop-blur-md">
                     <p className="font-display text-3xl font-medium text-foreground sm:text-4xl">
                       <StatCounter value={s.value} suffix={s.suffix} />
                     </p>
@@ -42,7 +42,7 @@ export function HomeStats() {
             </Reveal>
           </div>
         </div>
-      </div>
+      </ScrollStory>
     </section>
   );
 }

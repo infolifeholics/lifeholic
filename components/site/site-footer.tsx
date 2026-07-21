@@ -65,12 +65,12 @@ export function SiteFooter() {
   };
 
   return (
-    <footer className="relative mt-32 border-t border-border/60 bg-background-2/50">
+    <footer className="relative mt-32 border-t border-white/5 bg-black/10 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1.6fr]">
           <div>
             <Logo />
-            <p className="mt-5 max-w-xs text-pretty text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-5 max-w-xs text-pretty text-sm leading-relaxed text-muted-foreground font-sans">
               A calm, safe space for spiritual psychology, emotional healing and mindful growth —
               online and in person, for clients across the world.
             </p>
@@ -87,7 +87,7 @@ export function SiteFooter() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-gold hover:text-foreground"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 glass text-muted-foreground transition-all hover:-translate-y-1 hover:border-gold hover:text-foreground hover:scale-105"
                 >
                   <Icon className="h-[18px] w-[18px]" />
                 </a>
@@ -124,17 +124,17 @@ export function SiteFooter() {
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="rounded-full"
+                className="rounded-full glass border border-white/10 text-foreground placeholder:text-muted-foreground"
                 required
               />
-              <Button type="submit" className="rounded-full px-5">
+              <Button type="submit" className="rounded-full px-5 bg-primary text-primary-foreground hover:scale-105 hover:bg-primary/90 transition-all">
                 Join
               </Button>
             </form>
           </div>
         </div>
 
-        <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-border/60 pt-8 text-sm text-muted-foreground sm:flex-row">
+        <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-8 text-sm text-muted-foreground sm:flex-row">
           <p>© {new Date().getFullYear()} TheLifeHolics. Crafted with intention.</p>
           <p className="flex items-center gap-2">
             <span className="inline-block h-2 w-2 rounded-full bg-success/80 animate-breathe" />

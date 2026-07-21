@@ -48,6 +48,13 @@ npm install
 npm run dev      # http://localhost:3000
 npm run build    # production build
 npm run typecheck
+
+
+git add .
+git commit -m "optimized for performence as it was slow"
+git push -u origin main
+
+
 ```
 
 Supabase credentials are pre-populated in `.env`. For a fresh environment, copy `.env.example` to `.env` and fill in your keys.

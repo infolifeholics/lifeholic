@@ -4,8 +4,28 @@ import { Cormorant_Garamond, Inter } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { SiteHeader } from '@/components/site/site-header';
 import { SiteFooter } from '@/components/site/site-footer';
-import { BackgroundAmbient } from '@/components/site/background-ambient';
 import { cn } from '@/lib/utils';
+import dynamic from 'next/dynamic';
+
+const CinematicVideoBg = dynamic(
+  () => import('@/components/site/cinematic-video-bg'),
+  { ssr: false }
+);
+
+const CustomCursor = dynamic(
+  () => import('@/components/site/custom-cursor'),
+  { ssr: false }
+);
+
+const SoundToggle = dynamic(
+  () => import('@/components/site/sound-toggle'),
+  { ssr: false }
+);
+
+const FloatingPetals = dynamic(
+  () => import('@/components/site/floating-petals'),
+  { ssr: false }
+);
 
 const serif = Cormorant_Garamond({
   subsets: ['latin'],
@@ -21,13 +41,8 @@ const sans = Inter({
   display: 'swap',
 });
 
-export const viewport = {
-  themeColor: '#f6f1ea',
-  width: 'device-width',
-  initialScale: 1,
-};
-
 export const metadata: Metadata = {
+  themeColor: '#f6f1ea',
   metadataBase: new URL('https://thelifeholics.com'),
   title: {
     default: 'TheLifeHolics — Spiritual Psychology & Therapy',
@@ -76,9 +91,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn(sans.variable, serif.variable, 'font-sans antialiased')}>
+      <body className={cn(sans.variable, serif.variable, 'font-sans antialiased relative min-h-screen')}>
         <Providers>
-          <BackgroundAmbient />
+          <CinematicVideoBg />
+          <CustomCursor />
+          <SoundToggle />
+          <FloatingPetals />
           <SiteHeader />
           <main className="relative">{children}</main>
           <SiteFooter />

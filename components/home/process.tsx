@@ -1,5 +1,8 @@
+'use client';
+
+import { useRef } from 'react';
+import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { SectionHeading } from '@/components/site/section-heading';
-import { Stagger, StaggerItem } from '@/components/site/reveal';
 
 const STEPS = [
   {
@@ -30,32 +33,81 @@ const STEPS = [
 ];
 
 export function HomeProcess() {
-  return (
-    <section className="relative py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <SectionHeading
-          eyebrow="The journey"
-          title="A gentle, unhurried path"
-          description="Healing is not a sprint. Here is what it looks like to walk it together."
-        />
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Track scroll inside the pinned container (desktop only)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ['start start', 'end end']
+  });
 
-        <Stagger className="mt-16 grid gap-4 md:grid-cols-5" gap={0.08}>
-          {STEPS.map((s, i) => (
-            <StaggerItem key={s.n}>
-              <div className="group relative h-full rounded-3xl border border-border/60 bg-card/50 p-6 transition-all duration-500 ease-soft hover:-translate-y-1 hover:border-gold/50 hover:bg-card">
+  const smoothProgress = useSpring(scrollYProgress, { damping: 25, stiffness: 120 });
+
+  return (
+    <div ref={containerRef} className="relative w-full lg:h-[220vh] h-auto py-24 sm:py-32">
+      {/* Sticky container for Desktop, normal block for Mobile */}
+      <div className="lg:sticky lg:top-0 lg:h-screen lg:flex lg:flex-col lg:justify-center lg:overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full">
+          <SectionHeading
+            eyebrow="The journey"
+            title="A gentle, unhurried path"
+            description="Healing is not a sprint. Here is what it looks like to walk it together."
+          />
+
+          {/* Desktop Pinned Process Cards */}
+          <div className="hidden lg:grid mt-16 grid-cols-5 gap-4">
+            {STEPS.map((s, i) => {
+              const targetProgress = i / (STEPS.length - 1);
+              
+              // Smoothly transition between states as user scrolls
+              const opacity = useTransform(
+                smoothProgress,
+                [targetProgress - 0.25, targetProgress, targetProgress + 0.25],
+                [0.35, 1, 0.35]
+              );
+              
+              const scale = useTransform(
+                smoothProgress,
+                [targetProgress - 0.25, targetProgress, targetProgress + 0.25],
+                [0.96, 1.04, 0.96]
+              );
+
+              return (
+                <motion.div
+                  key={s.n}
+                  style={{ opacity, scale }}
+                  className="group relative h-full rounded-3xl glass-card glow-border reflection-sweep p-6 backdrop-blur-md border border-white/5 bg-black/10"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-display text-3xl font-medium text-gold/80">{s.n}</span>
+                    {i < STEPS.length - 1 && (
+                      <span className="hidden h-px w-12 bg-gradient-to-r from-gold/40 to-transparent md:block" />
+                    )}
+                  </div>
+                  <h3 className="mt-5 font-display text-xl font-medium text-foreground">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.desc}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Mobile Fallback: Normal Grid */}
+          <div className="lg:hidden mt-16 grid gap-4 sm:grid-cols-2">
+            {STEPS.map((s) => (
+              <div
+                key={s.n}
+                className="group relative rounded-3xl glass-card glow-border reflection-sweep p-6 backdrop-blur-md border border-white/5 bg-black/10"
+              >
                 <div className="flex items-center justify-between">
                   <span className="font-display text-3xl font-medium text-gold/80">{s.n}</span>
-                  {i < STEPS.length - 1 && (
-                    <span className="hidden h-px w-12 bg-gradient-to-r from-gold/40 to-transparent md:block" />
-                  )}
                 </div>
                 <h3 className="mt-5 font-display text-xl font-medium text-foreground">{s.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.desc}</p>
               </div>
-            </StaggerItem>
-          ))}
-        </Stagger>
+            ))}
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }

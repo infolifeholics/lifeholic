@@ -23,7 +23,7 @@ export function HomeWorkshops({ items }: { items: Workshop[] }) {
             const pct = Math.round((w.seats_booked / w.seats_total) * 100);
             return (
               <StaggerItem key={w.id}>
-                <article className="group relative h-full overflow-hidden rounded-3xl border border-border/60 bg-card/60 shadow-soft transition-all duration-500 ease-soft hover:-translate-y-1.5 hover:shadow-float">
+                <article className="group relative h-full overflow-hidden rounded-3xl glass-card glow-border reflection-sweep shadow-soft hover:-translate-y-1.5 hover:shadow-glow backdrop-blur-md border border-white/5">
                   <div className="relative aspect-[16/10] overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img

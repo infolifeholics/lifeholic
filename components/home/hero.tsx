@@ -133,30 +133,32 @@ export function HomeHero() {
               <div className="absolute inset-0 bg-gradient-to-t from-primary/30 via-transparent to-transparent" />
             </div>
 
-            {/* floating cards */}
-            <motion.div
-              animate={{ y: [0, -14, 0] }}
-              transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute -left-4 top-16 w-48 rounded-2xl glass-strong p-4 shadow-float sm:-left-8"
-            >
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Next available</p>
-              <p className="mt-1 font-display text-lg text-foreground">Tomorrow · 6:00 PM</p>
-              <p className="text-xs text-muted-foreground">Online · 60 minutes</p>
-            </motion.div>
+            {/* centered floating cards */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 pointer-events-none">
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+                className="w-48 rounded-2xl glass-card glow-border reflection-sweep p-4 shadow-glow backdrop-blur-md border border-white/10 pointer-events-auto"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Next available</p>
+                <p className="mt-1 font-display text-lg text-foreground">Tomorrow · 6:00 PM</p>
+                <p className="text-xs text-muted-foreground">Online · 60 minutes</p>
+              </motion.div>
 
-            <motion.div
-              animate={{ y: [0, 16, 0] }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-              className="absolute -right-3 bottom-12 w-52 rounded-2xl glass-strong p-4 shadow-float sm:-right-6"
-            >
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-success animate-breathe" />
-                <p className="text-xs font-medium text-foreground">Currently accepting clients</p>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                IST &amp; global timezones · Online &amp; in person
-              </p>
-            </motion.div>
+              <motion.div
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                className="w-52 rounded-2xl glass-card glow-border reflection-sweep p-4 shadow-glow backdrop-blur-md border border-white/10 pointer-events-auto"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-success animate-breathe" />
+                  <p className="text-xs font-semibold text-foreground">Currently accepting clients</p>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  IST &amp; global timezones · Online &amp; in person
+                </p>
+              </motion.div>
+            </div>
           </motion.div>
         </div>
       </div>

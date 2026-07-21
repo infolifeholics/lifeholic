@@ -23,7 +23,7 @@ export function HomeServices({ services }: { services: Service[] }) {
           {list.map((s) => (
             <StaggerItem key={s.id}>
               <Link href={getServiceRoute(s.slug)} className="group block h-full">
-                <article className="group relative h-full overflow-hidden rounded-3xl border border-border/60 bg-card/60 shadow-soft transition-all duration-500 ease-soft hover:-translate-y-1.5 hover:shadow-float">
+                <article className="group relative h-full overflow-hidden rounded-3xl glass-card glow-border reflection-sweep shadow-soft hover:-translate-y-1.5 hover:shadow-glow backdrop-blur-md border border-white/5">
                   <div className="relative aspect-[16/11] overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -63,7 +63,7 @@ export function HomeServices({ services }: { services: Service[] }) {
         <div className="mt-12 text-center">
           <Link
             href="/services"
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-6 py-3 text-sm font-medium text-foreground backdrop-blur transition-colors hover:bg-card"
+            className="inline-flex items-center gap-2 rounded-full glass glow-border reflection-sweep px-6 py-3 text-sm font-medium text-foreground hover:bg-white/10 hover:scale-105 transition-all duration-300"
           >
             View all services <ArrowUpRight className="h-4 w-4" />
           </Link>

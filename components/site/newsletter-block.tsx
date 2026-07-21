@@ -36,7 +36,7 @@ export function NewsletterBlock() {
     <section className="relative py-24">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <Reveal>
-          <div className="relative overflow-hidden rounded-[2.5rem] border border-border/60 bg-card/60 p-10 text-center shadow-soft sm:p-14">
+          <div className="relative overflow-hidden rounded-[2.5rem] glass-card glow-border p-10 text-center shadow-glow sm:p-14 backdrop-blur-lg border border-white/10">
             <motion.div
               aria-hidden
               className="absolute -top-20 left-1/2 h-60 w-60 -translate-x-1/2 rounded-full bg-accent/20 blur-3xl"
@@ -44,7 +44,7 @@ export function NewsletterBlock() {
               transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
             />
             <div className="relative">
-              <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-foreground">
+              <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl glass border border-white/10 text-foreground">
                 <Mail className="h-5 w-5" />
               </span>
               <RevealText
@@ -61,10 +61,10 @@ export function NewsletterBlock() {
                   placeholder="your@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="rounded-full"
+                  className="rounded-full glass border border-white/10 text-foreground placeholder:text-muted-foreground"
                   required
                 />
-                <Button type="submit" disabled={loading} className="rounded-full px-6">
+                <Button type="submit" disabled={loading} className="rounded-full px-6 bg-primary text-primary-foreground hover:scale-105 hover:bg-primary/90 transition-all">
                   {loading ? 'Joining…' : 'Join the circle'}
                 </Button>
               </form>
