@@ -11,6 +11,7 @@ import { useCart } from '@/components/providers/cart-provider';
 import { useWishlist } from '@/components/providers/wishlist-provider';
 import { useAuth } from '@/components/providers/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 const NAV = [
   { href: '/', label: 'Home' },
@@ -27,7 +28,41 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const { count } = useCart();
   const { count: wishCount } = useWishlist();
-  const { user } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
+
+  const [showWhatsAppBanner, setShowWhatsAppBanner] = useState(false);
+  const [whatsappVal, setWhatsappVal] = useState('');
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (user && profile && !profile.whatsapp && !dismissed) {
+      setShowWhatsAppBanner(true);
+    } else {
+      setShowWhatsAppBanner(false);
+    }
+  }, [user, profile, dismissed]);
+
+  const handleSaveWhatsapp = async () => {
+    const sanitized = whatsappVal.replace(/[^0-9+]/g, '');
+    if (sanitized.length < 10) {
+      toast.error('Please enter a valid WhatsApp number (minimum 10 digits).');
+      return;
+    }
+    setSavingWhatsapp(true);
+    try {
+      const { doc, setDoc } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase');
+      await setDoc(doc(db, 'profiles', user!.uid), { whatsapp: sanitized }, { merge: true });
+      await refreshProfile();
+      toast.success('WhatsApp number saved successfully!');
+      setDismissed(true);
+    } catch (e) {
+      toast.error('Failed to save WhatsApp number.');
+    } finally {
+      setSavingWhatsapp(false);
+    }
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -44,12 +79,40 @@ export function SiteHeader() {
     href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(href + '/');
 
   return (
-    <header
-      className={cn(
-        'fixed inset-x-0 top-0 z-50 transition-all duration-500',
-        scrolled ? 'py-3' : 'py-6'
+    <>
+      {showWhatsAppBanner && (
+        <div className="fixed top-0 inset-x-0 z-[60] bg-gold text-gold-foreground py-2 px-4 text-xs font-semibold flex items-center justify-between shadow-soft">
+          <div className="flex-1 flex items-center justify-center gap-3 flex-wrap">
+            <span>Stay updated with your booking on WhatsApp. Please add your WhatsApp number.</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="tel"
+                placeholder="e.g. +919876543210"
+                value={whatsappVal}
+                onChange={(e) => setWhatsappVal(e.target.value)}
+                className="bg-gold-foreground/10 border border-gold-foreground/20 rounded-full px-3 py-1 text-xs text-gold-foreground placeholder:text-gold-foreground/50 focus:outline-none focus:ring-1 focus:ring-gold-foreground/55 w-44"
+              />
+              <button
+                onClick={handleSaveWhatsapp}
+                disabled={savingWhatsapp}
+                className="bg-gold-foreground text-gold rounded-full px-4 py-1 text-[10px] font-bold uppercase tracking-wider hover:bg-gold-foreground/90 transition-colors"
+              >
+                {savingWhatsapp ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+          <button onClick={() => setDismissed(true)} className="p-1 rounded-full hover:bg-gold-foreground/10 transition-colors shrink-0">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       )}
-    >
+      <header
+        className={cn(
+          'fixed inset-x-0 z-50 transition-all duration-500',
+          showWhatsAppBanner ? 'top-10' : 'top-0',
+          scrolled ? 'py-3' : 'py-6'
+        )}
+      >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div
           className={cn(
@@ -174,5 +237,6 @@ export function SiteHeader() {
         </AnimatePresence>
       </div>
     </header>
+    </>
   );
 }

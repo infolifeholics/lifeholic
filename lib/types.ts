@@ -52,19 +52,110 @@ export type Testimonial = {
   image: string | null;
   featured: boolean;
   sort_order: number;
+  pinned?: boolean;
+};
+
+export type Speaker = {
+  name: string;
+  role: string;
+  bio: string;
+  image: string;
+  expertise: string;
+  socials?: {
+    instagram?: string;
+    linkedin?: string;
+    twitter?: string;
+    facebook?: string;
+    website?: string;
+    youtube?: string;
+  };
+};
+
+export type AgendaItem = {
+  time: string;
+  title: string;
+  description: string;
 };
 
 export type Workshop = {
   id: string;
   title: string;
-  description: string;
+  slug: string;
+  short_description: string;
+  description: string; // Rich Text or long body
+  category: string;
+  tags: string[];
+  type: 'online' | 'offline' | 'hybrid';
+  language: string;
+  duration: string;
   date: string;
-  location: string;
-  image: string | null;
+  start_time: string;
+  end_time: string;
+  timezone: string;
+  venue_name: string;
+  address: string;
+  google_maps_link: string;
+  location?: string;
   seats_total: number;
   seats_booked: number;
+  registration_start: string;
+  registration_end: string;
   price_inr: number;
   price_usd: number;
+  early_bird_price_inr?: number;
+  early_bird_price_usd?: number;
+  offer_expiry?: string;
+  status: 'draft' | 'published' | 'registration_closed' | 'completed' | 'cancelled';
+  featured: boolean;
+  image: string; // Banner Image
+  thumbnail?: string;
+  gallery?: string[]; // Multiple gallery URLs
+  videos?: string[]; // YouTube / Cloudinary URLs
+  resources?: { name: string; url: string; type: string }[];
+  speakers?: Speaker[];
+  agenda?: AgendaItem[];
+  benefits?: string[];
+  faqs?: { question: string; answer: string }[];
+  meeting_link?: string;
+  publish_as_blog?: boolean;
+};
+
+export type WorkshopRegistration = {
+  id: string;
+  workshop_id: string;
+  workshop_title: string;
+  user_id: string;
+  client_name: string;
+  client_email: string;
+  client_phone: string;
+  client_whatsapp: string;
+  city: string;
+  country: string;
+  notes?: string;
+  amount: number;
+  currency: string;
+  payment_status: 'unpaid' | 'paid' | 'refunded';
+  payment_id?: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  qr_code?: string;
+  attendance?: 'present' | 'absent' | 'late' | 'excused' | boolean;
+  certificate_url?: string;
+  certificate_status?: 'available' | 'failed' | 'pending';
+  certificate_number?: string;
+  certificate_date?: string;
+  created_at: string;
+};
+
+export type WorkshopFeedback = {
+  id: string;
+  workshop_id: string;
+  user_id: string;
+  user_name: string;
+  rating: number;
+  review: string;
+  suggestions?: string;
+  approved: boolean;
+  created_at: string;
 };
 
 export type BlogPost = {

@@ -12,22 +12,50 @@ import { AdminMessages } from '@/components/admin/messages';
 import { Logo } from '@/components/site/logo';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { ArrowLeft, CalendarDays, Inbox, LayoutDashboard, Package, Settings, Image as ImageIcon } from 'lucide-react';
+import {
+  ArrowLeft,
+  CalendarDays,
+  Inbox,
+  LayoutDashboard,
+  Package,
+  Settings,
+  Image as ImageIcon,
+  Users,
+  Tag,
+  Sparkles,
+  FileText,
+  Heart
+} from 'lucide-react';
 import { AdminLandingPage } from '@/components/admin/landing-page';
 import { AdminServices } from '@/components/admin/services';
 import { AdminMembers } from '@/components/admin/members';
 import { AdminOffers } from '@/components/admin/offers';
-import { Users, Tag } from 'lucide-react';
+
+// Import newly implemented components
+import { AdminHealers } from '@/components/admin/healers';
+import { AdminCoupons } from '@/components/admin/coupons';
+import { AdminCMS } from '@/components/admin/cms';
+import { AdminTestimonials } from '@/components/admin/testimonials';
+import { AdminBlog } from '@/components/admin/blog';
+import { AdminRecommendations } from '@/components/admin/recommendations';
+import { AdminSettingsPanel } from '@/components/admin/settings-panel';
+import { AdminWorkshops } from '@/components/admin/workshops';
 
 const NAV = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'bookings', label: 'Bookings & availability', icon: CalendarDays },
+  { id: 'bookings', label: 'Bookings & Calendar', icon: CalendarDays },
+  { id: 'workshops', label: 'Workshops', icon: CalendarDays },
+  { id: 'healers', label: 'Healers', icon: Users },
   { id: 'services', label: 'Services', icon: Settings },
+  { id: 'recommendations', label: 'Recommendation Rules', icon: Sparkles },
+  { id: 'coupons', label: 'Discount Coupons', icon: Tag },
   { id: 'orders', label: 'Orders', icon: Package },
   { id: 'members', label: 'Members', icon: Users },
-  { id: 'offers', label: 'Offers & Promos', icon: Tag },
-  { id: 'messages', label: 'Messages', icon: Inbox },
-  { id: 'landing', label: 'Landing Page', icon: ImageIcon },
+  { id: 'messages', label: 'Messages & Contact', icon: Inbox },
+  { id: 'cms', label: 'CMS Manager', icon: ImageIcon },
+  { id: 'testimonials', label: 'Testimonials', icon: Heart },
+  { id: 'blog', label: 'Articles & Blogs', icon: FileText },
+  { id: 'settings', label: 'System Settings', icon: Settings },
 ] as const;
 
 type Section = (typeof NAV)[number]['id'];
@@ -50,40 +78,40 @@ function AdminShell() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background-2/40">
+    <div className="min-h-screen bg-background-2/40 pb-16">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:px-8">
         <aside className="lg:w-64 lg:shrink-0">
-          <div className="rounded-3xl border border-border/60 bg-card/70 p-5 shadow-soft lg:sticky lg:top-8">
+          <div className="rounded-3xl border border-border/60 bg-card/70 p-5 shadow-soft lg:sticky lg:top-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between">
               <Logo showWordmark={false} />
               <span className="rounded-full bg-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">Admin</span>
             </div>
-            <nav className="mt-6 flex flex-row gap-1 lg:flex-col overflow-x-auto">
+            <nav className="mt-6 flex flex-row gap-1 lg:flex-col overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0">
               {NAV.map((n) => (
                 <button
                   key={n.id}
                   onClick={() => setSection(n.id)}
                   className={cn(
-                    'flex flex-1 items-center gap-2 rounded-full px-3 py-2.5 text-sm font-medium transition-colors lg:flex-none',
+                    'flex flex-1 items-center gap-2 rounded-full px-3.5 py-2.5 text-xs font-medium transition-colors lg:flex-none whitespace-nowrap',
                     section === n.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                   )}
                 >
-                  <n.icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{n.label}</span>
+                  <n.icon className="h-4 w-4 shrink-0" />
+                  <span>{n.label}</span>
                   {n.id === 'messages' && count > 0 && (
                     <span className="ml-auto rounded-full bg-gold px-1.5 text-[10px] font-semibold text-gold-foreground">{count}</span>
                   )}
                 </button>
               ))}
             </nav>
-            <Link href="/" className="mt-6 flex items-center gap-2 rounded-full px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground">
+            <Link href="/" className="mt-6 flex items-center gap-2 rounded-full px-3.5 py-2.5 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground">
               <ArrowLeft className="h-4 w-4" /> Back to site
             </Link>
           </div>
         </aside>
 
         <div className="flex-1">
-          <h1 className="font-display text-3xl font-medium tracking-tight text-foreground capitalize">
+          <h1 className="font-display text-3xl font-medium tracking-tight text-foreground capitalize text-left">
             {NAV.find((n) => n.id === section)?.label}
           </h1>
           <div className="mt-6">
@@ -94,12 +122,18 @@ function AdminShell() {
                 <AdminAvailability />
               </div>
             )}
+            {section === 'workshops' && <AdminWorkshops />}
+            {section === 'healers' && <AdminHealers />}
             {section === 'services' && <AdminServices />}
+            {section === 'recommendations' && <AdminRecommendations />}
+            {section === 'coupons' && <AdminCoupons />}
             {section === 'orders' && <AdminOrders />}
             {section === 'members' && <AdminMembers />}
-            {section === 'offers' && <AdminOffers />}
             {section === 'messages' && <AdminMessages />}
-            {section === 'landing' && <AdminLandingPage />}
+            {section === 'cms' && <AdminCMS />}
+            {section === 'testimonials' && <AdminTestimonials />}
+            {section === 'blog' && <AdminBlog />}
+            {section === 'settings' && <AdminSettingsPanel />}
           </div>
         </div>
       </div>

@@ -78,12 +78,12 @@ function PaymentPageContent() {
     if (!couponCode) return;
     setApplying(true);
     try {
-      const res = await fetch('/api/shop/coupon', {
+      const res = await fetch('/api/coupons/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: couponCode,
-          subtotal: bookingData.amount,
+          amount: bookingData.amount,
         }),
       });
       const data = await res.json();
@@ -93,21 +93,7 @@ function PaymentPageContent() {
         setAppliedCoupon(data.code);
         toast.success(`Coupon "${data.code}" applied! You saved ${formatPrice(data.discount, bookingData.currency)}`);
       } else {
-        // Fallback local test coupons
-        const upperCode = couponCode.toUpperCase();
-        if (upperCode === 'WELCOME10') {
-          const disc = Math.round(bookingData.amount * 0.1);
-          setDiscount(disc);
-          setAppliedCoupon('WELCOME10');
-          toast.success('Coupon "WELCOME10" (10% Off) applied successfully!');
-        } else if (upperCode === 'HEAL50') {
-          const disc = Math.round(bookingData.amount * 0.5);
-          setDiscount(disc);
-          setAppliedCoupon('HEAL50');
-          toast.success('Coupon "HEAL50" (50% Off) applied successfully!');
-        } else {
-          toast.error(data.error || 'Invalid or expired coupon code.');
-        }
+        toast.error(data.error || 'Invalid or expired coupon code.');
       }
     } catch {
       toast.error('Could not apply coupon.');
@@ -162,16 +148,36 @@ function PaymentPageContent() {
       handler: async function (response: any) {
         setPaying(true);
         try {
-          const bookingRef = doc(db, 'bookings', bookingData.id);
-          await updateDoc(bookingRef, {
-            status: 'confirmed',
-            payment_status: 'paid',
-            payment_id: response.razorpay_payment_id || null,
+          const res = await fetch('/api/bookings/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id || 'order_mock_' + bookingData.id,
+              razorpay_signature: response.razorpay_signature || 'mock_sig_' + bookingData.id,
+              booking_id: bookingData.id,
+            }),
           });
-          toast.success('Payment successful! Your booking is confirmed.');
+          
+          if (!res.ok) throw new Error('Verification failed.');
+
+          // If coupon was applied, increment coupon usage
+          if (appliedCoupon) {
+            const { doc, runTransaction } = await import('firebase/firestore');
+            const couponRef = doc(db, 'coupons', appliedCoupon);
+            await runTransaction(db, async (transaction) => {
+              const sfDoc = await transaction.get(couponRef);
+              if (sfDoc.exists()) {
+                const newCount = (sfDoc.data().usage_count || 0) + 1;
+                transaction.update(couponRef, { usage_count: newCount });
+              }
+            });
+          }
+
+          toast.success('Payment verified & booking confirmed!');
           router.push(`/booking/success?service=${serviceData?.slug || ''}&date=${encodeURIComponent(bookingData.start_time)}&tz=${encodeURIComponent(bookingData.client_timezone)}`);
         } catch (err) {
-          toast.error('Failed to confirm payment status.');
+          toast.error('Failed to verify payment status.');
         } finally {
           setPaying(false);
         }
@@ -360,6 +366,15 @@ function PaymentPageContent() {
               <CreditCard className="h-5 w-5 text-gold" />
               <span>Checkout Options</span>
             </h3>
+
+            <div className="p-3 rounded-2xl bg-warning/5 border border-warning/20 text-[11px] leading-relaxed text-muted-foreground">
+              <p className="font-semibold text-warning uppercase text-[9px] tracking-wider mb-1">Cancellation &amp; Refund Policy</p>
+              <ul className="list-disc pl-4 space-y-0.5">
+                <li>Cancel up to 24 hours before your slot for a <strong>Full Refund</strong>.</li>
+                <li>Cancel between 12 to 24 hours before your slot for a <strong>50% Refund</strong>.</li>
+                <li>Cancellations under 12 hours are non-refundable.</li>
+              </ul>
+            </div>
 
             {currency === 'INR' ? (
               // Domestic Razorpay Payment Form

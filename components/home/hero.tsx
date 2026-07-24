@@ -3,11 +3,15 @@
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Sparkles, Search, ChevronRight, ArrowLeft, Check, Users, Heart, Activity, Briefcase, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowRight, Sparkles, Search, ChevronRight, ArrowLeft, Check, Users, Heart, Activity, Briefcase, X, Clock } from 'lucide-react';
 import { MagneticLink } from '@/components/site/magnetic';
 import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/components/providers/auth-provider';
+import { AuthModal } from '@/components/auth/auth-modal';
+import { formatPrice } from '@/lib/format';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -193,8 +197,35 @@ export function HomeHero() {
   const yText = useTransform(scrollYProgress, [0, 1], [0, 80]);
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
+  const router = useRouter();
+  const { user } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingServiceSlug, setPendingServiceSlug] = useState<string | null>(null);
+
   const [images, setImages] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Dynamic services & recommendation rules
+  const [dbServices, setDbServices] = useState<any[]>([]);
+  const [recRules, setRecRules] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Load services from Firestore
+    getDocs(collection(db, 'services'))
+      .then((snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        list.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
+        setDbServices(list);
+      })
+      .catch((e) => console.error('Error fetching services:', e));
+
+    // Load recommendation rules
+    getDocs(collection(db, 'recommendation_rules'))
+      .then((snap) => {
+        setRecRules(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      })
+      .catch((e) => console.error('Error fetching recommendation rules:', e));
+  }, []);
 
   // Search Dropdown States
   const [isOpen, setIsOpen] = useState(false);
@@ -208,6 +239,51 @@ export function HomeHero() {
     });
     return initial;
   });
+
+  const totalSelectedCount = Object.values(selectedOptions).reduce((sum, arr) => sum + arr.length, 0);
+
+  const getRecommendedServicesSlugs = () => {
+    const problems: string[] = [];
+    Object.values(selectedOptions).forEach((opts) => {
+      problems.push(...opts);
+    });
+
+    const matchedSlugs: string[] = [];
+
+    // Find rules matching current selections
+    recRules.forEach((rule) => {
+      const matchCat = !rule.category || rule.category.toLowerCase() === activeCategory?.toLowerCase();
+      const matchSub = !rule.subcategory || rule.subcategory.toLowerCase() === activeSub?.toLowerCase();
+      
+      // If problems match
+      let matchProb = true;
+      if (rule.problems && rule.problems.length > 0) {
+        matchProb = rule.problems.some((p: string) => problems.includes(p));
+      }
+
+      if (matchCat && matchSub && matchProb) {
+        if (rule.recommended_services && Array.isArray(rule.recommended_services)) {
+          matchedSlugs.push(...rule.recommended_services);
+        }
+      }
+    });
+
+    if (matchedSlugs.length > 0) {
+      return Array.from(new Set(matchedSlugs));
+    }
+
+    // Default recommendation fallback
+    if (activeSub === 'Ancestral Money Patterns' || activeCategory === 'finances') {
+      return ['ancestral-healing', 'personal-healing-clarity'];
+    }
+    if (activeSub === 'Family' || activeSub === 'Trauma & Abuse') {
+      return ['one-on-one-therapy', 'personal-healing-clarity'];
+    }
+    if (problems.length > 5) {
+      return ['deep-transformation-program', 'personal-healing-clarity'];
+    }
+    return ['personal-healing-clarity'];
+  };
 
   useEffect(() => {
     const colRef = collection(db, 'landing_images');
@@ -232,6 +308,80 @@ export function HomeHero() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const catParam = params.get('category');
+    if (catParam) {
+      const matchedKey = Object.keys(CATEGORIES).find(
+        (key) => CATEGORIES[key as CategoryKey].label.toLowerCase() === catParam.toLowerCase()
+      ) as CategoryKey | undefined;
+
+      if (matchedKey) {
+        setActiveCategory(matchedKey);
+        const subParam = params.get('subcategory');
+        if (subParam) {
+          setActiveSub(subParam);
+        }
+        const probParam = params.get('problems');
+        if (probParam) {
+          const probs = probParam.split(',');
+          setSelectedOptions((prev) => {
+            const updated = { ...prev };
+            if (subParam) {
+              updated[subParam] = probs;
+            }
+            return updated;
+          });
+        }
+        setStep('checklist');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (totalSelectedCount > 0 && activeCategory) {
+      const trackVisit = async () => {
+        try {
+          const problems: string[] = [];
+          Object.values(selectedOptions).forEach((opts) => {
+            problems.push(...opts);
+          });
+          const category = CATEGORIES[activeCategory].label;
+          const subcategory = activeSub || '';
+          
+          const recSlugs = getRecommendedServicesSlugs();
+          const firstRecService = dbServices.find((s) => recSlugs.includes(s.slug)) || dbServices[0];
+          const recommendedService = firstRecService ? firstRecService.title : 'Clarity Session';
+
+          const localVisits = JSON.parse(localStorage.getItem('recent_visits_extended') || '[]');
+          const newVisit = {
+            category,
+            subcategory,
+            problems,
+            recommended_service: recommendedService,
+            timestamp: new Date().toISOString(),
+          };
+          
+          const filtered = localVisits.filter((v: any) => !(v.category === category && v.subcategory === subcategory));
+          localStorage.setItem('recent_visits_extended', JSON.stringify([newVisit, ...filtered].slice(0, 10)));
+
+          if (user) {
+            const { collection, addDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await addDoc(collection(db, 'recentVisits'), {
+              user_id: user.uid,
+              ...newVisit,
+              created_at: new Date().toISOString(),
+            });
+          }
+        } catch (e) {
+          console.error('Error tracking visit:', e);
+        }
+      };
+      trackVisit();
+    }
+  }, [activeCategory, activeSub, totalSelectedCount, selectedOptions, user, dbServices, recRules]);
+
+  useEffect(() => {
     if (images.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
@@ -250,17 +400,6 @@ export function HomeHero() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Lock body scroll when dropdown is open to keep website stationary
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
 
   const hasImages = images.length > 0;
 
@@ -314,11 +453,50 @@ export function HomeHero() {
     });
   };
 
-  const totalSelectedCount = Object.values(selectedOptions).reduce((sum, arr) => sum + arr.length, 0);
+
 
   const activeRecommendations = Object.keys(selectedOptions).filter(
     (key) => selectedOptions[key] && selectedOptions[key].length > 0 && RECOMMENDATIONS[key]
   );
+
+  const getSummaryText = () => {
+    if (activeCategory === 'relationships') {
+      return `Based on your selections, your challenges appear to be connected with emotional patterns, communication blocks and deeper healing areas. We recommend beginning with the following sessions.`;
+    } else if (activeCategory === 'health') {
+      return `Based on your selections, your challenges appear to be connected with nervous system dysregulation, emotional somatic blocks, and a need for somatic grounding and release. We recommend beginning with the following sessions.`;
+    } else if (activeCategory === 'finances') {
+      return `Based on your selections, your challenges appear to be connected with subconscious scarcity loops, survival anxiety, and ancestral financial patterns. We recommend beginning with the following sessions.`;
+    }
+    return `Based on your selections, your challenges appear to be connected with deep emotional patterns and life adjustments. We recommend beginning with the following sessions.`;
+  };
+
+  const handleBookNow = (serviceSlug: string) => {
+    const selectedProblemsList = Object.values(selectedOptions).flat();
+    const questionnaire = {
+      category: activeCategory ? CATEGORIES[activeCategory].label : '',
+      subcategory: activeSub || '',
+      problems: selectedProblemsList,
+      totalIssues: totalSelectedCount,
+      summary: getSummaryText(),
+      serviceSlug
+    };
+    localStorage.setItem('booking_questionnaire', JSON.stringify(questionnaire));
+
+    if (!user) {
+      setPendingServiceSlug(serviceSlug);
+      setShowAuthModal(true);
+    } else {
+      router.push(`/booking?service=${serviceSlug}&from_search=true`);
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    if (pendingServiceSlug) {
+      router.push(`/booking?service=${pendingServiceSlug}&from_search=true`);
+      setPendingServiceSlug(null);
+    }
+  };
 
   return (
     <section ref={ref} className="relative overflow-x-clip pt-36 sm:pt-44 lg:pt-48">
@@ -478,10 +656,11 @@ export function HomeHero() {
                 <div
                   onClick={() => setIsOpen(!isOpen)}
                   className={cn(
-                    "group flex items-center gap-4 rounded-2xl border px-5 py-4 cursor-pointer transition-all duration-300 shadow-soft backdrop-blur-md",
+                    "group relative flex items-center gap-4 rounded-2xl px-5 py-4 cursor-pointer",
+                    "border-2 transition-all duration-500",
                     isOpen
-                      ? "bg-card border-gold/40 shadow-glow ring-2 ring-gold/10"
-                      : "bg-black/55 hover:bg-black/75 border-white/10 hover:border-gold/30 hover:shadow-float"
+                      ? "bg-card border-[#FFD700] ring-4 ring-[#FFD700]/20 shadow-[0_0_35px_rgba(255,215,0,0.45)]"
+                      : "bg-black/65 border-white/80 hover:border-[#FFD700] hover:shadow-[0_0_25px_rgba(255,215,0,0.35)]"
                   )}
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold/20 text-gold transition-transform group-hover:scale-105">
@@ -758,7 +937,7 @@ export function HomeHero() {
 
         {/* Recommendations Section */}
         <AnimatePresence>
-          {activeRecommendations.length > 0 && (
+          {totalSelectedCount > 0 && activeCategory && (
             <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -766,107 +945,115 @@ export function HomeHero() {
               transition={{ duration: 0.8, ease: EASE }}
               className="mt-24 pt-20 border-t border-border/60"
             >
-              <div className="text-center max-w-3xl mx-auto">
-                <span className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">Tailored Healing Pathway</span>
-                <h2 className="mt-3 font-display text-4xl sm:text-5xl text-foreground font-medium">Your Recommendations</h2>
-                <p className="mt-4 text-muted-foreground text-sm sm:text-base leading-relaxed">
-                  Based on the concern areas you identified, we have customized these session recommendations and transformation paths to support your journey.
-                </p>
-              </div>
+              {/* Summary Card */}
+              <div className="max-w-4xl mx-auto">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="rounded-3xl border border-gold/30 bg-card p-6 sm:p-10 shadow-glow relative overflow-hidden mb-12"
+                >
+                  <div className="absolute top-0 right-0 h-40 w-40 bg-gold/5 blur-[85px] rounded-full pointer-events-none" />
+                  
+                  <div className="flex items-center gap-2 mb-6">
+                    <Sparkles className="h-5 w-5 text-gold animate-pulse" />
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Your Selection Summary</span>
+                  </div>
 
-              <div className="mt-16 space-y-16 max-w-5xl mx-auto">
-                {activeRecommendations.map((key) => {
-                  const rec = RECOMMENDATIONS[key];
-                  if (!rec) return null;
-                  return (
-                    <motion.div
-                      key={key}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true, margin: '-100px' }}
-                      transition={{ duration: 0.6, ease: EASE }}
-                      className="rounded-3xl border border-border bg-card p-6 sm:p-10 shadow-soft"
-                    >
-                      <div className="flex flex-wrap items-center gap-3">
-                        <span className="rounded-full bg-gold/15 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-gold">
-                          {rec.category}
-                        </span>
-                        <h3 className="font-display text-2xl font-medium text-foreground">
-                          {rec.title}
-                        </h3>
+                  <div className="grid md:grid-cols-2 gap-8 items-start">
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Selected Main Category</p>
+                        <p className="text-base font-medium text-foreground mt-0.5 capitalize">{CATEGORIES[activeCategory].label}</p>
                       </div>
-
-                      <p className="mt-5 text-muted-foreground text-sm sm:text-base leading-relaxed max-w-3xl">
-                        {rec.explanation}
-                      </p>
-
-                      {/* Session Cards Grid */}
-                      <div className="mt-8 grid md:grid-cols-2 gap-6">
-                        {/* Card 1 */}
-                        <div className="rounded-2xl border border-border/80 bg-muted/40 p-6 flex flex-col justify-between hover:border-gold/30 hover:shadow-soft transition-all duration-300">
-                          <div>
-                            <span className="text-[10px] font-semibold uppercase tracking-widest text-gold">Single Session</span>
-                            <h4 className="mt-1.5 font-display text-xl font-medium text-foreground">Personal Healing &amp; Clarity Session</h4>
-                            <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
-                              A focused one-on-one session to unpack your immediate emotional blocks, trace their roots, and gain actionable clarity.
-                            </p>
-                          </div>
-                          <div className="mt-8 pt-4 border-t border-border/40 flex items-center justify-between">
-                            <div>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Duration &amp; Price</p>
-                              <div className="flex items-baseline gap-2 mt-1">
-                                <span className="font-semibold text-foreground text-base sm:text-lg">₹4,444</span>
-                                <span className="text-[10px] text-muted-foreground">/ 30 Minutes</span>
-                              </div>
-                            </div>
-                            <Link
-                              href="/booking?service=personal-healing-clarity"
-                              className="rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
-                            >
-                              Book Now
-                            </Link>
-                          </div>
-                        </div>
-
-                        {/* Card 2 */}
-                        <div className="rounded-2xl border border-border/80 bg-muted/40 p-6 flex flex-col justify-between hover:border-gold/30 hover:shadow-soft transition-all duration-300">
-                          <div>
-                            <span className="text-[10px] font-semibold uppercase tracking-widest text-gold">Deep Program</span>
-                            <h4 className="mt-1.5 font-display text-xl font-medium text-foreground">4 Week Deep Transformation Program</h4>
-                            <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
-                              A highly supported 4-week program for deep internal shifts, somatic release, childhood reparenting, and integration.
-                            </p>
-                          </div>
-                          <div className="mt-8 pt-4 border-t border-border/40 flex items-center justify-between">
-                            <div>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Duration &amp; Price</p>
-                              <div className="flex items-baseline gap-2 mt-1">
-                                <span className="font-semibold text-foreground text-base sm:text-lg">₹11,000</span>
-                                <span className="text-[10px] text-muted-foreground">/ 4 Weeks</span>
-                              </div>
-                            </div>
-                            <Link
-                              href="/booking?service=deep-transformation-program"
-                              className="rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
-                            >
-                              Book Now
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Common Healing Note */}
-                      {rec.showCommonNote && (
-                        <div className="mt-8 pt-6 border-t border-border/40 flex gap-3 items-start text-xs text-muted-foreground italic leading-relaxed">
-                          <Sparkles className="h-4 w-4 text-gold shrink-0 mt-0.5" />
-                          <p>
-                            Note: Healing is a gentle journey of remembering who you are before the world told you who to be. It is not about fixing yourself, but coming home to your natural state of wholeness.
-                          </p>
+                      
+                      {activeSub && (
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Selected Area</p>
+                          <p className="text-base font-medium text-foreground mt-0.5">{activeSub}</p>
                         </div>
                       )}
-                    </motion.div>
-                  );
-                })}
+
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                          Challenges ({totalSelectedCount} issue{totalSelectedCount !== 1 && 's'} selected)
+                        </p>
+                        <ul className="mt-1.5 space-y-1 text-sm text-foreground/80">
+                          {Object.entries(selectedOptions).map(([subKey, items]) => 
+                            items.map((item) => (
+                              <li key={item} className="flex items-start gap-2">
+                                <span className="text-gold mt-1">•</span>
+                                <span>{item}</span>
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-muted/40 p-6 border border-border/40">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gold mb-2">AI-Style Healing Insight</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed italic">
+                        &ldquo;{getSummaryText()}&rdquo;
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Service recommendations title */}
+                <div className="text-center max-w-2xl mx-auto mb-10">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-gold">Tailored Healing Options</span>
+                  <h3 className="mt-2 font-display text-3xl text-foreground font-medium">Recommended Pathways</h3>
+                  <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
+                    Based on the concern areas you identified, we recommend beginning with the following sessions, ordered from foundational to deep work.
+                  </p>
+                </div>
+
+                {/* Service Cards Grid */}
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {dbServices
+                    .filter((s) => s.active !== false && getRecommendedServicesSlugs().includes(s.slug))
+                    .map((s) => (
+                      <div
+                        key={s.id}
+                        className={cn(
+                          "rounded-3xl border bg-card p-6 flex flex-col justify-between hover:border-gold/30 hover:shadow-soft transition-all duration-300 relative",
+                          s.featured ? "border-gold/50 shadow-soft" : "border-border"
+                        )}
+                      >
+                        {s.featured && (
+                          <div className="absolute top-0 right-6 -translate-y-1/2 bg-gold text-gold-foreground text-[8px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-soft">
+                            Featured
+                          </div>
+                        )}
+                        <div>
+                          <div className="flex justify-between items-start">
+                            <span className="rounded-full bg-gold/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold">
+                              {s.duration_minutes} Mins
+                            </span>
+                            <span className="text-xs text-muted-foreground">{s.category}</span>
+                          </div>
+                          <h4 className="mt-4 font-display text-xl font-medium text-foreground">{s.title}</h4>
+                          <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
+                            {s.short}
+                          </p>
+                        </div>
+                        <div className="mt-8 pt-4 border-t border-border/40 flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Price</p>
+                            <span className="font-semibold text-foreground text-lg">
+                              {formatPrice(s.price_inr, 'INR')}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleBookNow(s.slug)}
+                            className="rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+                          >
+                            Book Now
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
               </div>
 
               {/* Lifeholics Community Section */}
@@ -907,7 +1094,7 @@ export function HomeHero() {
       </div>
 
       {/* scroll cue */}
-      {activeRecommendations.length === 0 && (
+      {totalSelectedCount === 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -923,6 +1110,12 @@ export function HomeHero() {
           </div>
         </motion.div>
       )}
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </section>
   );
 }

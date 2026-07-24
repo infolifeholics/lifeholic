@@ -71,6 +71,34 @@ export function BookingFlow({ services }: { services: Service[] }) {
   });
   const [submitting, setSubmitting] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [suggestions, setSuggestions] = useState<Array<{ start_time: string; end_time: string }>>([]);
+
+  const [questionnaire, setQuestionnaire] = useState<{
+    category: string;
+    subcategory: string;
+    problems: string[];
+    totalIssues: number;
+    summary: string;
+    serviceSlug: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (search.get('from_search') === 'true') {
+      try {
+        const saved = localStorage.getItem('booking_questionnaire');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setQuestionnaire(parsed);
+          if (parsed.serviceSlug) {
+            setServiceSlug(parsed.serviceSlug);
+          }
+          setStep(1); // skip service selection
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [search]);
 
   const service = useMemo(
     () => services.find((s) => s.slug === serviceSlug) || services[0],
@@ -156,12 +184,17 @@ export function BookingFlow({ services }: { services: Service[] }) {
           user_id: user?.id || null,
           status: 'pending',
           payment_status: 'unpaid',
+          category: questionnaire?.category || null,
+          subcategory: questionnaire?.subcategory || null,
+          problems: questionnaire?.problems || null,
+          summary: questionnaire?.summary || null,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.error || 'Could not book the session.');
         if (res.status === 409) {
+          setSuggestions(data.suggestions || []);
           setStep(1);
           setSelectedSlot(null);
         }
@@ -338,6 +371,34 @@ export function BookingFlow({ services }: { services: Service[] }) {
                   })}
                 </div>
 
+                {suggestions.length > 0 && (
+                  <div className="mt-4 p-4 rounded-2xl bg-warning/10 border border-warning/20 space-y-2 text-left">
+                    <p className="text-xs font-semibold text-warning">This slot is already taken. Suggested alternative slots:</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {suggestions.map((sug, idx) => {
+                        const dateObj = new Date(sug.start_time);
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setSelectedSlot({ start: sug.start_time, end: sug.end_time, modes: [mode] });
+                              const yyyy = dateObj.getFullYear();
+                              const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                              const dd = String(dateObj.getDate()).padStart(2, '0');
+                              setSelectedDate(`${yyyy}-${mm}-${dd}`);
+                              setSuggestions([]);
+                              toast.success('Alternative slot selected.');
+                            }}
+                            className="bg-warning/20 border border-warning/30 text-warning hover:bg-warning/30 text-[10px] font-semibold rounded-full px-3 py-1 transition-colors"
+                          >
+                            {dateObj.toLocaleDateString()} {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Slots */}
                 {selectedDate && (
                   <div className="mt-6">
@@ -485,7 +546,10 @@ export function BookingFlow({ services }: { services: Service[] }) {
                 <h2 className="font-display text-2xl font-medium text-foreground">Confirm your session</h2>
                 <dl className="mt-6 space-y-3 text-sm">
                   {[
-                    ['Session', service?.title],
+                    ['Selected Category', questionnaire?.category],
+                    ['Selected Subcategory', questionnaire?.subcategory],
+                    ['Selected Problems', questionnaire?.problems?.join(', ')],
+                    ['Selected Service', service?.title],
                     ['Date', selectedSlot ? formatInTz(selectedSlot.start, tz, { dateStyle: 'full' }) : '—'],
                     ['Time', selectedSlot ? formatInTz(selectedSlot.start, tz, { timeStyle: 'short' }) : '—'],
                     ['Duration', `${service?.duration_minutes} min`],
@@ -494,10 +558,10 @@ export function BookingFlow({ services }: { services: Service[] }) {
                     ['Name', details.name],
                     ['Email', details.email],
                     ['Price', formatPrice(price, currency)],
-                  ].map(([k, v]) => (
-                    <div key={k} className="flex items-center justify-between border-b border-border/50 pb-3">
-                      <dt className="text-muted-foreground">{k}</dt>
-                      <dd className="font-medium text-foreground capitalize">{v}</dd>
+                  ].filter(([k, v]) => !!v).map(([k, v]) => (
+                    <div key={k as string} className="flex items-center justify-between border-b border-border/50 pb-3">
+                      <dt className="text-muted-foreground">{k as string}</dt>
+                      <dd className="font-medium text-foreground capitalize text-right max-w-[60%] line-clamp-2">{v as string}</dd>
                     </div>
                   ))}
                 </dl>
@@ -550,6 +614,18 @@ export function BookingFlow({ services }: { services: Service[] }) {
                 <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" /> {service.duration_minutes} minutes
                 </p>
+                {questionnaire && (
+                  <div className="mt-3 border-t border-border/40 pt-3 space-y-1.5 text-xs">
+                    <p className="text-muted-foreground"><span className="font-semibold text-foreground">Category:</span> {questionnaire.category}</p>
+                    <p className="text-muted-foreground"><span className="font-semibold text-foreground">Area:</span> {questionnaire.subcategory}</p>
+                    <div className="text-muted-foreground">
+                      <span className="font-semibold text-foreground">Challenges:</span>
+                      <ul className="mt-0.5 list-disc pl-4 space-y-0.5">
+                        {questionnaire.problems.map((p) => <li key={p}>{p}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+                )}
                 <div className="mt-4 space-y-2 border-t border-border/50 pt-4 text-sm">
                   {selectedSlot ? (
                     <>

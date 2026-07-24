@@ -6,6 +6,8 @@ import { SiteHeader } from '@/components/site/site-header';
 import { SiteFooter } from '@/components/site/site-footer';
 import { OfferPopup } from '@/components/site/offer-promo';
 import { cn } from '@/lib/utils';
+import { GlobalErrorBoundary } from '@/components/site/error-boundary';
+import Script from 'next/script';
 
 const serif = Cormorant_Garamond({
   subsets: ['latin'],
@@ -76,10 +78,45 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className={cn(sans.variable, serif.variable, 'font-sans antialiased relative min-h-screen')}>
         <Providers>
-          <SiteHeader />
-          <main className="relative">{children}</main>
-          <SiteFooter />
-          <OfferPopup />
+          <GlobalErrorBoundary>
+            <SiteHeader />
+            <main className="relative">{children}</main>
+            <SiteFooter />
+            <OfferPopup />
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  "@context": "https://schema.org",
+                  "@type": "MedicalBusiness",
+                  "name": "TheLifeHolics",
+                  "alternateName": "Lifeholics",
+                  "url": "https://thelifeholics.com",
+                  "logo": "https://thelifeholics.com/favicon.svg",
+                  "sameAs": [
+                    "https://www.instagram.com/thelifeholics",
+                    "https://youtube.com/thelifeholics"
+                  ],
+                  "description": "TheLifeHolics offers spiritual psychology, one-on-one therapy, relationship guidance, inner child healing, mindfulness and meditation — online and in person.",
+                  "priceRange": "$$",
+                  "address": {
+                    "@type": "PostalAddress",
+                    "addressLocality": "Mumbai",
+                    "addressCountry": "IN"
+                  }
+                }),
+              }}
+            />
+            <Script id="service-worker-reg" strategy="afterInteractive">
+              {`
+                if ('serviceWorker' in navigator) {
+                  window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/sw.js');
+                  });
+                }
+              `}
+            </Script>
+          </GlobalErrorBoundary>
         </Providers>
       </body>
     </html>

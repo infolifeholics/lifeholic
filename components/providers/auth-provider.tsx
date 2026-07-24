@@ -19,6 +19,7 @@ type Profile = {
   full_name: string | null;
   email: string | null;
   phone: string | null;
+  whatsapp?: string | null;
   timezone: string | null;
   is_admin: boolean | null;
   bio?: string | null;
@@ -109,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: fUser.email,
               full_name: fUser.displayName || fUser.email?.split('@')[0] || null,
               phone: fUser.phoneNumber || null,
+              whatsapp: null,
               timezone: 'Asia/Kolkata',
               is_admin: false,
               bio: '',
@@ -118,7 +120,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await setDoc(docRef, newProfile);
             setProfile(newProfile);
           } else {
-            setProfile(docSnap.data() as Profile);
+            const data = docSnap.data() as Profile;
+            if (!data.member_id) {
+              const newMemberId = await generateNextMemberId();
+              await setDoc(docRef, { member_id: newMemberId }, { merge: true });
+              setProfile({ ...data, member_id: newMemberId });
+            } else {
+              setProfile(data);
+            }
           }
         } catch (err) {
           console.error('Error handling profiles in Firestore:', err);
@@ -177,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: userCredential.user.email,
               full_name: fullName,
               phone: null,
+              whatsapp: null,
               timezone: 'Asia/Kolkata',
               is_admin: false,
               bio: '',

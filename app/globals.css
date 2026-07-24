@@ -347,3 +347,43 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(212, 175, 55, 0.3) transparent;
 }
+
+/* Animated Search Bar Border */
+@keyframes border-glow-move {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animated-search-border {
+  position: relative;
+}
+
+.animated-search-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.15), rgba(212, 175, 55, 0.3), rgba(255, 255, 255, 0.75), rgba(212, 175, 55, 0.3), rgba(255, 255, 255, 0.15));
+  background-size: 300% 300%;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: border-glow-move 6s linear infinite;
+  opacity: 0.55;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.animated-search-border:hover::before,
+.animated-search-border-active::before {
+  opacity: 1;
+  filter: drop-shadow(0 0 3px rgba(212, 175, 55, 0.25));
+}
