@@ -56,39 +56,15 @@ export function HomeProcess() {
 
           {/* Desktop Pinned Process Cards */}
           <div className="hidden lg:grid mt-16 grid-cols-5 gap-4">
-            {STEPS.map((s, i) => {
-              const targetProgress = i / (STEPS.length - 1);
-              
-              // Smoothly transition between states as user scrolls
-              const opacity = useTransform(
-                smoothProgress,
-                [targetProgress - 0.25, targetProgress, targetProgress + 0.25],
-                [0.35, 1, 0.35]
-              );
-              
-              const scale = useTransform(
-                smoothProgress,
-                [targetProgress - 0.25, targetProgress, targetProgress + 0.25],
-                [0.96, 1.04, 0.96]
-              );
-
-              return (
-                <motion.div
-                  key={s.n}
-                  style={{ opacity, scale }}
-                  className="group relative h-full rounded-3xl glass-card glow-border reflection-sweep p-6 backdrop-blur-md border border-white/5 bg-black/10"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-display text-3xl font-medium text-gold/80">{s.n}</span>
-                    {i < STEPS.length - 1 && (
-                      <span className="hidden h-px w-12 bg-gradient-to-r from-gold/40 to-transparent md:block" />
-                    )}
-                  </div>
-                  <h3 className="mt-5 font-display text-xl font-medium text-foreground">{s.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.desc}</p>
-                </motion.div>
-              );
-            })}
+            {STEPS.map((s, i) => (
+              <ProcessStepCard
+                key={s.n}
+                s={s}
+                i={i}
+                total={STEPS.length}
+                smoothProgress={smoothProgress}
+              />
+            ))}
           </div>
 
           {/* Mobile Fallback: Normal Grid */}
@@ -109,5 +85,48 @@ export function HomeProcess() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ProcessStepCard({
+  s,
+  i,
+  total,
+  smoothProgress,
+}: {
+  s: typeof STEPS[0];
+  i: number;
+  total: number;
+  smoothProgress: any;
+}) {
+  const targetProgress = i / (total - 1);
+
+  // Smoothly transition between states as user scrolls
+  const opacity = useTransform(
+    smoothProgress,
+    [targetProgress - 0.25, targetProgress, targetProgress + 0.25],
+    [0.35, 1, 0.35]
+  );
+
+  const scale = useTransform(
+    smoothProgress,
+    [targetProgress - 0.25, targetProgress, targetProgress + 0.25],
+    [0.96, 1.04, 0.96]
+  );
+
+  return (
+    <motion.div
+      style={{ opacity, scale }}
+      className="group relative h-full rounded-3xl glass-card glow-border reflection-sweep p-6 backdrop-blur-md border border-white/5 bg-black/10"
+    >
+      <div className="flex items-center justify-between">
+        <span className="font-display text-3xl font-medium text-gold/80">{s.n}</span>
+        {i < total - 1 && (
+          <span className="hidden h-px w-12 bg-gradient-to-r from-gold/40 to-transparent md:block" />
+        )}
+      </div>
+      <h3 className="mt-5 font-display text-xl font-medium text-foreground">{s.title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.desc}</p>
+    </motion.div>
   );
 }

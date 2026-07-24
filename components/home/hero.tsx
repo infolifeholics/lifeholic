@@ -219,7 +219,7 @@ export function HomeHero() {
             .sort((a: any, b: any) => Number(a.id) - Number(b.id))
             .map((d: any) => d.url)
             .filter((url): url is string => !!url);
-          
+
           setImages(list);
         } else {
           setImages([]);
@@ -250,6 +250,18 @@ export function HomeHero() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Lock body scroll when dropdown is open to keep website stationary
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   const hasImages = images.length > 0;
 
   const toggleOption = (sub: string, option: string) => {
@@ -271,7 +283,7 @@ export function HomeHero() {
       };
       const filtered = visits.filter((v: any) => !(v.category === newVisit.category && v.sub === newVisit.sub && v.item === newVisit.item));
       localStorage.setItem('recent_visits', JSON.stringify([newVisit, ...filtered].slice(0, 8)));
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const getActiveOptionsList = () => {
@@ -309,12 +321,9 @@ export function HomeHero() {
   );
 
   return (
-    <section ref={ref} className="relative overflow-hidden pt-36 sm:pt-44 lg:pt-48">
+    <section ref={ref} className="relative overflow-x-clip pt-36 sm:pt-44 lg:pt-48">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className={cn(
-          "grid items-center gap-10 lg:gap-16",
-          hasImages ? "lg:grid-cols-[1.05fr_0.95fr] grid-cols-1" : "grid-cols-1 max-w-3xl mx-auto text-center"
-        )}>
+        <div className="grid lg:grid-cols-[1.05fr_0.95fr] grid-cols-1 items-center gap-10 lg:gap-16">
           {/* Left — copy (Restored) */}
           <motion.div style={{ y: yText, opacity }} className="relative z-10">
             <motion.span
@@ -411,16 +420,19 @@ export function HomeHero() {
             </motion.div>
           </motion.div>
 
-          {/* Right — image stack with overlay search and quote (Always Rendered conditionally based on hasImages) */}
-          {hasImages && (
-            <motion.div
-              style={{ y: yImg }}
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1.1, delay: 0.2, ease: EASE }}
-              className="relative aspect-[4/5] rounded-[2rem] border border-border/60 shadow-float bg-card"
-            >
-              {/* Animated Background Images or Fallback Dark Gradient */}
+          {/* Right — image stack with overlay search and quote (Always Rendered) */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.1, delay: 0.2, ease: EASE }}
+            className={cn(
+              "relative aspect-[4/5] rounded-[2rem] shadow-float",
+              hasImages
+                ? "border border-border/60 bg-card"
+                : "border border-white/10 bg-black/30 backdrop-blur-md"
+            )}
+          >
+            {hasImages && (
               <div className="absolute inset-0 rounded-[2rem] overflow-hidden z-0">
                 <AnimatePresence mode="popLayout">
                   <motion.img
@@ -438,302 +450,310 @@ export function HomeHero() {
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] pointer-events-none" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/30 pointer-events-none" />
               </div>
+            )}
 
-              {/* Floating Content Layer on Top of the Images */}
-              <div className="absolute inset-0 z-10 p-6 sm:p-8 flex flex-col justify-between">
-                
-                {/* 1. Meaningful Quote Box (Top) */}
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.2, ease: EASE }}
-                  className="relative bg-black/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl"
+            {/* Floating Content Layer on Top of the Images */}
+            <div className="absolute inset-0 z-10 p-6 sm:p-8 flex flex-col justify-between">
+
+              {/* 1. Meaningful Quote Box (Top) */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2, ease: EASE }}
+                className="relative bg-black/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl"
+              >
+                <span className="absolute -top-3 -left-1 text-5xl text-gold/30 font-serif pointer-events-none">“</span>
+                <p className="font-serif italic text-base sm:text-lg text-white leading-relaxed pl-4">
+                  Healing is a journey of remembering who you are before the world told you who to be.
+                </p>
+                <div className="mt-2 flex items-center gap-3 pl-4">
+                  <div className="h-[1px] w-6 bg-gold/60" />
+                  <span className="text-[10px] uppercase tracking-widest text-gold font-medium">Self-Discovery &amp; Transformation</span>
+                </div>
+              </motion.div>
+
+              {/* 2. Premium Interactive Search Bar (Middle) */}
+              <div ref={dropdownRef} className="relative w-full z-20">
+                {/* Outer Search Bar Wrapper */}
+                <div
+                  onClick={() => setIsOpen(!isOpen)}
+                  className={cn(
+                    "group flex items-center gap-4 rounded-2xl border px-5 py-4 cursor-pointer transition-all duration-300 shadow-soft backdrop-blur-md",
+                    isOpen
+                      ? "bg-card border-gold/40 shadow-glow ring-2 ring-gold/10"
+                      : "bg-black/55 hover:bg-black/75 border-white/10 hover:border-gold/30 hover:shadow-float"
+                  )}
                 >
-                  <span className="absolute -top-3 -left-1 text-5xl text-gold/30 font-serif pointer-events-none">“</span>
-                  <p className="font-serif italic text-base sm:text-lg text-white leading-relaxed pl-4">
-                    Healing is a journey of remembering who you are before the world told you who to be.
-                  </p>
-                  <div className="mt-2 flex items-center gap-3 pl-4">
-                    <div className="h-[1px] w-6 bg-gold/60" />
-                    <span className="text-[10px] uppercase tracking-widest text-gold font-medium">Self-Discovery &amp; Transformation</span>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold/20 text-gold transition-transform group-hover:scale-105">
+                    <Search className="h-5 w-5" />
                   </div>
-                </motion.div>
-
-                {/* 2. Premium Interactive Search Bar (Middle) */}
-                <div ref={dropdownRef} className="relative w-full z-20">
-                  {/* Outer Search Bar Wrapper */}
-                  <div
-                    onClick={() => setIsOpen(!isOpen)}
-                    className={cn(
-                      "group flex items-center gap-4 rounded-2xl border px-5 py-4 cursor-pointer transition-all duration-300 shadow-soft backdrop-blur-md",
-                      isOpen
-                        ? "bg-card border-gold/40 shadow-glow ring-2 ring-gold/10"
-                        : "bg-black/55 hover:bg-black/75 border-white/10 hover:border-gold/30 hover:shadow-float"
-                    )}
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold/20 text-gold transition-transform group-hover:scale-105">
-                      <Search className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-[10px] font-medium text-white/70 uppercase tracking-wider">Explore healing areas</p>
-                      <p className="text-xs sm:text-sm font-medium text-white mt-0.5 line-clamp-1">
-                        {totalSelectedCount > 0
-                          ? `${totalSelectedCount} concerns selected`
-                          : "Which area of your life feels most difficult these days?"}
-                      </p>
-                    </div>
-                    {totalSelectedCount > 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          resetDropdown();
-                        }}
-                        className="p-1 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                    <ChevronRight className={cn("h-5 w-5 text-white/70 transition-transform duration-300", isOpen ? "rotate-90 text-gold" : "")} />
+                  <div className="flex-1 text-left">
+                    <p className="text-[10px] font-medium text-white/70 uppercase tracking-wider">Explore healing areas</p>
+                    <p className="text-xs sm:text-sm font-medium text-white mt-0.5 line-clamp-1">
+                      {totalSelectedCount > 0
+                        ? `${totalSelectedCount} concerns selected`
+                        : "Which area of your life feels most difficult these days?"}
+                    </p>
                   </div>
+                  {totalSelectedCount > 0 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetDropdown();
+                      }}
+                      className="p-1 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                  <ChevronRight className={cn("h-5 w-5 text-white/70 transition-transform duration-300", isOpen ? "rotate-90 text-gold" : "")} />
+                </div>
 
-                  {/* Custom Animated Multi-Step Dropdown */}
-                  <AnimatePresence>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                        transition={{ duration: 0.25, ease: 'easeOut' }}
-                        className="absolute z-50 left-0 right-0 mt-3 rounded-2xl border border-border/80 bg-card/95 backdrop-blur-xl shadow-glow overflow-hidden"
-                      >
-                        {/* Header */}
-                        <div className="flex items-center justify-between border-b border-border/60 px-5 py-4 bg-muted/40">
-                          <div className="flex items-center gap-2">
-                            {step !== 'categories' && (
-                              <button
-                                onClick={handleBack}
-                                className="mr-1 p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                              >
-                                <ArrowLeft className="h-4 w-4" />
-                              </button>
-                            )}
-                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                              {step === 'categories' && 'Select Primary Area'}
-                              {step === 'subcategories' && activeCategory && CATEGORIES[activeCategory].label}
-                              {step === 'checklist' && activeCategory && `${CATEGORIES[activeCategory].label} > ${activeSub}`}
-                            </span>
-                          </div>
-                          {totalSelectedCount > 0 && (
+                {/* Custom Animated Multi-Step Dropdown */}
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      transition={{ duration: 0.15, ease: 'easeOut' }}
+                      className="absolute z-50 left-0 right-0 mt-3 rounded-2xl border border-border/80 bg-card/95 backdrop-blur-xl shadow-glow overflow-hidden h-[420px] sm:h-[480px] flex flex-col"
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between border-b border-border/60 px-5 py-4 bg-muted/40 shrink-0">
+                        <div className="flex items-center gap-2">
+                          {step !== 'categories' && (
                             <button
-                              onClick={resetDropdown}
-                              className="text-xs font-medium text-gold hover:text-gold-hover transition-colors"
+                              onClick={handleBack}
+                              className="mr-1 p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                             >
-                              Reset
+                              <ArrowLeft className="h-4 w-4" />
                             </button>
                           )}
-                        </div>
-
-                        {/* Step Content */}
-                        <div className="p-4 max-h-[180px] overflow-y-auto custom-scrollbar">
-                          <AnimatePresence mode="wait">
-                            {step === 'categories' && (
-                              <motion.div
-                                key="categories"
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 10 }}
-                                transition={{ duration: 0.2 }}
-                                className="space-y-2"
-                              >
-                                {/* Relationships Option */}
-                                <button
-                                  onClick={() => {
-                                    setActiveCategory('relationships');
-                                    setStep('subcategories');
-                                  }}
-                                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 hover:border-gold/20 transition-all text-left group"
-                                >
-                                  <div className="flex items-center gap-3.5">
-                                    <div className="h-10 w-10 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center">
-                                      <Heart className="h-5 w-5" />
-                                    </div>
-                                    <div>
-                                      <p className="font-semibold text-foreground">Relationships</p>
-                                      <p className="text-xs text-muted-foreground mt-0.5">Family, friends, partners and social boundaries</p>
-                                    </div>
-                                  </div>
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                                </button>
-
-                                {/* Health & Well Being Option */}
-                                <button
-                                  onClick={() => {
-                                    setActiveCategory('health');
-                                    setStep('subcategories');
-                                  }}
-                                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 hover:border-gold/20 transition-all text-left group"
-                                >
-                                  <div className="flex items-center gap-3.5">
-                                    <div className="h-10 w-10 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                                      <Activity className="h-5 w-5" />
-                                    </div>
-                                    <div>
-                                      <p className="font-semibold text-foreground">Health &amp; Well Being</p>
-                                      <p className="text-xs text-muted-foreground mt-0.5">Mental wellness, anxiety, vitality and stress</p>
-                                    </div>
-                                  </div>
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                                </button>
-
-                                {/* Finances & Career Option */}
-                                <button
-                                  onClick={() => {
-                                    setActiveCategory('finances');
-                                    setStep('subcategories');
-                                  }}
-                                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 hover:border-gold/20 transition-all text-left group"
-                                >
-                                  <div className="flex items-center gap-3.5">
-                                    <div className="h-10 w-10 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                                      <Briefcase className="h-5 w-5" />
-                                    </div>
-                                    <div>
-                                      <p className="font-semibold text-foreground">Finances &amp; Career</p>
-                                      <p className="text-xs text-muted-foreground mt-0.5">Workplace stress, abundance mindset &amp; growth</p>
-                                    </div>
-                                  </div>
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                                </button>
-                              </motion.div>
-                            )}
-
-                            {step === 'subcategories' && activeCategory && (
-                              <motion.div
-                                key="subcategories"
-                                initial={{ opacity: 0, x: 10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -10 }}
-                                transition={{ duration: 0.2 }}
-                                className="space-y-2"
-                              >
-                                {CATEGORIES[activeCategory].subs.map((sub) => {
-                                  const count = selectedOptions[sub]?.length || 0;
-                                  return (
-                                    <button
-                                      key={sub}
-                                      onClick={() => {
-                                        setActiveSub(sub);
-                                        setStep('checklist');
-                                      }}
-                                      className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 hover:border-gold/20 transition-all text-left group"
-                                    >
-                                      <div className="flex items-center gap-3.5">
-                                        <div className="h-10 w-10 rounded-lg bg-gold/10 text-gold flex items-center justify-center">
-                                          {activeCategory === 'relationships' && <Users className="h-5 w-5" />}
-                                          {activeCategory === 'health' && <Activity className="h-5 w-5" />}
-                                          {activeCategory === 'finances' && <Briefcase className="h-5 w-5" />}
-                                        </div>
-                                        <div>
-                                          <p className="font-semibold text-foreground flex items-center gap-2">
-                                            {sub}
-                                            {count > 0 && (
-                                              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gold text-gold-foreground">
-                                                {count}
-                                              </span>
-                                            )}
-                                          </p>
-                                          <p className="text-xs text-muted-foreground mt-0.5">Select specific concerns or difficulties</p>
-                                        </div>
-                                      </div>
-                                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                                    </button>
-                                  );
-                                })}
-                              </motion.div>
-                            )}
-
-                            {step === 'checklist' && activeSub && (
-                              <motion.div
-                                key="checklist"
-                                initial={{ opacity: 0, x: 10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -10 }}
-                                transition={{ duration: 0.2 }}
-                                className="space-y-1.5"
-                              >
-                                {getActiveOptionsList().map((option) => {
-                                  const isChecked = selectedOptions[activeSub]?.includes(option);
-                                  return (
-                                    <button
-                                      key={option}
-                                      onClick={() => toggleOption(activeSub, option)}
-                                      className={cn(
-                                        "w-full flex items-center gap-3 p-3 rounded-lg border text-left text-sm transition-all",
-                                        isChecked
-                                          ? "border-gold bg-gold/5 font-medium text-foreground"
-                                          : "border-border/40 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                                      )}
-                                    >
-                                      <div className={cn(
-                                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                                        isChecked ? "bg-gold border-gold text-gold-foreground" : "border-muted-foreground/40"
-                                      )}>
-                                        {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
-                                      </div>
-                                      <span>{option}</span>
-                                    </button>
-                                  );
-                                })}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="flex items-center justify-between border-t border-border/60 px-5 py-4 bg-muted/40">
-                          <span className="text-xs text-muted-foreground">
-                            {totalSelectedCount > 0 ? `${totalSelectedCount} items selected total` : 'Choose areas to get guidance'}
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            {step === 'categories' && 'Select Primary Area'}
+                            {step === 'subcategories' && activeCategory && CATEGORIES[activeCategory].label}
+                            {step === 'checklist' && activeCategory && `${CATEGORIES[activeCategory].label} > ${activeSub}`}
                           </span>
-                          <button
-                            onClick={() => setIsOpen(false)}
-                            className="rounded-lg bg-gold px-4 py-2 text-xs font-semibold text-gold-foreground shadow-sm hover:bg-gold-hover transition-colors"
-                          >
-                            Done
-                          </button>
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                        {totalSelectedCount > 0 && (
+                          <button
+                            onClick={resetDropdown}
+                            className="text-xs font-medium text-gold hover:text-gold-hover transition-colors"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
 
-                {/* 3. Status Cards (Bottom - Side by Side) */}
-                <div className="flex gap-4 w-full pointer-events-none">
-                  <motion.div
-                    animate={{ y: [0, -4, 0] }}
-                    transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-                    className="flex-1 rounded-xl bg-black/40 border border-white/10 p-4 shadow-glow backdrop-blur-md pointer-events-auto"
-                  >
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-white/70">Next available</p>
-                    <p className="mt-1 font-display text-sm sm:text-base text-white">Tomorrow · 6:00 PM</p>
-                    <p className="text-[9px] text-white/60 mt-0.5">Online · 60 minutes</p>
-                  </motion.div>
+                      {/* Step Content */}
+                      <div
+                        className="p-4 pb-12 flex-1 overflow-y-auto overscroll-contain custom-scrollbar"
+                        onWheel={(e) => e.stopPropagation()}
+                        onTouchMove={(e) => e.stopPropagation()}
+                        style={{
+                          WebkitOverflowScrolling: "touch",
+                          overscrollBehavior: "contain",
+                        }}
+                      >
+                        <AnimatePresence mode="wait">
+                          {step === 'categories' && (
+                            <motion.div
+                              key="categories"
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: 10 }}
+                              transition={{ duration: 0.2 }}
+                              className="space-y-2"
+                            >
+                              {/* Relationships Option */}
+                              <button
+                                onClick={() => {
+                                  setActiveCategory('relationships');
+                                  setStep('subcategories');
+                                }}
+                                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 hover:border-gold/20 transition-all text-left group"
+                              >
+                                <div className="flex items-center gap-3.5">
+                                  <div className="h-10 w-10 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center">
+                                    <Heart className="h-5 w-5" />
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-foreground">Relationships</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Family, friends, partners and social boundaries</p>
+                                  </div>
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                              </button>
 
-                  <motion.div
-                    animate={{ y: [0, 4, 0] }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                    className="flex-1 rounded-xl bg-black/40 border border-white/10 p-4 shadow-glow backdrop-blur-md pointer-events-auto"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-success animate-breathe" />
-                      <p className="text-[10px] font-semibold text-white uppercase tracking-wider">Accepting clients</p>
-                    </div>
-                    <p className="mt-1 text-sm sm:text-base text-white">Online &amp; in person</p>
-                    <p className="text-[9px] text-white/60 mt-0.5">IST &amp; global timezones</p>
-                  </motion.div>
-                </div>
+                              {/* Health & Well Being Option */}
+                              <button
+                                onClick={() => {
+                                  setActiveCategory('health');
+                                  setStep('subcategories');
+                                }}
+                                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 hover:border-gold/20 transition-all text-left group"
+                              >
+                                <div className="flex items-center gap-3.5">
+                                  <div className="h-10 w-10 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                                    <Activity className="h-5 w-5" />
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-foreground">Health &amp; Well Being</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Mental wellness, anxiety, vitality and stress</p>
+                                  </div>
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                              </button>
+
+                              {/* Finances & Career Option */}
+                              <button
+                                onClick={() => {
+                                  setActiveCategory('finances');
+                                  setStep('subcategories');
+                                }}
+                                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 hover:border-gold/20 transition-all text-left group"
+                              >
+                                <div className="flex items-center gap-3.5">
+                                  <div className="h-10 w-10 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                    <Briefcase className="h-5 w-5" />
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-foreground">Finances &amp; Career</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Workplace stress, abundance mindset &amp; growth</p>
+                                  </div>
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                              </button>
+                            </motion.div>
+                          )}
+
+                          {step === 'subcategories' && activeCategory && (
+                            <motion.div
+                              key="subcategories"
+                              initial={{ opacity: 0, x: 10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              transition={{ duration: 0.2 }}
+                              className="space-y-2"
+                            >
+                              {CATEGORIES[activeCategory].subs.map((sub) => {
+                                const count = selectedOptions[sub]?.length || 0;
+                                return (
+                                  <button
+                                    key={sub}
+                                    onClick={() => {
+                                      setActiveSub(sub);
+                                      setStep('checklist');
+                                    }}
+                                    className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 hover:border-gold/20 transition-all text-left group"
+                                  >
+                                    <div className="flex items-center gap-3.5">
+                                      <div className="h-10 w-10 rounded-lg bg-gold/10 text-gold flex items-center justify-center">
+                                        {activeCategory === 'relationships' && <Users className="h-5 w-5" />}
+                                        {activeCategory === 'health' && <Activity className="h-5 w-5" />}
+                                        {activeCategory === 'finances' && <Briefcase className="h-5 w-5" />}
+                                      </div>
+                                      <div>
+                                        <p className="font-semibold text-foreground flex items-center gap-2">
+                                          {sub}
+                                          {count > 0 && (
+                                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gold text-gold-foreground">
+                                              {count}
+                                            </span>
+                                          )}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">Select specific concerns or difficulties</p>
+                                      </div>
+                                    </div>
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                                  </button>
+                                );
+                              })}
+                            </motion.div>
+                          )}
+
+                          {step === 'checklist' && activeSub && (
+                            <motion.div
+                              key="checklist"
+                              initial={{ opacity: 0, x: 10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              transition={{ duration: 0.2 }}
+                              className="space-y-1.5"
+                            >
+                              {getActiveOptionsList().map((option) => {
+                                const isChecked = selectedOptions[activeSub]?.includes(option);
+                                return (
+                                  <button
+                                    key={option}
+                                    onClick={() => toggleOption(activeSub, option)}
+                                    className={cn(
+                                      "w-full flex items-center gap-3 p-3 rounded-lg border text-left text-sm transition-all",
+                                      isChecked
+                                        ? "border-gold bg-gold/5 font-medium text-foreground"
+                                        : "border-border/40 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                                    )}
+                                  >
+                                    <div className={cn(
+                                      "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                                      isChecked ? "bg-gold border-gold text-gold-foreground" : "border-muted-foreground/40"
+                                    )}>
+                                      {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+                                    </div>
+                                    <span>{option}</span>
+                                  </button>
+                                );
+                              })}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Footer */}
+                      <div className="flex items-center justify-between border-t border-border/60 px-5 py-4 bg-muted/40 shrink-0">
+                        <span className="text-xs text-muted-foreground">
+                          {totalSelectedCount > 0 ? `${totalSelectedCount} items selected total` : 'Choose areas to get guidance'}
+                        </span>
+                        <button
+                          onClick={() => setIsOpen(false)}
+                          className="rounded-lg bg-gold px-4 py-2 text-xs font-semibold text-gold-foreground shadow-sm hover:bg-gold-hover transition-colors"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            </motion.div>
-          )}
+
+              {/* 3. Status Cards (Bottom - Side by Side) */}
+              <div className="flex gap-4 w-full pointer-events-none">
+                <motion.div
+                  animate={{ y: [0, -4, 0] }}
+                  transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+                  className="flex-1 rounded-xl bg-black/40 border border-white/10 p-4 shadow-glow backdrop-blur-md pointer-events-auto"
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-white/70">Next available</p>
+                  <p className="mt-1 font-display text-sm sm:text-base text-white">Tomorrow · 6:00 PM</p>
+                  <p className="text-[9px] text-white/60 mt-0.5">Online · 60 minutes</p>
+                </motion.div>
+
+                <motion.div
+                  animate={{ y: [0, 4, 0] }}
+                  transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                  className="flex-1 rounded-xl bg-black/40 border border-white/10 p-4 shadow-glow backdrop-blur-md pointer-events-auto"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-success animate-breathe" />
+                    <p className="text-[10px] font-semibold text-white uppercase tracking-wider">Accepting clients</p>
+                  </div>
+                  <p className="mt-1 text-sm sm:text-base text-white">Online &amp; in person</p>
+                  <p className="text-[9px] text-white/60 mt-0.5">IST &amp; global timezones</p>
+                </motion.div>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
         {/* Recommendations Section */}

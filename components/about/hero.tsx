@@ -107,9 +107,9 @@ export function AboutHero() {
               className="absolute -left-6 top-12 w-56 rounded-2xl glass-strong p-5 shadow-float"
             >
               <p className="font-display text-base leading-relaxed text-foreground">
-                "Healing is remembering who you were before the world told you who to be."
+                &ldquo;Healing is remembering who you were before the world told you who to be.&rdquo;
               </p>
-              <p className="mt-2 text-xs text-muted-foreground">— a guiding belief</p>
+              <p className="mt-2 text-xs text-muted-foreground">&mdash; a guiding belief</p>
             </motion.div>
 
             {/* Decorative dot grid */}
