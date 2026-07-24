@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { COMMON_TIMEZONES, currencyForTimezone, detectTimezone, formatInTz, formatPrice } from '@/lib/format';
 import { useAuth } from '@/components/providers/auth-provider';
+import { AuthModal } from '@/components/auth/auth-modal';
 
 type Service = {
   id: string;
@@ -69,6 +70,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
     notes: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const service = useMemo(
     () => services.find((s) => s.slug === serviceSlug) || services[0],
@@ -152,6 +154,8 @@ export function BookingFlow({ services }: { services: Service[] }) {
           amount: price,
           currency,
           user_id: user?.id || null,
+          status: 'pending',
+          payment_status: 'unpaid',
         }),
       });
       const data = await res.json();
@@ -163,7 +167,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
         }
         return;
       }
-      router.push(`/booking/success?service=${service.slug}&date=${encodeURIComponent(selectedSlot.start)}&tz=${encodeURIComponent(tz)}`);
+      router.push(`/booking/payment?id=${data.id}`);
     } catch {
       toast.error('Something went wrong. Please try again.');
     } finally {
@@ -171,9 +175,17 @@ export function BookingFlow({ services }: { services: Service[] }) {
     }
   };
 
+  const handleConfirmAndBook = () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    submit();
+  };
+
   const next = () => {
-    if (step === 2) {
-      submit();
+    if (step === 3) {
+      handleConfirmAndBook();
       return;
     }
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
@@ -506,9 +518,9 @@ export function BookingFlow({ services }: { services: Service[] }) {
                 <>
                   <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Confirming…
                 </>
-              ) : step === 2 ? (
+              ) : step === 3 ? (
                 <>
-                  Confirm &amp; book <ArrowRight className="ml-1 h-4 w-4" />
+                  Confirm &amp; Pay <ArrowRight className="ml-1 h-4 w-4" />
                 </>
               ) : (
                 <>
@@ -517,6 +529,15 @@ export function BookingFlow({ services }: { services: Service[] }) {
               )}
             </Button>
           </div>
+
+          <AuthModal
+            isOpen={showAuthModal}
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={() => {
+              setShowAuthModal(false);
+              submit();
+            }}
+          />
         </div>
 
         {/* Summary */}

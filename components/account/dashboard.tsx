@@ -4,21 +4,25 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Calendar,
-  Download,
+  Clock,
   Heart,
   LogOut,
   Package,
   Settings,
-  ShoppingBag,
   User,
   Phone,
   Mail,
   MapPin,
   Camera,
   Trash2,
-  Bookmark,
   ExternalLink,
-  Plus
+  History,
+  Activity,
+  AlertCircle,
+  CreditCard,
+  CheckCircle2,
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -47,18 +51,28 @@ type Order = {
 type Booking = {
   id: string;
   start_time: string;
+  end_time: string;
   mode: string;
   status: string;
+  payment_status: string;
+  amount: number;
+  currency: string;
   notes: string | null;
   service_title?: string;
 };
 
+type Visit = {
+  category: string;
+  sub: string;
+  item: string;
+  timestamp: string;
+};
+
 const STATUS_COLORS: Record<string, string> = {
   paid: 'bg-success/15 text-success',
-  pending: 'bg-warning/15 text-warning',
-  fulfilled: 'bg-success/15 text-success',
-  confirmed: 'bg-success/15 text-success',
-  cancelled: 'bg-destructive/15 text-destructive',
+  pending: 'bg-warning/15 text-warning border border-warning/30',
+  confirmed: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+  cancelled: 'bg-destructive/15 text-destructive border border-destructive/30',
 };
 
 export function AccountDashboard() {
@@ -66,6 +80,7 @@ export function AccountDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [recentVisits, setRecentVisits] = useState<Visit[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -79,13 +94,17 @@ export function AccountDashboard() {
 
   // Wishlist multi-select states
   const { ids: wishlistIds, toggle: toggleWishlist } = useWishlist();
-  const [selectedWishlistIds, setSelectedWishlistIds] = useState<string[]>([]);
 
   useEffect(() => {
-    // Load products for empty orders recommendation and wishlist names
     getDocs(collection(db, 'products'))
       .then((snap) => setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product)))
       .catch((err) => console.error('Error fetching products:', err));
+
+    // Load recent visits
+    try {
+      const visits = JSON.parse(localStorage.getItem('recent_visits') || '[]');
+      setRecentVisits(visits);
+    } catch (e) {}
   }, []);
 
   useEffect(() => {
@@ -121,15 +140,12 @@ export function AccountDashboard() {
     }
   }, [profile]);
 
-  // Handle auto select new wishlist items
-  useEffect(() => {
-    setSelectedWishlistIds((prev) => {
-      return prev.filter((id) => wishlistIds.includes(id));
-    });
-  }, [wishlistIds]);
-
   if (loading) {
-    return <div className="flex min-h-[60vh] items-center justify-center text-muted-foreground">Loading…</div>;
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-muted-foreground bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </div>
+    );
   }
 
   if (!user) {
@@ -158,9 +174,9 @@ export function AccountDashboard() {
         { merge: true }
       );
       await refreshProfile();
-      toast.success('Profile updated.');
+      toast.success('Personal Information updated.');
     } catch (error) {
-      toast.error('Could not save.');
+      toast.error('Could not save profile details.');
     } finally {
       setSaving(false);
     }
@@ -174,7 +190,6 @@ export function AccountDashboard() {
     const toastId = toast.loading('Uploading profile picture...');
 
     try {
-      // 1. Upload new image
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch('/api/upload', {
@@ -185,7 +200,6 @@ export function AccountDashboard() {
       const data = await res.json();
       const newUrl = data.url;
 
-      // 2. Save new url to state and Firestore immediately
       await setDoc(
         doc(db, 'profiles', user.id),
         { avatar_url: newUrl },
@@ -193,7 +207,6 @@ export function AccountDashboard() {
       );
       setAvatarUrl(newUrl);
 
-      // 3. Delete old image if exists
       if (avatarUrl && avatarUrl.includes('cloudinary.com')) {
         await fetch('/api/upload/delete', {
           method: 'POST',
@@ -211,35 +224,22 @@ export function AccountDashboard() {
     }
   };
 
-  // Wishlist calculations
-  const wishlistProducts = products.filter((p) => wishlistIds.includes(p.id));
-  const selectedWishlistProducts = wishlistProducts.filter((p) => selectedWishlistIds.includes(p.id));
-  const wishlistTotal = selectedWishlistProducts.reduce((sum, p) => sum + p.price_inr, 0);
-
-  const toggleSelectWishlist = (id: string) => {
-    setSelectedWishlistIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
-
-  const toggleSelectAllWishlist = () => {
-    if (selectedWishlistIds.length === wishlistProducts.length) {
-      setSelectedWishlistIds([]);
-    } else {
-      setSelectedWishlistIds(wishlistProducts.map((p) => p.id));
-    }
-  };
+  // Booking filtering
+  const now = new Date();
+  const upcomingSessions = bookings.filter(b => b.status === 'confirmed' && new Date(b.start_time) > now);
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
+  const pendingBookings = bookings.filter(b => b.status === 'pending');
 
   return (
     <div className="pt-28 pb-20 sm:pt-36">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         
-        {/* INSTAGRAM-STYLE PROFILE SECTION */}
-        <div className="rounded-3xl border border-border/60 bg-card/60 p-6 md:p-8 shadow-soft mb-8">
+        {/* PREMIUM BIO CARD */}
+        <div className="rounded-3xl border border-border/60 bg-card/40 p-6 md:p-8 shadow-soft mb-8">
           <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-start">
             
             {/* Avatar Column */}
-            <div className="relative group">
+            <div className="relative group shrink-0">
               <div className="h-28 w-28 md:h-32 md:w-32 rounded-full overflow-hidden border-2 border-primary/20 bg-secondary flex items-center justify-center">
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -258,12 +258,12 @@ export function AccountDashboard() {
             <div className="flex-1 text-center md:text-left space-y-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                     <h1 className="font-display text-2xl md:text-3xl font-medium text-foreground">
                       {profile?.full_name || 'Your Name'}
                     </h1>
                     {profile?.member_id && (
-                      <span className="rounded-full bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 text-xs font-semibold">
+                      <span className="rounded-full bg-gold/10 text-gold border border-gold/20 px-2.5 py-0.5 text-xs font-semibold">
                         {profile.member_id}
                       </span>
                     )}
@@ -285,16 +285,16 @@ export function AccountDashboard() {
               {/* Stats Bar */}
               <div className="flex justify-center md:justify-start gap-8 py-2 border-y border-border/40">
                 <div>
-                  <span className="font-semibold text-foreground">{orders.length}</span>
-                  <span className="text-muted-foreground text-sm ml-1">Orders</span>
+                  <span className="font-semibold text-foreground">{upcomingSessions.length}</span>
+                  <span className="text-muted-foreground text-sm ml-1">Upcoming</span>
                 </div>
                 <div>
-                  <span className="font-semibold text-foreground">{bookings.length}</span>
-                  <span className="text-muted-foreground text-sm ml-1">Sessions</span>
+                  <span className="font-semibold text-foreground">{confirmedBookings.length}</span>
+                  <span className="text-muted-foreground text-sm ml-1">Confirmed</span>
                 </div>
                 <div>
-                  <span className="font-semibold text-foreground">{wishlistIds.length}</span>
-                  <span className="text-muted-foreground text-sm ml-1">Wishlist</span>
+                  <span className="font-semibold text-foreground">{pendingBookings.length}</span>
+                  <span className="text-muted-foreground text-sm ml-1">Pending</span>
                 </div>
               </div>
 
@@ -302,7 +302,7 @@ export function AccountDashboard() {
               <div className="space-y-2">
                 {bio && <p className="text-sm text-foreground/90 whitespace-pre-line">{bio}</p>}
                 
-                <div className="grid gap-2 text-xs md:text-sm text-muted-foreground mt-4">
+                <div className="grid gap-2 sm:grid-cols-2 text-xs md:text-sm text-muted-foreground mt-4">
                   <div className="flex items-center justify-center md:justify-start gap-2">
                     <Mail className="h-4 w-4 shrink-0 text-primary/60" />
                     <span>{user.email}</span>
@@ -313,170 +313,135 @@ export function AccountDashboard() {
                       <span>{phone}</span>
                     </div>
                   )}
-                  {address && (
-                    <div className="flex items-center justify-center md:justify-start gap-2">
-                      <MapPin className="h-4 w-4 shrink-0 text-primary/60" />
-                      <span className="text-left">{address}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* PROFILE NAVIGATION TABS */}
+        {/* TABS OF PROFILE DASHBOARD */}
         <div>
-          <Tabs defaultValue="orders">
-            <TabsList className="flex w-full justify-around rounded-full bg-secondary/60 p-1">
-              <TabsTrigger value="orders" className="flex-1 rounded-full py-2.5"><Package className="mr-1.5 h-4 w-4" /> Orders</TabsTrigger>
-              <TabsTrigger value="bookings" className="flex-1 rounded-full py-2.5"><Calendar className="mr-1.5 h-4 w-4" /> Sessions</TabsTrigger>
-              <TabsTrigger value="wishlist" className="flex-1 rounded-full py-2.5"><Heart className="mr-1.5 h-4 w-4" /> Wishlist</TabsTrigger>
-              <TabsTrigger value="profile" className="flex-1 rounded-full py-2.5"><Settings className="mr-1.5 h-4 w-4" /> Profile Setup</TabsTrigger>
+          <Tabs defaultValue="upcoming">
+            <TabsList className="flex w-full justify-around rounded-full bg-secondary/60 p-1 overflow-x-auto flex-nowrap min-w-full custom-scrollbar">
+              <TabsTrigger value="upcoming" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><Clock className="mr-1.5 h-4 w-4" /> Upcoming</TabsTrigger>
+              <TabsTrigger value="confirmed" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><CheckCircle2 className="mr-1.5 h-4 w-4" /> Confirmed</TabsTrigger>
+              <TabsTrigger value="pending" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><AlertCircle className="mr-1.5 h-4 w-4" /> Pending</TabsTrigger>
+              <TabsTrigger value="visits" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><Activity className="mr-1.5 h-4 w-4" /> Visits</TabsTrigger>
+              <TabsTrigger value="payments" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><CreditCard className="mr-1.5 h-4 w-4" /> Payments</TabsTrigger>
+              <TabsTrigger value="personal" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><Settings className="mr-1.5 h-4 w-4" /> Settings</TabsTrigger>
             </TabsList>
 
-            {/* TAB CONTENT: ORDERS */}
-            <TabsContent value="orders" className="mt-6">
-              {orders.length === 0 ? (
-                <div className="space-y-10">
-                  <Empty
-                    icon={ShoppingBag}
-                    title="No orders yet"
-                    desc="Your orders are currently empty. Check out our collections below."
-                    cta={{ href: '/shop', label: 'Go to Shop' }}
-                  />
-                  {products.length > 0 && (
-                    <div>
-                      <h3 className="font-display text-2xl font-medium text-foreground mb-6">Recommended Products</h3>
-                      <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
-                        {products.slice(0, 3).map((p) => (
-                          <Link key={p.id} href={`/shop/${p.slug}`} className="group block rounded-2xl border border-border/40 bg-card p-3 shadow-soft hover:-translate-y-1 transition-all duration-300">
-                            <div className="aspect-square overflow-hidden rounded-xl bg-secondary mb-3">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={p.image} alt={p.name} className="h-full w-full object-cover group-hover:scale-105 transition-all duration-500" />
-                            </div>
-                            <h4 className="font-display text-base font-semibold text-foreground group-hover:text-primary transition-all line-clamp-1">{p.name}</h4>
-                            <p className="text-sm font-medium text-foreground mt-1">{formatPrice(p.price_inr, 'INR')}</p>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+            {/* 1. UPCOMING SESSIONS */}
+            <TabsContent value="upcoming" className="mt-6">
+              {upcomingSessions.length === 0 ? (
+                <Empty icon={Calendar} title="No upcoming sessions" desc="Your upcoming confirmed healing sessions will show up here." cta={{ href: '/booking', label: 'Book a session' }} />
               ) : (
-                <div className="space-y-4">
-                  {orders.map((o) => (
-                    <div key={o.id} className="rounded-2xl border border-border/60 bg-card/60 p-5 shadow-soft hover:shadow-md transition-all">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-border/40">
-                        <div>
-                          <p className="font-display font-medium text-foreground text-lg">{o.number}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={cn('rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider', STATUS_COLORS[o.status] || 'bg-secondary text-muted-foreground')}>{o.status}</span>
-                        </div>
-                      </div>
-
-                      {/* Items List */}
-                      <div className="py-4 space-y-4">
-                        {o.items.map((item, idx) => (
-                          <div key={idx} className="flex gap-4">
-                            <div className="h-16 w-16 rounded-xl overflow-hidden bg-secondary border border-border/40 shrink-0">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={item.image || 'https://images.pexels.com/photos/3182452/pexels-photo-3182452.jpeg?auto=compress&cs=tinysrgb&w=150'} alt={item.name} className="h-full w-full object-cover" />
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="font-medium text-foreground text-sm line-clamp-2">{item.name}</h4>
-                              <p className="text-xs text-muted-foreground mt-0.5">Quantity: {item.quantity}</p>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <p className="font-medium text-foreground text-sm">{formatPrice(item.price || 0, o.currency as 'INR' | 'USD')}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="pt-4 border-t border-border/40 flex justify-between items-center text-sm font-semibold">
-                        <span className="text-muted-foreground">Order Total</span>
-                        <span className="text-lg text-foreground">{formatPrice(o.total, o.currency as 'INR' | 'USD')}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            {/* TAB CONTENT: BOOKINGS/SESSIONS */}
-            <TabsContent value="bookings" className="mt-6">
-              {bookings.length === 0 ? (
-                <Empty icon={Calendar} title="No sessions yet" desc="Your bookings will appear here." cta={{ href: '/booking', label: 'Book a session' }} />
-              ) : (
-                <div className="space-y-4">
-                  {bookings.map((b) => (
-                    <div key={b.id} className="rounded-2xl border border-border/60 bg-card/60 p-5 shadow-soft">
-                      <div className="flex items-center justify-between">
-                        <p className="font-display text-lg font-medium text-foreground">
-                          {formatInTz(b.start_time, profile?.timezone || 'Asia/Kolkata', { dateStyle: 'long', timeStyle: 'short' })}
+                <div className="grid gap-4">
+                  {upcomingSessions.map((b) => (
+                    <div key={b.id} className="rounded-2xl border border-border bg-card p-5 shadow-soft hover:border-gold/30 transition-colors flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                      <div>
+                        <span className="rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">Confirmed</span>
+                        <h4 className="font-display text-lg font-medium text-foreground mt-2">{b.service_title || 'Healing Session'}</h4>
+                        <p className="text-sm text-muted-foreground mt-1 capitalize">Mode: {b.mode}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Date: {formatInTz(b.start_time, timezone, { dateStyle: 'full', timeStyle: 'short' })}
                         </p>
-                        <span className={cn('rounded-full px-3 py-1 text-xs font-medium capitalize', STATUS_COLORS[b.status] || 'bg-secondary text-muted-foreground')}>{b.status}</span>
+                        {b.notes && <p className="mt-2 text-xs bg-muted/50 p-2 rounded-lg text-muted-foreground">Notes: {b.notes}</p>}
                       </div>
-                      <p className="mt-2 text-sm text-muted-foreground capitalize">{b.service_title || `${b.mode} Session`}</p>
-                      {b.notes && <p className="mt-3 text-xs bg-secondary/50 rounded-lg p-3 text-muted-foreground border border-border/20">Notes: {b.notes}</p>}
+                      <div className="flex gap-2 shrink-0">
+                        <Button asChild variant="outline" size="sm" className="rounded-full">
+                          <a href={`/booking/success?service=clarity&date=${encodeURIComponent(b.start_time)}&tz=${encodeURIComponent(timezone)}`}>View Pass</a>
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </TabsContent>
 
-            {/* TAB CONTENT: WISHLIST WITH CHECKBOX PRICING */}
-            <TabsContent value="wishlist" className="mt-6">
-              {wishlistProducts.length === 0 ? (
-                <Empty icon={Heart} title="Your wishlist is empty" desc="Start listing items by hearting products." cta={{ href: '/shop', label: 'Explore Shop' }} />
+            {/* 2. CONFIRMED BOOKINGS */}
+            <TabsContent value="confirmed" className="mt-6">
+              {confirmedBookings.length === 0 ? (
+                <Empty icon={CheckCircle2} title="No confirmed bookings" desc="Explore our services to schedule a transformation." cta={{ href: '/booking', label: 'Book a session' }} />
               ) : (
-                <div className="space-y-6">
-                  {/* Select Bar */}
-                  <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-2xl border border-border/30">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedWishlistIds.length === wishlistProducts.length && wishlistProducts.length > 0}
-                        onChange={toggleSelectAllWishlist}
-                        className="h-4.5 w-4.5 rounded border-border text-primary focus:ring-primary/40 cursor-pointer"
-                      />
-                      <span className="text-sm font-medium text-foreground">Select All ({selectedWishlistIds.length} / {wishlistProducts.length})</span>
+                <div className="grid gap-4">
+                  {confirmedBookings.map((b) => (
+                    <div key={b.id} className="rounded-2xl border border-border bg-card p-5 shadow-soft flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                      <div>
+                        <h4 className="font-display text-lg font-medium text-foreground">{b.service_title || 'Healing Session'}</h4>
+                        <p className="text-sm text-muted-foreground mt-1 capitalize">Mode: {b.mode}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Scheduled: {formatInTz(b.start_time, timezone, { dateStyle: 'long', timeStyle: 'short' })}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 text-xs font-semibold self-start sm:self-auto">Paid &amp; Confirmed</span>
                     </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
 
-                    <div className="text-right">
-                      <span className="text-xs text-muted-foreground block">Selected Items Price:</span>
-                      <span className="font-semibold text-foreground text-lg">{formatPrice(wishlistTotal, 'INR')}</span>
+            {/* 3. PENDING BOOKINGS */}
+            <TabsContent value="pending" className="mt-6">
+              {pendingBookings.length === 0 ? (
+                <Empty icon={AlertCircle} title="No pending bookings" desc="All your payments and sessions are fully processed." cta={{ href: '/booking', label: 'Schedule new session' }} />
+              ) : (
+                <div className="grid gap-4">
+                  {pendingBookings.map((b) => (
+                    <div key={b.id} className="rounded-2xl border border-warning/30 bg-card p-5 shadow-soft flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                      <div>
+                        <span className="rounded-full bg-warning/15 text-warning border border-warning/30 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">Payment Pending</span>
+                        <h4 className="font-display text-lg font-medium text-foreground mt-2">{b.service_title || 'Healing Session'}</h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Date Slot: {formatInTz(b.start_time, timezone, { dateStyle: 'long', timeStyle: 'short' })}
+                        </p>
+                        <p className="text-sm font-semibold text-foreground mt-1.5">Amount: {formatPrice(b.amount || 0, b.currency as any)}</p>
+                      </div>
+                      <Button asChild size="sm" className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground shrink-0 gap-1.5 shadow-soft">
+                        <Link href={`/booking/payment?id=${b.id}`}>
+                          <span>Resume Payment</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </Button>
                     </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* 4. RECENT VISITS */}
+            <TabsContent value="visits" className="mt-6">
+              {recentVisits.length === 0 ? (
+                <Empty icon={Activity} title="No visits recorded" desc="Explore concern areas in the search dropdown to populate this." cta={{ href: '/', label: 'Go to Search' }} />
+              ) : (
+                <div className="rounded-2xl border border-border/60 bg-card/60 p-6 shadow-soft space-y-6">
+                  <div className="flex justify-between items-center pb-2 border-b border-border/40">
+                    <h3 className="font-display text-lg font-medium text-foreground">Explored concern pathways</h3>
+                    <button 
+                      onClick={() => {
+                        localStorage.removeItem('recent_visits');
+                        setRecentVisits([]);
+                        toast.success('Recent visits cleared.');
+                      }} 
+                      className="text-xs text-destructive hover:underline"
+                    >
+                      Clear All
+                    </button>
                   </div>
-
-                  {/* List */}
-                  <div className="grid gap-4">
-                    {wishlistProducts.map((p) => (
-                      <div key={p.id} className="flex gap-4 p-4 border border-border/50 bg-card rounded-2xl items-center shadow-soft hover:shadow-md transition-all">
-                        <input
-                          type="checkbox"
-                          checked={selectedWishlistIds.includes(p.id)}
-                          onChange={() => toggleSelectWishlist(p.id)}
-                          className="h-4.5 w-4.5 rounded border-border text-primary focus:ring-primary/40 cursor-pointer"
-                        />
-                        <div className="h-20 w-20 rounded-xl overflow-hidden bg-secondary border border-border/40 shrink-0">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
+                  <div className="grid gap-3.5 sm:grid-cols-2">
+                    {recentVisits.map((v, idx) => (
+                      <div key={idx} className="p-4 border border-border/50 bg-card rounded-xl shadow-soft flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center gap-1.5 text-xs text-gold uppercase font-semibold tracking-wider">
+                            <span>{v.category}</span>
+                            <span>&middot;</span>
+                            <span>{v.sub}</span>
+                          </div>
+                          <p className="text-sm text-foreground font-medium mt-1.5">{v.item}</p>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <Link href={`/shop/${p.slug}`} className="hover:text-primary transition-all">
-                            <h4 className="font-display font-medium text-foreground text-base truncate">{p.name}</h4>
-                          </Link>
-                          <p className="text-sm font-semibold text-primary mt-1">{formatPrice(p.price_inr, 'INR')}</p>
-                        </div>
-                        <div className="flex flex-col gap-2 justify-center items-end shrink-0">
-                          <Button variant="ghost" size="icon" onClick={() => toggleWishlist(p.id)} className="rounded-full text-destructive hover:bg-destructive/10">
-                            <Trash2 className="h-4.5 w-4.5" />
-                          </Button>
-                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-3">
+                          Explored: {new Date(v.timestamp).toLocaleDateString()} at {new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -484,42 +449,77 @@ export function AccountDashboard() {
               )}
             </TabsContent>
 
-            {/* TAB CONTENT: PROFILE EDIT */}
-            <TabsContent value="profile" className="mt-6">
+            {/* 5. PAYMENT HISTORY */}
+            <TabsContent value="payments" className="mt-6">
+              {orders.length === 0 && confirmedBookings.length === 0 ? (
+                <Empty icon={History} title="No transactions" desc="Paid session receipts and orders will display here." cta={{ href: '/shop', label: 'Go to Shop' }} />
+              ) : (
+                <div className="space-y-4">
+                  {confirmedBookings.map((b) => (
+                    <div key={b.id} className="rounded-xl border border-border bg-card p-4.5 shadow-soft flex items-center justify-between text-sm">
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">{b.service_title || 'Session Booking'}</p>
+                        <p className="text-xs text-muted-foreground">Type: Booking &middot; {new Date(b.start_time).toLocaleDateString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-foreground">{formatPrice(b.amount || 0, b.currency as any)}</p>
+                        <span className="rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold uppercase">Paid</span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {orders.map((o) => (
+                    <div key={o.id} className="rounded-xl border border-border bg-card p-4.5 shadow-soft flex items-center justify-between text-sm">
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">Order {o.number}</p>
+                        <p className="text-xs text-muted-foreground">Type: Shop Order &middot; {new Date(o.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-foreground">{formatPrice(o.total, o.currency as any)}</p>
+                        <span className="rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold uppercase">{o.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* 6. SETTINGS / PERSONAL INFORMATION */}
+            <TabsContent value="personal" className="mt-6">
               <div className="space-y-4 rounded-2xl border border-border/60 bg-card/60 p-6 shadow-soft">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="p-name">Full name</Label>
-                    <Input id="p-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5" />
+                    <Input id="p-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5 rounded-xl" />
                   </div>
                   <div>
                     <Label htmlFor="p-phone">Phone number</Label>
-                    <Input id="p-phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5" placeholder="e.g. +91 9876543210" />
+                    <Input id="p-phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 rounded-xl" placeholder="e.g. +91 9876543210" />
                   </div>
                 </div>
 
                 <div>
                   <Label htmlFor="p-email">Email (Cannot be changed)</Label>
-                  <Input id="p-email" value={user.email || ''} disabled className="mt-1.5 bg-secondary/50 cursor-not-allowed" />
+                  <Input id="p-email" value={user.email || ''} disabled className="mt-1.5 bg-secondary/50 cursor-not-allowed rounded-xl" />
                 </div>
 
                 <div>
                   <Label htmlFor="p-tz">Timezone</Label>
-                  <Input id="p-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)} className="mt-1.5" />
+                  <Input id="p-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)} className="mt-1.5 rounded-xl" />
                 </div>
 
                 <div>
                   <Label htmlFor="p-bio">Bio</Label>
-                  <Textarea id="p-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="mt-1.5 min-h-[80px]" placeholder="Tell us about yourself..." />
+                  <Textarea id="p-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="mt-1.5 min-h-[80px] rounded-xl" placeholder="Tell us about yourself..." />
                 </div>
 
                 <div>
                   <Label htmlFor="p-addr">Delivery Address</Label>
-                  <Textarea id="p-addr" value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1.5 min-h-[80px]" placeholder="Full address for shipping orders..." />
+                  <Textarea id="p-addr" value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1.5 min-h-[80px] rounded-xl" placeholder="Full address for shipping orders..." />
                 </div>
 
                 <div className="pt-2">
-                  <Button onClick={saveProfile} disabled={saving} className="rounded-full w-full sm:w-auto px-8">
+                  <Button onClick={saveProfile} disabled={saving} className="rounded-full w-full sm:w-auto px-8 py-5.5">
                     {saving ? 'Saving…' : 'Save Changes'}
                   </Button>
                 </div>
