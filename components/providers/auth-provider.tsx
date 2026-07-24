@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { auth, googleProvider, db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, getDocs, limit, orderBy } from 'firebase/firestore';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -15,6 +15,7 @@ import {
 
 type Profile = {
   id: string;
+  member_id?: string;
   full_name: string | null;
   email: string | null;
   phone: string | null;
@@ -47,6 +48,32 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// Helper to generate sequential member ID (e.g. LH001, LH002...)
+async function generateNextMemberId(): Promise<string> {
+  try {
+    const snap = await getDocs(collection(db, 'profiles'));
+    const membersList = snap.docs.map(d => d.data());
+    let maxNum = 0;
+    
+    membersList.forEach((m: any) => {
+      if (m.member_id && m.member_id.startsWith('LH')) {
+        const numPart = parseInt(m.member_id.substring(2));
+        if (!isNaN(numPart) && numPart > maxNum) {
+          maxNum = numPart;
+        }
+      }
+    });
+    
+    const nextNum = maxNum + 1;
+    // Format to 3 digits minimum (LH001, LH002... LH010... LH100...)
+    const padded = String(nextNum).padStart(3, '0');
+    return `LH${padded}`;
+  } catch (err) {
+    console.error('Error generating member ID:', err);
+    return `LH001`;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -75,8 +102,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const docRef = doc(db, 'profiles', fUser.uid);
           const docSnap = await getDoc(docRef);
           if (!docSnap.exists()) {
+            const memberId = await generateNextMemberId();
             const newProfile: Profile = {
               id: fUser.uid,
+              member_id: memberId,
               email: fUser.email,
               full_name: fUser.displayName || fUser.email?.split('@')[0] || null,
               phone: fUser.phoneNumber || null,
@@ -139,10 +168,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (userCredential.user) {
             await updateProfile(userCredential.user, { displayName: fullName });
             
+            const memberId = await generateNextMemberId();
             // Create user profile document in Firestore
             const docRef = doc(db, 'profiles', userCredential.user.uid);
             const newProfile: Profile = {
               id: userCredential.user.uid,
+              member_id: memberId,
               email: userCredential.user.email,
               full_name: fullName,
               phone: null,

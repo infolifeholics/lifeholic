@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 
 type Member = {
   id: string;
+  member_id?: string;
   email: string | null;
   full_name: string | null;
   phone: string | null;
@@ -87,6 +88,7 @@ export function AdminMembers() {
     const term = search.toLowerCase();
     return (
       m.id.toLowerCase().includes(term) ||
+      (m.member_id || '').toLowerCase().includes(term) ||
       (m.email || '').toLowerCase().includes(term) ||
       (m.full_name || '').toLowerCase().includes(term)
     );
@@ -118,7 +120,7 @@ export function AdminMembers() {
                 )}
               </div>
               <h3 className="font-display text-xl font-medium text-foreground">{selectedMember.full_name || 'No Name'}</h3>
-              <p className="text-xs text-muted-foreground font-mono mt-1">{selectedMember.id}</p>
+              <p className="text-xs text-muted-foreground font-semibold mt-1">{selectedMember.member_id || 'No Member ID'}</p>
             </div>
 
             <div className="space-y-3 text-sm">
@@ -268,7 +270,7 @@ export function AdminMembers() {
                         </div>
                         <div>
                           <p className="font-semibold text-foreground">{m.full_name || 'No name'}</p>
-                          <p className="text-[10px] text-muted-foreground font-mono truncate max-w-[120px]">{m.id}</p>
+                          <p className="text-xs font-semibold text-primary">{m.member_id || 'No Member ID'}</p>
                         </div>
                       </div>
                     </td>

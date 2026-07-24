@@ -62,15 +62,10 @@ npm run typecheck
 ### GitHub Deployment & Code Upload
 Use these commands to upload or sync your latest changes to GitHub:
 ```bash
-# 1. Stage all changed files
 git add .
-
-# 2. Commit files with a clear description
 git commit -m "your commit message here"
-
-# 3. Push code to your main branch on GitHub
 git push -u origin main
-```
+``` 
 
 ### Firebase Setup & Database Rules Deployment
 Use these commands to deploy/update database rules when changing configurations:

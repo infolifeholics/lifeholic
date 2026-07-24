@@ -258,10 +258,17 @@ export function AccountDashboard() {
             <div className="flex-1 text-center md:text-left space-y-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h1 className="font-display text-2xl md:text-3xl font-medium text-foreground">
-                    {profile?.full_name || 'Your Name'}
-                  </h1>
-                  <p className="text-sm text-muted-foreground">@{user.email?.split('@')[0]}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="font-display text-2xl md:text-3xl font-medium text-foreground">
+                      {profile?.full_name || 'Your Name'}
+                    </h1>
+                    {profile?.member_id && (
+                      <span className="rounded-full bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 text-xs font-semibold">
+                        {profile.member_id}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-0.5">@{user.email?.split('@')[0]}</p>
                 </div>
                 <div className="flex justify-center md:justify-end gap-2">
                   {profile?.is_admin && (
