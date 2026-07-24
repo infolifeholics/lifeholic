@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-
-// Create a booking. The partial unique index uniq_active_booking_slot is the
-// final guarantee against double-booking — a second insert for the same
-// (service_id, start_time, mode) with status pending/confirmed will fail.
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase/firestore';
 
 export async function POST(req: Request) {
   try {
@@ -33,13 +30,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid mode.' }, { status: 400 });
     }
 
-    // Verify the service exists and get its duration to validate end_time
-    const { data: service } = await supabase
-      .from('services')
-      .select('id, duration_minutes, mode, price_inr, price_usd')
-      .eq('id', service_id)
-      .maybeSingle();
-    if (!service) return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
+    // Verify the service exists
+    const serviceDoc = await getDoc(doc(db, 'services', service_id));
+    if (!serviceDoc.exists()) {
+      return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
+    }
+    const service = serviceDoc.data();
 
     const start = new Date(start_time);
     const end = new Date(end_time);
@@ -55,15 +51,16 @@ export async function POST(req: Request) {
     }
 
     // Final pre-flight: confirm the slot isn't already taken
-    const { data: clash } = await supabase
-      .from('bookings')
-      .select('id')
-      .eq('service_id', service_id)
-      .eq('start_time', start.toISOString())
-      .eq('mode', mode)
-      .in('status', ['pending', 'confirmed'])
-      .maybeSingle();
-    if (clash) {
+    const bookingsRef = collection(db, 'bookings');
+    const qClash = query(
+      bookingsRef,
+      where('service_id', '==', service_id),
+      where('start_time', '==', start.toISOString()),
+      where('mode', '==', mode),
+      where('status', 'in', ['pending', 'confirmed'])
+    );
+    const clashSnap = await getDocs(qClash);
+    if (!clashSnap.empty) {
       return NextResponse.json(
         { error: 'This slot was just taken. Please choose another time.' },
         { status: 409 }
@@ -72,6 +69,7 @@ export async function POST(req: Request) {
 
     const insert = {
       service_id,
+      service_title: service.title || 'Therapy Session',
       user_id: user_id || null,
       client_name,
       client_email,
@@ -85,23 +83,14 @@ export async function POST(req: Request) {
       amount: amount ?? 0,
       currency: currency || 'INR',
       notes: notes || null,
+      created_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase.from('bookings').insert(insert).select('id').single();
+    const docRef = await addDoc(bookingsRef, insert);
 
-    if (error) {
-      // 23505 = unique_violation — the double-booking guard fired
-      if (error.code === '23505') {
-        return NextResponse.json(
-          { error: 'This slot was just taken. Please choose another time.' },
-          { status: 409 }
-        );
-      }
-      return NextResponse.json({ error: 'Could not create booking.' }, { status: 500 });
-    }
-
-    return NextResponse.json({ ok: true, id: data.id });
-  } catch {
+    return NextResponse.json({ ok: true, id: docRef.id });
+  } catch (error: any) {
+    console.error('Booking error:', error);
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });
   }
 }

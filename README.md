@@ -1,25 +1,25 @@
 # TheLifeHolics — Spiritual Psychology & Therapy
 
-A premium, production-ready website for a spiritual psychologist and therapist. Built with Next.js 15 (App Router), React, TypeScript, TailwindCSS, Framer Motion, Lenis smooth scroll, shadcn/ui, and Supabase.
+A premium, production-ready website for a spiritual psychologist and therapist. Built with Next.js 15 (App Router), React 19, TypeScript, TailwindCSS, Framer Motion, Lenis smooth scroll, shadcn/ui, Cloudinary, and Firebase (Authentication & Cloud Firestore).
 
 ## What's inside
 
 ### Pages
 - **Home** — luxury hero, about preview, featured services, healing process, animated stats, testimonials carousel, featured products, upcoming workshops, Instagram feed, newsletter, final CTA
 - **About** — story, mission/vision, values, timeline, credentials, gallery, FAQ
-- **Services** — list + a dedicated detail page per service (7 services seeded)
+- **Services** — list + a dedicated detail page per service (dynamically managed from Admin Panel)
 - **Booking** — multi-step flow (service → date/time → details → confirm) with timezone-aware slot generation and a success page
 - **Shop** — product list with search/filter/sort, product detail with gallery + reviews, cart, checkout with coupons, wishlist, thank-you page
 - **Blog / Journal** — list + detail with markdown rendering, comments, related posts, newsletter
 - **Contact** — form, contact info, map, FAQ
 - **FAQ** — dedicated page
 - **Legal** — Privacy, Refund, Terms, Shipping, Cookies
-- **Auth** — login, signup
+- **Auth** — login, signup (Google Sign-In & Email/Password)
 - **Account** — orders, booked sessions, wishlist, profile (editable, timezone-aware)
-- **Admin** — dashboard with revenue/booking stats, bookings management (confirm/cancel/complete), availability manager (weekly hours / blocked slots / holidays), orders, messages
+- **Admin** — dashboard with revenue/booking stats, services CRUD management (add, edit, delete, sort, active toggle, upload image), bookings management (confirm/cancel/complete), availability manager (weekly hours / blocked slots / holidays), orders, messages
 
 ### Key features
-- **Double-booking prevention** — a partial unique index `uniq_active_booking_slot` on `(service_id, start_time, mode) WHERE status IN ('pending','confirmed')` guarantees no two active bookings can occupy the same slot. The booking API also does a pre-flight clash check and surfaces the 23505 unique-violation as a friendly "slot just taken" message.
+- **Double-booking prevention** — The booking API does a pre-flight clash check inside Firestore to guarantee no two active bookings can occupy the same slot.
 - **Timezone support** — clients pick their timezone; slots are generated in IST working hours and displayed in the client's local time. UTC is stored on the backend.
 - **Currency conversion** — INR for India, USD for international, detected from timezone.
 - **Smooth scrolling** — Lenis with reduced-motion support.
@@ -37,66 +37,103 @@ A premium, production-ready website for a spiritual psychologist and therapist. 
 - Next.js 15 (App Router) + React 19 + TypeScript
 - TailwindCSS + shadcn/ui + tailwindcss-animate
 - Framer Motion + Lenis
-- React Hook Form + Zod (available; forms use controlled state for simplicity)
-- Supabase (Postgres + Auth + RLS)
-- Embla Carousel, Lucide icons, Sonner toasts, Recharts
+- Cloudinary (Media storage & image optimization)
+- Firebase (Authentication, Firestore Database, rules deployment)
 
-## Getting started
+---
 
+## 🚀 Quick Reference Commands
+
+### Running Locally
 ```bash
+# 1. Install dependencies
 npm install
-npm run dev      # http://localhost:3000
-npm run build    # production build
+
+# 2. Run the local development server (forced on Webpack for next.config compatibility)
+npm run dev
+
+# 3. Compile and build the production package
+npm run build
+
+# 4. Typecheck TypeScript declarations
 npm run typecheck
-
-
-git add .
-git commit -m "optimized for performence as it was slow"
-git push -u origin main
-
-
 ```
 
-Supabase credentials are pre-populated in `.env`. For a fresh environment, copy `.env.example` to `.env` and fill in your keys.
+### GitHub Deployment & Code Upload
+Use these commands to upload or sync your latest changes to GitHub:
+```bash
+# 1. Stage all changed files
+git add .
 
-## Database
+# 2. Commit files with a clear description
+git commit -m "your commit message here"
 
-The schema is applied via Supabase MCP migrations and seeded with:
-- 7 services, 6 products, 5 testimonials, 3 workshops, 6 blog posts, 8 FAQs
-- Weekly availability (Mon–Sat, IST 9:00–18:00, Sat 10:00–15:00)
-- 2 demo coupons: `CALM10` (10% off), `WELCOME15` (15% off, min ₹1500)
+# 3. Push code to your main branch on GitHub
+git push -u origin main
+```
 
-### Enabling admin access
-Sign up at `/auth/signup`, then in Supabase set `is_admin = true` on your row in `public.profiles`. Reload `/admin`.
+### Firebase Setup & Database Rules Deployment
+Use these commands to deploy/update database rules when changing configurations:
+```bash
+# 1. Login to Firebase CLI
+npx -y firebase-tools@latest login
 
-## Booking system details
+# 2. Select your active Firebase project
+npx -y firebase-tools@latest use lifeholic
 
-1. **Slot generation** (`/api/bookings/slots`): loads weekly availability (IST), generates candidate slots of the service's duration, subtracts existing pending/confirmed bookings and blocked slots, respects holidays, enforces a 1-hour lead time.
-2. **Booking creation** (`/api/bookings`): validates input, checks the service mode, does a pre-flight clash check, then inserts. The DB unique index is the final guard — a concurrent race is rejected with `23505`.
-3. **Admin controls** (`/admin`): confirm, cancel, mark complete; manage weekly hours, block specific time ranges, add holidays.
+# 3. Deploy/Update Firestore rules & indexes
+npx -y firebase-tools@latest deploy --only firestore
+```
 
-## Payments
+#### Switching Firebase Accounts or Projects:
+If you need to switch to another Firebase account or change to a different project, use these commands:
+```bash
+# 1. Logout of the current Firebase account
+npx -y firebase-tools@latest logout
 
-Checkout records orders as `paid` in demo mode. To wire up real payments:
-- **Razorpay (India)**: add `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`, create an order via the Razorpay Orders API, verify the signature in a webhook.
-- **Stripe (international)**: add `STRIPE_SECRET_KEY`, create a Checkout Session, verify in a Stripe webhook.
+# 2. Login to the new Firebase account
+npx -y firebase-tools@latest login
 
-The order schema (`orders` table + `payment_provider` / `payment_ref` columns) is ready for both.
+# 3. List all projects available in this new account
+npx -y firebase-tools@latest projects:list
 
-## Email & calendar (optional)
+# 4. Switch the active project to the new project ID
+npx -y firebase-tools@latest use <NEW_PROJECT_ID>
+```
 
-- **Email**: add `RESEND_API_KEY` and `EMAIL_FROM`; trigger confirmation/reminder emails from the booking API.
-- **Google Calendar**: add Google OAuth credentials and sync confirmed bookings to the therapist's calendar.
-- **WhatsApp**: integrate a messaging provider for reminders.
+---
 
-## Project structure
+## Environment Variables
+Copy `.env.example` to `.env` and fill in your Firebase and Cloudinary credentials:
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
 
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+```
+
+## Database Auto-Seeding
+All schemas are stored and seeded automatically via `lib/data.ts` using [seed-data.json](file:///Users/sumit/Downloads/project/lib/seed-data.json) if the collection is empty. 
+
+### Enabling Admin Access
+Sign up at `/auth/signup`, then in your Firebase Console -> Firestore Database under `profiles` collection, locate your profile document and set the field:
+* `is_admin` (type `boolean`) = `true`
+
+Reload `/admin` to access the dashboard.
+
+## Project Structure
 ```
 app/
   about/        # About page
   account/      # User account dashboard
-  admin/        # Admin dashboard
-  api/          # API routes (bookings, slots, contact, newsletter, checkout, coupon)
+  admin/        # Admin dashboard (Overview, Bookings, Services CRUD, Orders, Messages)
+  api/          # API routes (bookings, slots, contact, newsletter, checkout, coupon, upload)
   auth/         # login + signup
   blog/         # list + [slug] detail
   booking/      # booking flow + success page
@@ -105,11 +142,10 @@ app/
   legal/        # privacy, refund, terms, shipping, cookies
   services/     # list + [slug] detail
   shop/         # list, [slug] detail, cart, checkout, wishlist, thank-you
-  layout.tsx    # root layout with providers + ambient background
+  layout.tsx    # root layout with providers
   page.tsx      # home
   sitemap.ts    # dynamic sitemap
   robots.ts     # robots.txt
-  not-found.tsx # 404
 components/
   home/         # home page sections
   about/        # about page sections
@@ -119,28 +155,25 @@ components/
   blog/         # blog components
   contact/      # contact form
   account/      # account dashboard
-  admin/        # admin dashboard sections
-  auth/         # auth form
+  admin/        # admin dashboard sections (dashboard, availability, services, orders, messages, landing)
   site/         # shared: header, footer, logo, reveal, magnetic, etc.
   providers/    # auth, cart, wishlist context
   ui/           # shadcn/ui primitives
 lib/
-  data.ts       # server-side data access
+  data.ts       # server-side data access & auto-seeding
   format.ts     # currency + timezone helpers
   markdown.ts   # blog markdown renderer
   routes.ts     # route helpers
-  supabase.ts   # supabase client
+  firebase.ts   # firebase auth & db client config
   types.ts      # shared domain types
 ```
 
 ## Deployment
-
-Deploy to Vercel:
-1. Push to GitHub
-2. Import the repo in Vercel
-3. Add env vars from `.env.example`
-4. Deploy — the build is already verified (`npm run build` passes with 52 routes)
+Deploy to Vercel/Netlify:
+1. Push your changes to GitHub.
+2. Link your repository.
+3. Configure the environment variables.
+4. Deploy — the build is verified to compile successfully!
 
 ## License
-
 © TheLifeHolics. All rights reserved.

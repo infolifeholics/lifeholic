@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { Calendar, CheckCircle2, Clock, DollarSign, Users, XCircle, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { formatInTz, formatPrice } from '@/lib/format';
+import { db } from '@/lib/firebase';
+import { collection, query, orderBy, limit, getDocs, doc, setDoc } from 'firebase/firestore';
+import { formatInTz } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -21,7 +22,7 @@ type BookingRow = {
   amount: number;
   currency: string;
   notes: string | null;
-  services: { title: string } | { title: string }[] | null;
+  service_title: string;
 };
 
 export function AdminDashboard() {
@@ -31,34 +32,38 @@ export function AdminDashboard() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('id, client_name, client_email, start_time, end_time, mode, status, payment_status, amount, currency, notes, services(title)')
-      .order('start_time', { ascending: false })
-      .limit(50);
-    setLoading(false);
-    if (error) {
+    try {
+      const q = query(collection(db, 'bookings'), orderBy('start_time', 'desc'), limit(50));
+      const snap = await getDocs(q);
+      const rows = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as unknown as BookingRow);
+      setBookings(rows);
+
+      const revenue = rows.filter((r) => r.payment_status === 'paid').reduce((s, r) => s + Number(r.amount || 0), 0);
+      setStats({
+        revenue,
+        confirmed: rows.filter((r) => r.status === 'confirmed').length,
+        pending: rows.filter((r) => r.status === 'pending').length,
+        clients: new Set(rows.map((r) => r.client_email)).size,
+      });
+    } catch (err) {
       toast.error('Could not load bookings.');
-      return;
+    } finally {
+      setLoading(false);
     }
-    setBookings((data as unknown as BookingRow[]) || []);
-    const rows = (data as unknown as BookingRow[]) || [];
-    const revenue = rows.filter((r) => r.payment_status === 'paid').reduce((s, r) => s + Number(r.amount || 0), 0);
-    setStats({
-      revenue,
-      confirmed: rows.filter((r) => r.status === 'confirmed').length,
-      pending: rows.filter((r) => r.status === 'pending').length,
-      clients: new Set(rows.map((r) => r.client_email)).size,
-    });
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
-    if (error) return toast.error('Could not update.');
-    toast.success(`Booking ${status}.`);
-    load();
+    try {
+      await setDoc(doc(db, 'bookings', id), { status, updated_at: new Date().toISOString() }, { merge: true });
+      toast.success(`Booking ${status}.`);
+      load();
+    } catch (error) {
+      toast.error('Could not update.');
+    }
   };
 
   return (
@@ -117,7 +122,7 @@ export function AdminDashboard() {
                       <p className="font-medium text-foreground">{b.client_name}</p>
                       <p className="text-xs text-muted-foreground">{b.client_email}</p>
                     </td>
-                    <td className="py-4 pr-4 text-muted-foreground">{serviceTitle(b.services)}</td>
+                    <td className="py-4 pr-4 text-muted-foreground">{b.service_title || 'Therapy Session'}</td>
                     <td className="py-4 pr-4 text-muted-foreground">
                       {formatInTz(b.start_time, 'Asia/Kolkata', { dateStyle: 'medium', timeStyle: 'short' })}
                     </td>
@@ -160,10 +165,4 @@ function statusColor(s: string): string {
     completed: 'bg-secondary text-muted-foreground',
     rescheduled: 'bg-warning/15 text-warning',
   } as Record<string, string>)[s] || 'bg-secondary text-muted-foreground';
-}
-
-function serviceTitle(s: BookingRow['services']): string {
-  if (!s) return '—';
-  if (Array.isArray(s)) return s[0]?.title || '—';
-  return s.title || '—';
 }

@@ -13,11 +13,12 @@ export const metadata: Metadata = {
 export default async function BookingSuccessPage({
   searchParams,
 }: {
-  searchParams: { service?: string; date?: string; tz?: string };
+  searchParams: Promise<{ service?: string; date?: string; tz?: string }>;
 }) {
-  const service = searchParams.service ? await getServiceBySlug(searchParams.service) : null;
-  const tz = searchParams.tz || 'Asia/Kolkata';
-  const date = searchParams.date;
+  const resolvedSearchParams = await searchParams;
+  const service = resolvedSearchParams.service ? await getServiceBySlug(resolvedSearchParams.service) : null;
+  const tz = resolvedSearchParams.tz || 'Asia/Kolkata';
+  const date = resolvedSearchParams.date;
 
   return (
     <div className="flex min-h-[80vh] items-center pt-32">

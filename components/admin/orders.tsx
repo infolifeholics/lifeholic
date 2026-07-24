@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, Package } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { formatPrice } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -23,13 +24,15 @@ export function AdminOrders() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from('orders')
-      .select('id, number, email, full_name, status, total, currency, created_at, items')
-      .order('created_at', { ascending: false })
-      .limit(50)
-      .then(({ data }) => {
-        setOrders((data as Order[]) || []);
+    const q = query(collection(db, 'orders'), orderBy('created_at', 'desc'), limit(50));
+    getDocs(q)
+      .then((snap) => {
+        const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Order);
+        setOrders(list);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error fetching orders:', err);
         setLoading(false);
       });
   }, []);

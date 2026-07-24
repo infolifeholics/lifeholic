@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
-// Validate a coupon code and return the discount for a given subtotal.
 export async function POST(req: Request) {
   try {
     const { code, subtotal } = await req.json();
     if (!code) return NextResponse.json({ error: 'Code required.' }, { status: 400 });
 
-    const { data, error } = await supabase
-      .from('coupons')
-      .select('*')
-      .eq('code', code.toUpperCase())
-      .eq('active', true)
-      .maybeSingle();
-    if (error || !data) {
+    const colRef = collection(db, 'coupons');
+    const q = query(colRef, where('code', '==', code.toUpperCase()), where('active', '==', true));
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
       return NextResponse.json({ error: 'Invalid or expired code.' }, { status: 404 });
     }
+
+    const data = snap.docs[0].data();
+
     if (data.expires_at && new Date(data.expires_at) < new Date()) {
       return NextResponse.json({ error: 'This code has expired.' }, { status: 400 });
     }
@@ -34,7 +35,8 @@ export async function POST(req: Request) {
       data.kind === 'percent' ? Math.round((sub * Number(data.value)) / 100) : Math.min(Number(data.value), sub);
 
     return NextResponse.json({ ok: true, code: data.code, discount, kind: data.kind, value: Number(data.value) });
-  } catch {
+  } catch (error: any) {
+    console.error('Coupon validation error:', error);
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });
   }
 }

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2, Download, Mail, Package } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { formatPrice } from '@/lib/format';
 
 export const metadata: Metadata = {
@@ -9,12 +10,25 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function ThankYouPage({ searchParams }: { searchParams: { order?: string } }) {
-  const number = searchParams.order;
+export default async function ThankYouPage({ searchParams }: { searchParams: Promise<{ order?: string }> }) {
+  const resolvedSearchParams = await searchParams;
+  const number = resolvedSearchParams.order;
   let order: any = null;
+
   if (number) {
-    const { data } = await supabase.from('orders').select('*').eq('number', number).maybeSingle();
-    order = data;
+    try {
+      const qOrder = query(
+        collection(db, 'orders'),
+        where('number', '==', number),
+        limit(1)
+      );
+      const snap = await getDocs(qOrder);
+      if (!snap.empty) {
+        order = { id: snap.docs[0].id, ...snap.docs[0].data() };
+      }
+    } catch (err) {
+      console.warn('Could not fetch order from Firestore:', err);
+    }
   }
 
   return (

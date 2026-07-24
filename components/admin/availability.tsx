@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { CalendarX, Clock, Plus, Trash2, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, doc, addDoc, deleteDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,52 +33,85 @@ export function AdminAvailability() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('availability').select('*').order('kind, weekday, specific_date');
-    setLoading(false);
-    setRows((data as Row[]) || []);
+    try {
+      const snap = await getDocs(collection(db, 'availability'));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Row);
+      list.sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind.localeCompare(b.kind);
+        if (a.weekday !== null && b.weekday !== null) return a.weekday - b.weekday;
+        return (a.specific_date || '').localeCompare(b.specific_date || '');
+      });
+      setRows(list);
+    } catch (err: any) {
+      console.error('Error fetching availability:', err);
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const addWeekly = async () => {
-    const { error } = await supabase.from('availability').insert({
-      kind: 'weekly',
-      weekday: Number(weekly.weekday),
-      start_time: weekly.start,
-      end_time: weekly.end,
-      note: weekly.note || DAYS[Number(weekly.weekday)],
-    });
-    if (error) return toast.error(error.message);
-    toast.success('Weekly window added.');
-    load();
+    try {
+      await addDoc(collection(db, 'availability'), {
+        kind: 'weekly',
+        weekday: Number(weekly.weekday),
+        start_time: weekly.start,
+        end_time: weekly.end,
+        note: weekly.note || DAYS[Number(weekly.weekday)],
+        created_at: new Date().toISOString(),
+      });
+      toast.success('Weekly window added.');
+      load();
+    } catch (error: any) {
+      toast.error(error.message || 'Could not add.');
+    }
   };
+
   const addBlocked = async () => {
     if (!blocked.date) return toast.error('Pick a date.');
-    const { error } = await supabase.from('availability').insert({
-      kind: 'blocked',
-      specific_date: blocked.date,
-      start_time: blocked.start,
-      end_time: blocked.end,
-      note: blocked.note || 'Blocked slot',
-    });
-    if (error) return toast.error(error.message);
-    toast.success('Slot blocked.');
-    load();
+    try {
+      await addDoc(collection(db, 'availability'), {
+        kind: 'blocked',
+        specific_date: blocked.date,
+        start_time: blocked.start,
+        end_time: blocked.end,
+        note: blocked.note || 'Blocked slot',
+        created_at: new Date().toISOString(),
+      });
+      toast.success('Slot blocked.');
+      load();
+    } catch (error: any) {
+      toast.error(error.message || 'Could not block.');
+    }
   };
+
   const addHoliday = async () => {
     if (!holiday.date) return toast.error('Pick a date.');
-    const { error } = await supabase.from('availability').insert({
-      kind: 'holiday',
-      specific_date: holiday.date,
-      note: holiday.note || 'Holiday',
-    });
-    if (error) return toast.error(error.message);
-    toast.success('Holiday added.');
-    load();
+    try {
+      await addDoc(collection(db, 'availability'), {
+        kind: 'holiday',
+        specific_date: holiday.date,
+        note: holiday.note || 'Holiday',
+        created_at: new Date().toISOString(),
+      });
+      toast.success('Holiday added.');
+      load();
+    } catch (error: any) {
+      toast.error(error.message || 'Could not add holiday.');
+    }
   };
+
   const remove = async (id: string) => {
-    const { error } = await supabase.from('availability').delete().eq('id', id);
-    if (error) return toast.error('Could not remove.');
-    load();
+    try {
+      await deleteDoc(doc(db, 'availability', id));
+      toast.success('Rule removed.');
+      load();
+    } catch (error) {
+      toast.error('Could not remove.');
+    }
   };
 
   return (

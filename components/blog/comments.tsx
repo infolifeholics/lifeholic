@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 type Comment = {
   id: string;
@@ -28,19 +29,26 @@ export function BlogComments({ postId, initial }: { postId: string; initial: Com
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase
-      .from('blog_comments')
-      .insert({ post_id: postId, name, body })
-      .select('id, name, body, created_at')
-      .single();
-    setLoading(false);
-    if (error) {
+
+    try {
+      const docData = {
+        post_id: postId,
+        name,
+        body,
+        created_at: new Date().toISOString(),
+      };
+      const docRef = await addDoc(collection(db, 'blog_comments'), docData);
+
+      setComments((c) => [{ id: docRef.id, ...docData }, ...c]);
+      setName('');
+      setBody('');
+      toast.success('Thank you — your comment is live.');
+    } catch (err) {
+      console.error(err);
       toast.error('Could not post your comment.');
-      return;
+    } finally {
+      setLoading(false);
     }
-    setComments((c) => [data as Comment, ...c]);
-    setName(''); setBody('');
-    toast.success('Thank you — your comment is live.');
   };
 
   return (

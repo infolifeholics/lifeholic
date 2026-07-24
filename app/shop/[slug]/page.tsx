@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Check, Truck, Download, ShieldCheck, Star } from 'lucide-react';
 import { getProducts, getProductBySlug } from '@/lib/data';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { AddToCart } from '@/components/shop/add-to-cart';
 import { ProductReviews } from '@/components/shop/product-reviews';
 import { ProductWishlistButton } from '@/components/shop/product-wishlist-button';
@@ -17,8 +18,9 @@ export async function generateStaticParams() {
   return products.map((p) => ({ slug: p.slug }));
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const product = await getProductBySlug(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
   if (!product) return { title: 'Product not found' };
   return {
     title: product.name,
@@ -32,16 +34,24 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
-  const product = await getProductBySlug(params.slug);
+export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const { data: reviewRows } = await supabase
-    .from('product_reviews')
-    .select('id, name, rating, title, body, created_at')
-    .eq('product_id', product.id)
-    .order('created_at', { ascending: false })
-    .limit(20);
+  let reviewRows: any[] = [];
+  try {
+    const qReviews = query(
+      collection(db, 'product_reviews'),
+      where('product_id', '==', product.id),
+      orderBy('created_at', 'desc'),
+      limit(20)
+    );
+    const snap = await getDocs(qReviews);
+    reviewRows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.warn('Could not fetch reviews from Firestore (probably empty collection):', err);
+  }
 
   const all = await getProducts();
   const related = all.filter((p) => p.slug !== product.slug && p.category === product.category).slice(0, 4);
@@ -158,7 +168,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
 
         {/* Reviews */}
         <section className="mt-20">
-          <ProductReviews productId={product.id} initial={reviewRows || []} />
+          <ProductReviews productId={product.id} initial={reviewRows} />
         </section>
 
         {/* Related */}

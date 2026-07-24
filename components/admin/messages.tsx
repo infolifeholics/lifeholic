@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Check, Inbox, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { collection, query, orderBy, limit, getDocs, doc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 type Message = {
@@ -21,22 +22,27 @@ export function AdminMessages() {
 
   const load = () => {
     setLoading(true);
-    supabase
-      .from('messages')
-      .select('id, name, email, subject, body, handled, created_at')
-      .order('created_at', { ascending: false })
-      .limit(50)
-      .then(({ data }) => {
-        setMessages((data as Message[]) || []);
+    const q = query(collection(db, 'messages'), orderBy('created_at', 'desc'), limit(50));
+    getDocs(q)
+      .then((snap) => {
+        const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Message);
+        setMessages(list);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error fetching messages:', err);
         setLoading(false);
       });
   };
   useEffect(load, []);
 
   const markHandled = async (id: string) => {
-    const { error } = await supabase.from('messages').update({ handled: true }).eq('id', id);
-    if (error) return toast.error('Could not update.');
-    load();
+    try {
+      await setDoc(doc(db, 'messages', id), { handled: true }, { merge: true });
+      load();
+    } catch (error) {
+      toast.error('Could not update.');
+    }
   };
 
   if (loading) return <p className="py-10 text-center text-sm text-muted-foreground"><Loader2 className="mr-1 inline h-4 w-4 animate-spin" /> Loading…</p>;

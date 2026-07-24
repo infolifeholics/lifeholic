@@ -6,7 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 import { StarRating } from '@/components/site/star-rating';
 import { cn } from '@/lib/utils';
 
@@ -35,20 +36,31 @@ export function ProductReviews({ productId, initial }: { productId: string; init
       return;
     }
     setSubmitting(true);
-    const { data, error } = await supabase
-      .from('product_reviews')
-      .insert({ product_id: productId, name, rating, title: title || null, body })
-      .select('id, name, rating, title, body, created_at')
-      .single();
-    setSubmitting(false);
-    if (error) {
+
+    try {
+      const docData = {
+        product_id: productId,
+        name,
+        rating,
+        title: title || null,
+        body,
+        created_at: new Date().toISOString(),
+      };
+      const docRef = await addDoc(collection(db, 'product_reviews'), docData);
+
+      setReviews((r) => [{ id: docRef.id, ...docData } as Review, ...r]);
+      setOpen(false);
+      setName('');
+      setTitle('');
+      setBody('');
+      setRating(5);
+      toast.success('Thank you — your review is live.');
+    } catch (err) {
+      console.error(err);
       toast.error('Could not submit your review. Please try again.');
-      return;
+    } finally {
+      setSubmitting(false);
     }
-    setReviews((r) => [data as Review, ...r]);
-    setOpen(false);
-    setName(''); setTitle(''); setBody(''); setRating(5);
-    toast.success('Thank you — your review is live.');
   };
 
   return (

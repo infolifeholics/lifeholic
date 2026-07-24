@@ -1,12 +1,22 @@
 'use client';
 
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { MagneticLink } from '@/components/site/magnetic';
+import { db } from '@/lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+
+const DEFAULT_LANDING_IMAGES = [
+  'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=1200',
+  'https://images.pexels.com/photos/3280130/pexels-photo-3280130.jpeg?auto=compress&cs=tinysrgb&w=1200',
+  'https://images.pexels.com/photos/3182452/pexels-photo-3182452.jpeg?auto=compress&cs=tinysrgb&w=1200',
+  'https://images.pexels.com/photos/409127/pexels-photo-409127.jpeg?auto=compress&cs=tinysrgb&w=1200',
+  'https://images.pexels.com/photos/290518/pexels-photo-290518.jpeg?auto=compress&cs=tinysrgb&w=1200',
+];
 
 export function HomeHero() {
   const ref = useRef<HTMLDivElement>(null);
@@ -14,6 +24,35 @@ export function HomeHero() {
   const yImg = useTransform(scrollYProgress, [0, 1], [0, 140]);
   const yText = useTransform(scrollYProgress, [0, 1], [0, 80]);
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+
+  const [images, setImages] = useState<string[]>(DEFAULT_LANDING_IMAGES);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const colRef = collection(db, 'landing_images');
+    getDocs(colRef)
+      .then((snap) => {
+        if (!snap.empty) {
+          const data = snap.docs.map((doc) => doc.data());
+          const list = Array.from({ length: 5 }, (_, i) => {
+            const found = data.find((d: any) => Number(d.id) === i + 1);
+            return found ? found.url : DEFAULT_LANDING_IMAGES[i];
+          });
+          setImages(list);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch landing images from Firestore:', err);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 4500); // smooth rotation every 4.5 seconds
+    return () => clearInterval(interval);
+  }, [images]);
 
   return (
     <section ref={ref} className="relative overflow-hidden pt-36 sm:pt-44 lg:pt-48">
@@ -123,14 +162,20 @@ export function HomeHero() {
             transition={{ duration: 1.1, delay: 0.2, ease: EASE }}
             className="relative"
           >
-            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-border/60 shadow-float">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=1200"
-                alt="A calm, sunlit space for healing and reflection"
-                className="h-full w-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/30 via-transparent to-transparent" />
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-border/60 shadow-float bg-card">
+              <AnimatePresence mode="popLayout">
+                <motion.img
+                  key={currentIndex}
+                  src={images[currentIndex]}
+                  alt="A calm, sunlit space for healing and reflection"
+                  className="absolute inset-0 h-full w-full object-cover"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.8, ease: 'easeInOut' }}
+                />
+              </AnimatePresence>
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/30 via-transparent to-transparent pointer-events-none" />
             </div>
 
             {/* centered floating cards */}

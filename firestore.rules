@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Temporarily allow read/write for database seeding phase
+    match /services/{document} {
+      allow read, write: if true;
+    }
+    match /products/{document} {
+      allow read, write: if true;
+    }
+    match /workshops/{document} {
+      allow read, write: if true;
+    }
+    match /testimonials/{document} {
+      allow read, write: if true;
+    }
+    match /faqs/{document} {
+      allow read, write: if true;
+    }
+    match /blog_posts/{document} {
+      allow read, write: if true;
+    }
+    match /landing_images/{document} {
+      allow read, write: if true;
+    }
+    match /product_reviews/{document} {
+      allow read, write: if true;
+    }
+    match /blog_comments/{document} {
+      allow read, write: if true;
+    }
+
+    // 2. User Profiles
+    match /profiles/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
+    }
+
+    // 3. Transactions & Submissions
+    match /bookings/{document} {
+      allow read: if request.auth != null && (resource.data.user_id == request.auth.uid || get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true);
+      allow create, update: if true;
+    }
+    match /orders/{document} {
+      allow read: if request.auth != null && (resource.data.user_id == request.auth.uid || get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true);
+      allow create: if true;
+    }
+    match /messages/{document} {
+      allow create: if true;
+      allow read, update: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
+    }
+    match /newsletter/{document} {
+      allow create: if true;
+      allow read: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
+    }
+    match /availability/{document} {
+      allow read, write: if true;
+    }
+    match /coupons/{document} {
+      allow read, write: if true;
+    }
+  }
+}

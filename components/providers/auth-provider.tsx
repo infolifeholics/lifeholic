@@ -1,8 +1,17 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { auth, googleProvider, db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  signInWithPopup,
+  updateProfile,
+  User as FirebaseUser
+} from 'firebase/auth';
 
 type Profile = {
   id: string;
@@ -11,15 +20,27 @@ type Profile = {
   phone: string | null;
   timezone: string | null;
   is_admin: boolean | null;
+  bio?: string | null;
+  address?: string | null;
+  avatar_url?: string | null;
+};
+
+// Compatible type with both Firebase and previous Supabase User structure
+export type CompatUser = FirebaseUser & {
+  id: string;
+  user_metadata: {
+    full_name: string | null;
+  };
 };
 
 type AuthContextValue = {
-  user: User | null;
-  session: Session | null;
+  user: CompatUser | null;
+  session: { user: CompatUser } | null;
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
@@ -27,84 +48,136 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadProfile = async (uid: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, email, phone, timezone, is_admin')
-      .eq('id', uid)
-      .maybeSingle();
-    if (error) return;
-    setProfile(data as Profile | null);
+    try {
+      const docRef = doc(db, 'profiles', uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setProfile(docSnap.data() as Profile);
+      } else {
+        setProfile(null);
+      }
+    } catch (e) {
+      console.error('Error loading profile:', e);
+      setProfile(null);
+    }
   };
 
   useEffect(() => {
-    let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      if (data.session?.user) {
-        loadProfile(data.session.user.id).finally(() => mounted && setLoading(false));
-      } else {
+    const unsubscribe = onAuthStateChanged(auth, async (fUser) => {
+      setFirebaseUser(fUser);
+      if (fUser) {
+        try {
+          const docRef = doc(db, 'profiles', fUser.uid);
+          const docSnap = await getDoc(docRef);
+          if (!docSnap.exists()) {
+            const newProfile: Profile = {
+              id: fUser.uid,
+              email: fUser.email,
+              full_name: fUser.displayName || fUser.email?.split('@')[0] || null,
+              phone: fUser.phoneNumber || null,
+              timezone: 'Asia/Kolkata',
+              is_admin: false,
+              bio: '',
+              address: '',
+              avatar_url: '',
+            };
+            await setDoc(docRef, newProfile);
+            setProfile(newProfile);
+          } else {
+            setProfile(docSnap.data() as Profile);
+          }
+        } catch (err) {
+          console.error('Error handling profiles in Firestore:', err);
+        }
         setLoading(false);
-      }
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      if (newSession?.user) {
-        (async () => {
-          await loadProfile(newSession.user.id);
-          setLoading(false);
-        })();
       } else {
         setProfile(null);
         setLoading(false);
       }
     });
 
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
+
+  const compatUser = useMemo<CompatUser | null>(() => {
+    if (!firebaseUser) return null;
+    return Object.assign(firebaseUser, {
+      id: firebaseUser.uid,
+      user_metadata: {
+        full_name: firebaseUser.displayName,
+      },
+    }) as CompatUser;
+  }, [firebaseUser]);
+
+  const session = useMemo(() => {
+    if (!compatUser) return null;
+    return { user: compatUser };
+  }, [compatUser]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      user: session?.user ?? null,
+      user: compatUser,
       session,
       profile,
       loading,
       signIn: async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        return { error: error?.message ?? null };
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+          return { error: null };
+        } catch (error: any) {
+          return { error: error.message ?? 'Sign in failed' };
+        }
       },
       signUp: async (email, password, fullName) => {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: fullName } },
-        });
-        if (error) return { error: error.message };
-        if (data.user) {
-          await supabase
-            .from('profiles')
-            .upsert({ id: data.user.id, email, full_name: fullName, is_admin: false });
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          if (userCredential.user) {
+            await updateProfile(userCredential.user, { displayName: fullName });
+            
+            // Create user profile document in Firestore
+            const docRef = doc(db, 'profiles', userCredential.user.uid);
+            const newProfile: Profile = {
+              id: userCredential.user.uid,
+              email: userCredential.user.email,
+              full_name: fullName,
+              phone: null,
+              timezone: 'Asia/Kolkata',
+              is_admin: false,
+              bio: '',
+              address: '',
+              avatar_url: '',
+            };
+            await setDoc(docRef, newProfile);
+            setProfile(newProfile);
+          }
+          return { error: null };
+        } catch (error: any) {
+          return { error: error.message ?? 'Sign up failed' };
         }
-        return { error: null };
+      },
+      signInWithGoogle: async () => {
+        try {
+          await signInWithPopup(auth, googleProvider);
+          return { error: null };
+        } catch (error: any) {
+          return { error: error.message ?? 'Google sign in failed' };
+        }
       },
       signOut: async () => {
-        await supabase.auth.signOut();
+        await firebaseSignOut(auth);
         setProfile(null);
+        setFirebaseUser(null);
       },
       refreshProfile: async () => {
-        if (session?.user) await loadProfile(session.user.id);
+        if (compatUser?.uid) await loadProfile(compatUser.uid);
       },
     }),
-    [session, profile, loading]
+    [compatUser, session, profile, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

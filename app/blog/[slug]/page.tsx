@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpRight, CalendarDays, Clock } from 'lucide-react';
 import { getBlogPosts, getBlogPostBySlug } from '@/lib/data';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { renderMarkdown } from '@/lib/markdown';
 import { BlogComments } from '@/components/blog/comments';
 import { ShareButton } from '@/components/blog/share-button';
@@ -15,8 +16,9 @@ export async function generateStaticParams() {
   return posts.map((p) => ({ slug: p.slug }));
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const post = await getBlogPostBySlug(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getBlogPostBySlug(slug);
   if (!post) return { title: 'Post not found' };
   return {
     title: post.title,
@@ -33,16 +35,24 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function BlogPostPage({ params }: { params: { slug: string } }) {
-  const post = await getBlogPostBySlug(params.slug);
+export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const post = await getBlogPostBySlug(slug);
   if (!post) notFound();
 
-  const { data: comments } = await supabase
-    .from('blog_comments')
-    .select('id, name, body, created_at')
-    .eq('post_id', post.id)
-    .eq('approved', true)
-    .order('created_at', { ascending: false });
+  let comments: any[] = [];
+  try {
+    const qComments = query(
+      collection(db, 'blog_comments'),
+      where('post_id', '==', post.id),
+      where('approved', '==', true),
+      orderBy('created_at', 'desc')
+    );
+    const snap = await getDocs(qComments);
+    comments = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.warn('Could not fetch comments from Firestore (probably empty collection):', err);
+  }
 
   const all = await getBlogPosts();
   const related = all.filter((p) => p.slug !== post.slug && p.category === post.category).slice(0, 3);
@@ -108,7 +118,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         </div>
 
         <section className="mt-16">
-          <BlogComments postId={post.id} initial={comments || []} />
+          <BlogComments postId={post.id} initial={comments} />
         </section>
       </div>
 

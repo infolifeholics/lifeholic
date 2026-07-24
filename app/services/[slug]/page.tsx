@@ -14,8 +14,9 @@ export async function generateStaticParams() {
   return services.map((s) => ({ slug: s.slug }));
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const service = await getServiceBySlug(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const service = await getServiceBySlug(slug);
   if (!service) return { title: 'Service not found' };
   return {
     title: service.title,
@@ -29,11 +30,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function ServiceDetailPage({ params }: { params: { slug: string } }) {
-  const service = await getServiceBySlug(params.slug);
+export default async function ServiceDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const service = await getServiceBySlug(slug);
   if (!service) notFound();
 
-  const all = await getServices();
+  const all = (await getServices()).filter((s) => s.active !== false);
   const related = all.filter((s) => s.slug !== service.slug && s.category === service.category).slice(0, 3);
   const fallback = all.filter((s) => s.slug !== service.slug).slice(0, 3);
   const relatedFinal = related.length ? related : fallback;

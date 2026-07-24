@@ -16,6 +16,7 @@ export type Service = {
   category: string;
   featured: boolean;
   sort_order: number;
+  active?: boolean;
 };
 
 export type Product = {
@@ -38,6 +39,7 @@ export type Product = {
   rating: number;
   reviews_count: number;
   sales_count: number;
+  created_at: string;
 };
 
 export type Testimonial = {
@@ -49,6 +51,7 @@ export type Testimonial = {
   rating: number;
   image: string | null;
   featured: boolean;
+  sort_order: number;
 };
 
 export type Workshop = {
@@ -76,6 +79,7 @@ export type BlogPost = {
   author: string;
   reading_minutes: number;
   published_at: string;
+  published: boolean;
 };
 
 export type Faq = {
@@ -83,6 +87,7 @@ export type Faq = {
   scope: string;
   question: string;
   answer: string;
+  sort_order: number;
 };
 
 export type Availability = {

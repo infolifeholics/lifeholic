@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ServicesPage() {
-  const services = await getServices();
+  const services = (await getServices()).filter((s) => s.active !== false);
 
   return (
     <div className="pt-32 sm:pt-40">

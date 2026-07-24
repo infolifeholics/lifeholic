@@ -1,20 +1,16 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 
-// IST is UTC+5:30 (330 minutes ahead of UTC)
 const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
 
-/** Convert an IST "HH:MM" time on a given YYYY-MM-DD date string to a UTC Date */
 function istToUtc(dateStr: string, timeStr: string): Date {
   const [h, m] = timeStr.split(':').map(Number);
-  // Midnight IST of that date in UTC
   const midnightIstInUtc = new Date(`${dateStr}T00:00:00Z`).getTime() - IST_OFFSET_MS;
   return new Date(midnightIstInUtc + (h * 60 + m) * 60 * 1000);
 }
 
-/** Get the day-of-week in IST (0=Sun … 6=Sat) for a YYYY-MM-DD string */
 function weekdayInIST(dateStr: string): number {
-  // Noon IST is well within the IST calendar day
   const noonIst = new Date(`${dateStr}T12:00:00+05:30`);
   return noonIst.getDay();
 }
@@ -30,30 +26,25 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'service_id and date are required.' }, { status: 400 });
     }
 
-    const { data: service } = await supabase
-      .from('services')
-      .select('duration_minutes, mode')
-      .eq('id', serviceId)
-      .maybeSingle();
-    if (!service) return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
+    const serviceDoc = await getDoc(doc(db, 'services', serviceId));
+    if (!serviceDoc.exists()) return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
+    const service = serviceDoc.data();
 
     const duration = service.duration_minutes || 60;
 
-    const { data: availability } = await supabase.from('availability').select('*');
+    const availSnap = await getDocs(collection(db, 'availability'));
+    const availability = availSnap.docs.map((d) => d.data());
 
-    // Weekday in IST (therapist's local time)
     const weekdayIST = weekdayInIST(dateStr);
-    const weekly = (availability || []).filter((a) => a.kind === 'weekly' && a.weekday === weekdayIST);
+    const weekly = availability.filter((a) => a.kind === 'weekly' && a.weekday === weekdayIST);
 
     if (!weekly.length) return NextResponse.json({ slots: [] });
 
-    // Check holidays
-    const holidays = (availability || []).filter(
+    const holidays = availability.filter(
       (a) => a.kind === 'holiday' && a.specific_date && a.specific_date.slice(0, 10) === dateStr
     );
     if (holidays.length) return NextResponse.json({ slots: [] });
 
-    // Generate candidate slot starts in UTC from IST windows
     const candidateStartsUTC: Date[] = [];
     for (const w of weekly) {
       if (!w.start_time || !w.end_time) continue;
@@ -70,25 +61,26 @@ export async function GET(req: Request) {
 
     if (!candidateStartsUTC.length) return NextResponse.json({ slots: [] });
 
-    // Load existing bookings for this day (we query a generous UTC window)
     const dayStartUTC = istToUtc(dateStr, '00:00');
     const dayEndUTC = new Date(dayStartUTC.getTime() + 24 * 60 * 60_000);
 
-    const { data: existing } = await supabase
-      .from('bookings')
-      .select('start_time, end_time, mode, status')
-      .eq('service_id', serviceId)
-      .gte('start_time', dayStartUTC.toISOString())
-      .lt('start_time', dayEndUTC.toISOString())
-      .in('status', ['pending', 'confirmed']);
+    const bookingsRef = collection(db, 'bookings');
+    const qBookings = query(
+      bookingsRef,
+      where('service_id', '==', serviceId),
+      where('start_time', '>=', dayStartUTC.toISOString()),
+      where('start_time', '<', dayEndUTC.toISOString()),
+      where('status', 'in', ['pending', 'confirmed'])
+    );
+    const bookingsSnap = await getDocs(qBookings);
+    const existing = bookingsSnap.docs.map((d) => d.data());
 
-    const bookedRanges = (existing || []).map((b) => ({
+    const bookedRanges = existing.map((b) => ({
       start: new Date(b.start_time).getTime(),
       end: new Date(b.end_time).getTime(),
     }));
 
-    // Load blocked slots for this specific date
-    const blocked = (availability || []).filter(
+    const blocked = availability.filter(
       (a) => a.kind === 'blocked' && a.specific_date && a.specific_date.slice(0, 10) === dateStr
     );
     const blockedRanges = blocked.map((b) => ({
@@ -104,7 +96,6 @@ export async function GET(req: Request) {
       .filter((start) => {
         const s = start.getTime();
         const e = s + duration * 60_000;
-        // Require at least 1h lead time
         if (s < now + 60 * 60_000) return false;
         if (bookedRanges.some((r) => s < r.end && e > r.start)) return false;
         if (blockedRanges.some((r) => s < r.end && e > r.start)) return false;
@@ -119,7 +110,8 @@ export async function GET(req: Request) {
       });
 
     return NextResponse.json({ slots });
-  } catch {
+  } catch (error: any) {
+    console.error('Slots error:', error);
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });
   }
 }

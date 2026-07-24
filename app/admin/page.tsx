@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { formatPrice, formatInTz } from '@/lib/format';
 import { AdminGuard } from '@/components/admin/admin-guard';
 import { AdminDashboard } from '@/components/admin/dashboard';
@@ -11,13 +12,22 @@ import { AdminMessages } from '@/components/admin/messages';
 import { Logo } from '@/components/site/logo';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { ArrowLeft, CalendarDays, Inbox, LayoutDashboard, Package, Settings } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Inbox, LayoutDashboard, Package, Settings, Image as ImageIcon } from 'lucide-react';
+import { AdminLandingPage } from '@/components/admin/landing-page';
+import { AdminServices } from '@/components/admin/services';
+import { AdminMembers } from '@/components/admin/members';
+import { AdminOffers } from '@/components/admin/offers';
+import { Users, Tag } from 'lucide-react';
 
 const NAV = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'bookings', label: 'Bookings & availability', icon: CalendarDays },
+  { id: 'services', label: 'Services', icon: Settings },
   { id: 'orders', label: 'Orders', icon: Package },
+  { id: 'members', label: 'Members', icon: Users },
+  { id: 'offers', label: 'Offers & Promos', icon: Tag },
   { id: 'messages', label: 'Messages', icon: Inbox },
+  { id: 'landing', label: 'Landing Page', icon: ImageIcon },
 ] as const;
 
 type Section = (typeof NAV)[number]['id'];
@@ -35,11 +45,8 @@ function AdminShell() {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    supabase
-      .from('messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('handled', false)
-      .then(({ count }) => setCount(count || 0));
+    const q = query(collection(db, 'messages'), where('handled', '==', false));
+    getDocs(q).then((snap) => setCount(snap.size));
   }, []);
 
   return (
@@ -51,7 +58,7 @@ function AdminShell() {
               <Logo showWordmark={false} />
               <span className="rounded-full bg-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">Admin</span>
             </div>
-            <nav className="mt-6 flex flex-row gap-1 lg:flex-col">
+            <nav className="mt-6 flex flex-row gap-1 lg:flex-col overflow-x-auto">
               {NAV.map((n) => (
                 <button
                   key={n.id}
@@ -87,8 +94,12 @@ function AdminShell() {
                 <AdminAvailability />
               </div>
             )}
+            {section === 'services' && <AdminServices />}
             {section === 'orders' && <AdminOrders />}
+            {section === 'members' && <AdminMembers />}
+            {section === 'offers' && <AdminOffers />}
             {section === 'messages' && <AdminMessages />}
+            {section === 'landing' && <AdminLandingPage />}
           </div>
         </div>
       </div>

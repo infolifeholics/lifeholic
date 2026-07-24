@@ -10,18 +10,21 @@ import { HomeWorkshops } from '@/components/home/workshops';
 import { HomeInstagram } from '@/components/home/instagram';
 import { NewsletterBlock } from '@/components/site/newsletter-block';
 import { HomeCTA } from '@/components/home/cta';
+import { OfferInlineBanner } from '@/components/site/offer-promo';
 
 export default async function HomePage() {
-  const [services, products, testimonials, workshops] = await Promise.all([
+  const [allServices, products, testimonials, workshops] = await Promise.all([
     getServices(),
     getProducts(),
     getTestimonials(true),
     getWorkshops(),
   ]);
+  const services = allServices.filter(s => s.active !== false);
 
   return (
     <>
       <HomeHero />
+      <OfferInlineBanner />
       <HomeAboutPreview />
       <HomeServices services={services} />
       <HomeProcess />

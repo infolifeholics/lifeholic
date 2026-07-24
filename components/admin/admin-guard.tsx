@@ -41,7 +41,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
           <p className="mt-3 text-sm text-muted-foreground">
             Your account doesn&apos;t have admin access. To enable it for testing, set
             <code className="mx-1 rounded bg-secondary px-1.5 py-0.5 text-xs">is_admin = true</code>
-            on your profile in Supabase.
+            on your profile in Firestore.
           </p>
           <Button asChild className="mt-6 rounded-full"><Link href="/">Back home</Link></Button>
         </div>

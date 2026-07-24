@@ -4,28 +4,8 @@ import { Cormorant_Garamond, Inter } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { SiteHeader } from '@/components/site/site-header';
 import { SiteFooter } from '@/components/site/site-footer';
+import { OfferPopup } from '@/components/site/offer-promo';
 import { cn } from '@/lib/utils';
-import dynamic from 'next/dynamic';
-
-const CinematicVideoBg = dynamic(
-  () => import('@/components/site/cinematic-video-bg'),
-  { ssr: false }
-);
-
-const CustomCursor = dynamic(
-  () => import('@/components/site/custom-cursor'),
-  { ssr: false }
-);
-
-const SoundToggle = dynamic(
-  () => import('@/components/site/sound-toggle'),
-  { ssr: false }
-);
-
-const FloatingPetals = dynamic(
-  () => import('@/components/site/floating-petals'),
-  { ssr: false }
-);
 
 const serif = Cormorant_Garamond({
   subsets: ['latin'],
@@ -93,13 +73,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className={cn(sans.variable, serif.variable, 'font-sans antialiased relative min-h-screen')}>
         <Providers>
-          <CinematicVideoBg />
-          <CustomCursor />
-          <SoundToggle />
-          <FloatingPetals />
           <SiteHeader />
           <main className="relative">{children}</main>
           <SiteFooter />
+          <OfferPopup />
         </Providers>
       </body>
     </html>

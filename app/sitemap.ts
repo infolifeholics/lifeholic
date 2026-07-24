@@ -14,7 +14,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const [services, products, posts] = await Promise.all([getServices(), getProducts(), getBlogPosts()]);
-  const serviceRoutes = services.map((s) => ({ url: `${base}/services/${s.slug}`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 }));
+  const serviceRoutes = services.filter((s) => s.active !== false).map((s) => ({ url: `${base}/services/${s.slug}`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 }));
   const productRoutes = products.map((p) => ({ url: `${base}/shop/${p.slug}`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.8 }));
   const postRoutes = posts.map((p) => ({ url: `${base}/blog/${p.slug}`, lastModified: new Date(p.published_at), changeFrequency: 'monthly' as const, priority: 0.7 }));
 

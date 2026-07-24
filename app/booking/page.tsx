@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BookingPage() {
-  const services = await getServices();
+  const services = (await getServices()).filter((s) => s.active !== false);
   const slim = services.map((s) => ({
     id: s.id,
     slug: s.slug,
