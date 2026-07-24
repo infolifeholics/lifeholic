@@ -7,6 +7,7 @@ import { ArrowRight, Sparkles } from 'lucide-react';
 import { MagneticLink } from '@/components/site/magnetic';
 import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -25,7 +26,7 @@ export function HomeHero() {
   const yText = useTransform(scrollYProgress, [0, 1], [0, 80]);
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
-  const [images, setImages] = useState<string[]>(DEFAULT_LANDING_IMAGES);
+  const [images, setImages] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -34,15 +35,20 @@ export function HomeHero() {
       .then((snap) => {
         if (!snap.empty) {
           const data = snap.docs.map((doc) => doc.data());
-          const list = Array.from({ length: 5 }, (_, i) => {
-            const found = data.find((d: any) => Number(d.id) === i + 1);
-            return found ? found.url : DEFAULT_LANDING_IMAGES[i];
-          });
+          // Only map active slots that have valid URLs (filter out empty or deleted slots)
+          const list = data
+            .sort((a: any, b: any) => Number(a.id) - Number(b.id))
+            .map((d: any) => d.url)
+            .filter((url): url is string => !!url);
+          
           setImages(list);
+        } else {
+          setImages([]);
         }
       })
       .catch((err) => {
         console.warn('Could not fetch landing images from Firestore:', err);
+        setImages([]);
       });
   }, []);
 
@@ -54,10 +60,15 @@ export function HomeHero() {
     return () => clearInterval(interval);
   }, [images]);
 
+  const hasImages = images.length > 0;
+
   return (
     <section ref={ref} className="relative overflow-hidden pt-36 sm:pt-44 lg:pt-48">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+        <div className={cn(
+          "grid items-center gap-10 lg:gap-16",
+          hasImages ? "lg:grid-cols-[1.05fr_0.95fr]" : "grid-cols-1 max-w-3xl mx-auto text-center"
+        )}>
           {/* Left — copy */}
           <motion.div style={{ y: yText, opacity }} className="relative z-10">
             <motion.span
@@ -98,7 +109,7 @@ export function HomeHero() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.7, ease: EASE }}
-              className="mt-7 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground"
+              className={cn("mt-7 text-pretty text-lg leading-relaxed text-muted-foreground", !hasImages && "mx-auto")}
             >
               Gentle, soulful therapy and healing for the life you are actually living —
               online and in person, for clients across India and the world.
@@ -108,7 +119,7 @@ export function HomeHero() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.85, ease: EASE }}
-              className="mt-9 flex flex-wrap items-center gap-3"
+              className={cn("mt-9 flex flex-wrap items-center gap-3", !hasImages && "justify-center")}
             >
               <MagneticLink
                 href="/booking"
@@ -129,7 +140,7 @@ export function HomeHero() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 1, delay: 1 }}
-              className="mt-10 flex items-center gap-6 text-sm text-muted-foreground"
+              className={cn("mt-10 flex items-center gap-6 text-sm text-muted-foreground", !hasImages && "justify-center")}
             >
               <div className="flex -space-x-3">
                 {[
@@ -147,7 +158,7 @@ export function HomeHero() {
                   />
                 ))}
               </div>
-              <p>
+              <p className={!hasImages ? "text-left" : ""}>
                 <span className="font-medium text-foreground">1,200+ sessions</span> held with care ·
                 <br className="hidden sm:block" /> clients in 14 countries
               </p>
@@ -155,56 +166,58 @@ export function HomeHero() {
           </motion.div>
 
           {/* Right — image stack */}
-          <motion.div
-            style={{ y: yImg }}
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.1, delay: 0.2, ease: EASE }}
-            className="relative"
-          >
-            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-border/60 shadow-float bg-card">
-              <AnimatePresence mode="popLayout">
-                <motion.img
-                  key={currentIndex}
-                  src={images[currentIndex]}
-                  alt="A calm, sunlit space for healing and reflection"
-                  className="absolute inset-0 h-full w-full object-cover"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.8, ease: 'easeInOut' }}
-                />
-              </AnimatePresence>
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/30 via-transparent to-transparent pointer-events-none" />
-            </div>
+          {hasImages && (
+            <motion.div
+              style={{ y: yImg }}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1.1, delay: 0.2, ease: EASE }}
+              className="relative"
+            >
+              <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-border/60 shadow-float bg-card">
+                <AnimatePresence mode="popLayout">
+                  <motion.img
+                    key={currentIndex}
+                    src={images[currentIndex]}
+                    alt="A calm, sunlit space for healing and reflection"
+                    className="absolute inset-0 h-full w-full object-cover"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.8, ease: 'easeInOut' }}
+                  />
+                </AnimatePresence>
+                <div className="absolute inset-0 bg-gradient-to-t from-primary/30 via-transparent to-transparent pointer-events-none" />
+              </div>
 
-            {/* centered floating cards */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 pointer-events-none">
-              <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-                className="w-48 rounded-2xl glass-card glow-border reflection-sweep p-4 shadow-glow backdrop-blur-md border border-white/10 pointer-events-auto"
-              >
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Next available</p>
-                <p className="mt-1 font-display text-lg text-foreground">Tomorrow · 6:00 PM</p>
-                <p className="text-xs text-muted-foreground">Online · 60 minutes</p>
-              </motion.div>
+              {/* centered floating cards */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 pointer-events-none">
+                <motion.div
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+                  className="w-48 rounded-2xl glass-card glow-border reflection-sweep p-4 shadow-glow backdrop-blur-md border border-white/10 pointer-events-auto"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Next available</p>
+                  <p className="mt-1 font-display text-lg text-foreground">Tomorrow · 6:00 PM</p>
+                  <p className="text-xs text-muted-foreground">Online · 60 minutes</p>
+                </motion.div>
 
-              <motion.div
-                animate={{ y: [0, 10, 0] }}
-                transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                className="w-52 rounded-2xl glass-card glow-border reflection-sweep p-4 shadow-glow backdrop-blur-md border border-white/10 pointer-events-auto"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-success animate-breathe" />
-                  <p className="text-xs font-semibold text-foreground">Currently accepting clients</p>
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  IST &amp; global timezones · Online &amp; in person
-                </p>
-              </motion.div>
-            </div>
-          </motion.div>
+                <motion.div
+                  animate={{ y: [0, 10, 0] }}
+                  transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                  className="w-52 rounded-2xl glass-card glow-border reflection-sweep p-4 shadow-glow backdrop-blur-md border border-white/10 pointer-events-auto"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-success animate-breathe" />
+                    <p className="text-xs font-semibold text-foreground">Currently accepting clients</p>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    IST &amp; global timezones · Online &amp; in person
+                  </p>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
 

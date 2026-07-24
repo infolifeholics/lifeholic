@@ -27,7 +27,11 @@ export async function POST(req: NextRequest) {
     const fullPath = pathParts.join('/');
     const publicId = fullPath.substring(0, fullPath.lastIndexOf('.')) || fullPath;
 
-    const result = await cloudinary.uploader.destroy(publicId);
+    // Check if the URL contains 'video' or 'raw' to pass correct resource_type
+    const isVideo = url.includes('/video/');
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: isVideo ? 'video' : 'image',
+    });
 
     return NextResponse.json({ success: true, result });
   } catch (error: any) {

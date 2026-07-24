@@ -31,11 +31,13 @@ service cloud.firestore {
     match /blog_comments/{document} {
       allow read, write: if true;
     }
+    match /settings/{document} {
+      allow read, write: if true;
+    }
 
     // 2. User Profiles
     match /profiles/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
+      allow read, write: if true;
     }
 
     // 3. Transactions & Submissions

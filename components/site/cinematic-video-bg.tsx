@@ -2,9 +2,14 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
+const DEFAULT_VIDEO = 'https://cdn.prod.website-files.com/691c3d8b8165d353a2345b2d%2F691d841c9c6b35b63efb82bc_hero-bg-video_mp4.mp4';
 
 export function CinematicVideoBg() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoSrc, setVideoSrc] = useState(DEFAULT_VIDEO);
 
   // Track scroll for zoom and slight translation parallax
   const { scrollYProgress } = useScroll();
@@ -19,6 +24,17 @@ export function CinematicVideoBg() {
   const springConfig = { damping: 45, stiffness: 180, mass: 1.2 };
   const smoothX = useSpring(mouseX, springConfig);
   const smoothY = useSpring(mouseY, springConfig);
+
+  useEffect(() => {
+    const docRef = doc(db, 'settings', 'video');
+    getDoc(docRef)
+      .then((snap) => {
+        if (snap.exists() && snap.data().url) {
+          setVideoSrc(snap.data().url);
+        }
+      })
+      .catch((err) => console.warn('Could not fetch custom bg video:', err));
+  }, []);
 
   useEffect(() => {
     // Disable mouse parallax on touch devices
@@ -50,13 +66,14 @@ export function CinematicVideoBg() {
         }}
       >
         <video
+          key={videoSrc}
           ref={videoRef}
           autoPlay
           muted
           loop
           playsInline
           className="h-full w-full object-cover select-none pointer-events-none blur-[2px]"
-          src="https://cdn.prod.website-files.com/691c3d8b8165d353a2345b2d%2F691d841c9c6b35b63efb82bc_hero-bg-video_mp4.mp4"
+          src={videoSrc}
         />
       </motion.div>
 

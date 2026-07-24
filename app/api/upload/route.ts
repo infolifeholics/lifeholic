@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       cloudinary.uploader.upload_stream(
         {
           folder: 'thelifeholics',
+          resource_type: 'auto',
         },
         (error, result) => {
           if (error) reject(error);
