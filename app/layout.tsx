@@ -21,8 +21,11 @@ const sans = Inter({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
+export const viewport = {
   themeColor: '#f6f1ea',
+};
+
+export const metadata: Metadata = {
   metadataBase: new URL('https://thelifeholics.com'),
   title: {
     default: 'TheLifeHolics — Spiritual Psychology & Therapy',

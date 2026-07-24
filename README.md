@@ -79,10 +79,10 @@ Use these commands to deploy/update database rules when changing configurations:
 npx -y firebase-tools@latest login
 
 # 2. Select your active Firebase project
-npx -y firebase-tools@latest use lifeholic
+npx -y firebase-tools@latest use lifeholics-a12c2
 
 # 3. Deploy/Update Firestore rules & indexes
-npx -y firebase-tools@latest deploy --only firestore
+npx -y firebase-tools@latest deploy --only firestore:rules,firestore:indexes
 ```
 
 #### Switching Firebase Accounts or Projects:
