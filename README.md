@@ -67,6 +67,13 @@ git commit -m "admin pannel and search bar implementation "
 git push -u origin main
 ``` 
 
+
+### भविष्य में जब भी आपको GoDaddy वाले abc@lifeholics.com पर स्विच करना हो, तो बस इन .env फाइलों में क्रेडेंशियल्स और SMTP_FROM बदलकर दोबारा डिप्लॉय कर दीजिएगा। कोड में कोई बदलाव करने की ज़रूरत नहीं होगी!
+
+```bash
+firebase deploy --only functions
+``` 
+
 ### Firebase Setup & Database Rules Deployment
 Use these commands to deploy/update database rules when changing configurations:
 ```bash

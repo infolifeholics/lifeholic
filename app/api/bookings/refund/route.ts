@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { triggerBookingNotification } from '@/lib/notifications';
 
 export async function POST(req: Request) {
   try {
@@ -63,13 +64,22 @@ export async function POST(req: Request) {
       });
     }
 
-    await setDoc(bookingRef, {
+    const updatedBooking = {
       payment_status: refund_type === 'full' ? 'refunded' : 'partially_refunded',
       status: 'cancelled',
       status_timeline: updatedTimeline,
       refund_history: updatedRefundHistory,
       updated_at: new Date().toISOString()
-    }, { merge: true });
+    };
+
+    await setDoc(bookingRef, updatedBooking, { merge: true });
+
+    // Trigger Notification
+    try {
+      await triggerBookingNotification(booking_id, { ...b, ...updatedBooking }, 'cancelled');
+    } catch (err) {
+      console.error('[Notification Trigger Error]:', err);
+    }
 
     return NextResponse.json({ ok: true, refundId });
   } catch (error: any) {

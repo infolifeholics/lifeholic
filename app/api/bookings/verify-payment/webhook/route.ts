@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import { triggerBookingNotification } from '@/lib/notifications';
 
 export async function POST(req: Request) {
   try {
@@ -67,13 +68,22 @@ export async function POST(req: Request) {
             }
           ];
 
-          await setDoc(bookingRef, {
+          const updatedBooking = {
             payment_status: 'paid',
             status: 'confirmed',
             status_timeline: updatedTimeline,
             payment_history: updatedHistory,
             updated_at: new Date().toISOString()
-          }, { merge: true });
+          };
+
+          await setDoc(bookingRef, updatedBooking, { merge: true });
+
+          // Trigger Notification
+          try {
+            await triggerBookingNotification(bookingId, { ...b, ...updatedBooking }, 'confirmed');
+          } catch (err) {
+            console.error('[Notification Trigger Error]:', err);
+          }
 
           // Save payment entry
           await setDoc(doc(db, 'payments', payment.id), {

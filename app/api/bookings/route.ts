@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase/firestore';
+import { triggerBookingNotification } from '@/lib/notifications';
 
 export async function POST(req: Request) {
   try {
@@ -196,6 +197,17 @@ export async function POST(req: Request) {
     const initialStatus = body.status || 'pending';
     const initialPaymentStatus = body.payment_status || 'unpaid';
 
+    // Fetch global settings for meeting link
+    const globalSettingsRef = doc(db, 'settings', 'global');
+    const globalSettingsSnap = await getDoc(globalSettingsRef);
+    let meetingLink = null;
+    if (globalSettingsSnap.exists()) {
+      const gSettings = globalSettingsSnap.data();
+      if (gSettings.meeting_provider === 'gmeet' && gSettings.google_meet_link) {
+        meetingLink = gSettings.google_meet_link;
+      }
+    }
+
     const insert: any = {
       service_id: isSomatic ? `somatic_${somatic_plan_name.toLowerCase().replace(/\s+/g, '_')}` : service_id,
       service_title: service.title || 'Therapy Session',
@@ -218,6 +230,7 @@ export async function POST(req: Request) {
       subcategory: subcategory || null,
       problems: problems || null,
       summary: summary || null,
+      meeting_link: meetingLink,
       status_timeline: [
         {
           status: initialStatus,
@@ -240,6 +253,13 @@ export async function POST(req: Request) {
     };
 
     const docRef = await addDoc(bookingsRef, insert);
+
+    // Trigger Notification
+    try {
+      await triggerBookingNotification(docRef.id, insert, 'created');
+    } catch (err) {
+      console.error('[Notification Trigger Error]:', err);
+    }
 
     return NextResponse.json({ ok: true, id: docRef.id });
   } catch (error: any) {

@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { COMMON_TIMEZONES, detectTimezone, formatInTz, formatPrice } from '@/lib/format';
+import { COMMON_TIMEZONES, currencyForTimezone, detectTimezone, formatInTz, formatPrice } from '@/lib/format';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AuthModal } from '@/components/auth/auth-modal';
 import { SiteHeader } from '@/components/site/site-header';
@@ -88,6 +88,7 @@ function SomaticBookingFlowContent() {
         const { db } = await import('@/lib/firebase');
         const somaticDocRef = doc(db, 'settings', 'somatic_plans');
         const somaticSnap = await getDoc(somaticDocRef);
+        const currency = currencyForTimezone(tz);
         if (somaticSnap.exists()) {
           const sData = somaticSnap.data();
           let priceKey = 'premium_price_inr';
@@ -96,7 +97,10 @@ function SomaticBookingFlowContent() {
           } else if (finalServiceId.toLowerCase().includes('elite') || finalServiceId.toLowerCase().includes('ancestral')) {
             priceKey = 'elite_price_inr';
           }
-          setPrice(sData[priceKey] || currentPrice);
+          const rawPrice = sData[priceKey] || currentPrice;
+          setPrice(currency === 'USD' ? Math.round(rawPrice / 80) : rawPrice);
+        } else {
+          setPrice(currency === 'USD' ? Math.round(currentPrice / 80) : currentPrice);
         }
       } catch (e) {
         console.error('Error fetching service details:', e);
@@ -191,7 +195,7 @@ function SomaticBookingFlowContent() {
           mode,
           notes: details.notes,
           amount: price,
-          currency: 'INR',
+          currency: currencyForTimezone(tz),
           user_id: user?.uid || null,
           status: 'pending',
           payment_status: 'unpaid',
@@ -554,7 +558,7 @@ function SomaticBookingFlowContent() {
 
             <div className="border-t border-border/40 pt-4 flex items-center justify-between font-display">
               <span className="text-sm font-medium text-foreground">Total Price:</span>
-              <span className="text-2xl font-semibold text-gold">{formatPrice(price, 'INR')}</span>
+              <span className="text-2xl font-semibold text-gold">{formatPrice(price, currencyForTimezone(tz))}</span>
             </div>
           </div>
         </div>

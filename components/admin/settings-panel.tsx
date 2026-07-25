@@ -25,6 +25,7 @@ type AdminSettings = {
   razorpay_key_secret?: string;
   meeting_provider?: string;
   reminder_hours_before?: number;
+  google_meet_link?: string;
 };
 
 type CertificateSettings = {
@@ -186,6 +187,7 @@ export function AdminSettingsPanel() {
     razorpay_key_secret: '',
     meeting_provider: 'gmeet',
     reminder_hours_before: 24,
+    google_meet_link: '',
   });
 
   const [certSettings, setCertSettings] = useState<CertificateSettings>(DEFAULT_CERTIFICATE_SETTINGS);
@@ -398,129 +400,12 @@ export function AdminSettingsPanel() {
               <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5">
                 <Globe className="h-4 w-4 text-gold" /> Business Information
               </h4>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label>Business Brand Name</Label>
                   <Input
                     value={globalSettings.business_name || ''}
                     onChange={(e) => setGlobalSettings({ ...globalSettings, business_name: e.target.value })}
-                    className="mt-1.5 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <Label>Default Currency</Label>
-                  <Input
-                    value={globalSettings.currency || ''}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, currency: e.target.value })}
-                    className="mt-1.5 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <Label>Default timezone</Label>
-                  <Input
-                    value={globalSettings.timezone || ''}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, timezone: e.target.value })}
-                    className="mt-1.5 rounded-xl"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Razorpay Keys */}
-            <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
-              <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5">
-                <Key className="h-4 w-4 text-gold" /> Payment Gateways (Razorpay)
-              </h4>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label>Razorpay Key ID</Label>
-                  <Input
-                    value={globalSettings.razorpay_key_id || ''}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, razorpay_key_id: e.target.value })}
-                    className="mt-1.5 rounded-xl"
-                    placeholder="rzp_live_..."
-                  />
-                </div>
-                <div>
-                  <Label>Razorpay Key Secret</Label>
-                  <Input
-                    type="password"
-                    value={globalSettings.razorpay_key_secret || ''}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, razorpay_key_secret: e.target.value })}
-                    className="mt-1.5 rounded-xl"
-                    placeholder="••••••••••••••••"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Email configurations */}
-            <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
-              <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5">
-                <Mail className="h-4 w-4 text-gold" /> Outbound SMTP Email Settings
-              </h4>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label>SMTP Host</Label>
-                  <Input
-                    value={globalSettings.smtp_host || ''}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, smtp_host: e.target.value })}
-                    className="mt-1.5 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <Label>SMTP Port</Label>
-                  <Input
-                    type="number"
-                    value={globalSettings.smtp_port || 465}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, smtp_port: parseInt(e.target.value) || 465 })}
-                    className="mt-1.5 rounded-xl"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label>SMTP Username</Label>
-                  <Input
-                    value={globalSettings.smtp_user || ''}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, smtp_user: e.target.value })}
-                    className="mt-1.5 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <Label>SMTP Password</Label>
-                  <Input
-                    type="password"
-                    value={globalSettings.smtp_password || ''}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, smtp_password: e.target.value })}
-                    className="mt-1.5 rounded-xl"
-                    placeholder="••••••••••••••••"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* WhatsApp Notification settings */}
-            <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
-              <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5">
-                <MessageSquare className="h-4 w-4 text-gold" /> WhatsApp Business Integration
-              </h4>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label>System Access Token</Label>
-                  <Input
-                    type="password"
-                    value={globalSettings.whatsapp_access_token || ''}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, whatsapp_access_token: e.target.value })}
-                    className="mt-1.5 rounded-xl"
-                    placeholder="EAAB..."
-                  />
-                </div>
-                <div>
-                  <Label>Phone Number ID</Label>
-                  <Input
-                    value={globalSettings.whatsapp_phone_number_id || ''}
-                    onChange={(e) => setGlobalSettings({ ...globalSettings, whatsapp_phone_number_id: e.target.value })}
                     className="mt-1.5 rounded-xl"
                   />
                 </div>
@@ -532,7 +417,7 @@ export function AdminSettingsPanel() {
               <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5">
                 <Shield className="h-4 w-4 text-gold" /> Somatic Session Booking Rules
               </h4>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <Label>Meeting Provider</Label>
                   <select
@@ -544,6 +429,18 @@ export function AdminSettingsPanel() {
                     <option value="zoom">Zoom Video</option>
                   </select>
                 </div>
+                {globalSettings.meeting_provider === 'gmeet' && (
+                  <div>
+                    <Label>Google Meet Link</Label>
+                    <Input
+                      type="url"
+                      value={globalSettings.google_meet_link || ''}
+                      onChange={(e) => setGlobalSettings({ ...globalSettings, google_meet_link: e.target.value })}
+                      placeholder="https://meet.google.com/..."
+                      className="mt-1.5 rounded-xl"
+                    />
+                  </div>
+                )}
                 <div>
                   <Label>Automatic Session Reminder (Hours Before)</Label>
                   <Input

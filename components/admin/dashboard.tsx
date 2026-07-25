@@ -120,6 +120,16 @@ export function AdminDashboard() {
         status_timeline: updatedTimeline,
         updated_at: new Date().toISOString() 
       }, { merge: true });
+
+      // Trigger server-side notification
+      if (status === 'confirmed' || status === 'cancelled') {
+        fetch('/api/bookings/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId: b.id, eventType: status }),
+        }).catch((err) => console.error('Failed to trigger notification:', err));
+      }
+
       toast.success(`Booking status changed to ${status}.`);
       if (selectedBooking?.id === b.id) {
         setSelectedBooking({ ...selectedBooking, status, status_timeline: updatedTimeline });

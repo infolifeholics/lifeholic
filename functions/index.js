@@ -181,13 +181,13 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
 
     try {
       await mailTransport.sendMail({
-        from: '"TheLifeHolics" <no-reply@thelifeholics.com>',
+        from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
         to: client_email,
         subject: emailSubject,
         html: emailBody,
       });
       await mailTransport.sendMail({
-        from: '"TheLifeHolics" <no-reply@thelifeholics.com>',
+        from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
         to: adminEmail,
         subject: `[ADMIN] ${emailSubject}`,
         html: emailBody,
@@ -235,7 +235,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
 
     try {
       await mailTransport.sendMail({
-        from: '"TheLifeHolics" <no-reply@thelifeholics.com>',
+        from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
         to: client_email,
         subject: emailSubject,
         html: emailBody,
@@ -279,7 +279,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
 
     try {
       await mailTransport.sendMail({
-        from: '"TheLifeHolics" <no-reply@thelifeholics.com>',
+        from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
         to: client_email,
         subject: emailSubject,
         html: emailBody,
@@ -316,7 +316,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
 
     try {
       await mailTransport.sendMail({
-        from: '"TheLifeHolics" <no-reply@thelifeholics.com>',
+        from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
         to: client_email,
         subject: emailSubject,
         html: emailBody,
@@ -326,3 +326,105 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
     }
   }
 });
+
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+
+/**
+ * Scheduled function running every 15 minutes to send booking reminders.
+ */
+exports.sendSessionReminders = onSchedule("every 15 minutes", async (event) => {
+  logger.info("Executing scheduled session reminder check...");
+  
+  // 1. Fetch global settings
+  let reminderHours = 24;
+  let defaultMeetLink = "";
+  try {
+    const settingsDoc = await db.collection("settings").doc("global").get();
+    if (settingsDoc.exists) {
+      const settings = settingsDoc.data();
+      reminderHours = settings.reminder_hours_before || 24;
+      defaultMeetLink = settings.google_meet_link || "";
+    }
+  } catch (err) {
+    logger.error("Failed to fetch global settings for reminder:", err);
+  }
+
+  // 2. Fetch confirmed, upcoming bookings that haven't received reminders
+  const now = new Date();
+  try {
+    const bookingsSnap = await db.collection("bookings")
+      .where("status", "==", "confirmed")
+      .get();
+
+    logger.info(`Found ${bookingsSnap.size} confirmed bookings. Filtering for reminder eligibility...`);
+
+    for (const docSnap of bookingsSnap.docs) {
+      const booking = docSnap.data();
+      
+      // Skip if already sent or cancelled/completed
+      if (booking.reminder_sent) continue;
+
+      const startTime = new Date(booking.start_time);
+      const diffMs = startTime.getTime() - now.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+
+      // Check if session is in the future and within the notification window
+      if (diffHours > 0 && diffHours <= reminderHours) {
+        const bookingId = docSnap.id;
+        const { client_name, client_email, client_phone, service_title, meeting_link } = booking;
+        const meetLink = meeting_link || defaultMeetLink;
+
+        const dateStr = startTime.toLocaleDateString();
+        const timeStr = startTime.toLocaleTimeString();
+
+        logger.info(`Sending reminder for booking ${bookingId} to ${client_name} (${client_email})`);
+
+        // Send Email
+        const emailSubject = `Reminder: Somatic Session "${service_title}" (ID: ${bookingId})`;
+        const emailBody = `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+            <h2 style="color: #c5a880;">Session Reminder</h2>
+            <p>Hello ${client_name}, this is a friendly reminder that your upcoming session <strong>${service_title}</strong> is starting soon.</p>
+            <hr style="border: 0; border-top: 1px solid #eee;" />
+            <ul style="list-style: none; padding-left: 0; line-height: 1.8;">
+              <li><strong>Session ID:</strong> ${bookingId}</li>
+              <li><strong>Date:</strong> ${dateStr}</li>
+              <li><strong>Time:</strong> ${timeStr}</li>
+              ${meetLink ? `<li><strong>Join Meeting:</strong> <a href="${meetLink}" style="color: #c5a880; font-weight: bold;">${meetLink}</a></li>` : ""}
+            </ul>
+          </div>
+        `;
+
+        try {
+          await mailTransport.sendMail({
+            from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
+            to: client_email,
+            subject: emailSubject,
+            html: emailBody,
+          });
+        } catch (e) {
+          logger.error(`Failed to send reminder email for booking ${bookingId}:`, e);
+        }
+
+        // Send WhatsApp
+        if (client_phone) {
+          const reminderMsg = `Hello ${client_name}, this is a reminder for your session "${service_title}" on ${dateStr} at ${timeStr}.${meetLink ? ` Join link: ${meetLink}` : ""}`;
+          try {
+            await sendWhatsAppNotification(client_phone, reminderMsg);
+          } catch (e) {
+            logger.error(`Failed to send reminder WhatsApp for booking ${bookingId}:`, e);
+          }
+        }
+
+        // Mark as sent
+        await docSnap.ref.update({
+          reminder_sent: true,
+          reminder_sent_at: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+  } catch (err) {
+    logger.error("Error in sendSessionReminders cron execution:", err);
+  }
+});
+

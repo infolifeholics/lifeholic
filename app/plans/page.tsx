@@ -9,6 +9,7 @@ import { SiteHeader } from '@/components/site/site-header';
 import { SiteFooter } from '@/components/site/site-footer';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { currencyForTimezone, detectTimezone, formatPrice } from '@/lib/format';
 
 type SurveyData = {
   category: string;
@@ -21,6 +22,8 @@ export default function SomaticPlansPage() {
   const router = useRouter();
   const [survey, setSurvey] = useState<SurveyData | null>(null);
   const [billingCycle, setBillingCycle] = useState<'day' | 'total'>('total');
+  const [tz, setTz] = useState(detectTimezone());
+  const currency = currencyForTimezone(tz);
   const [planServices, setPlanServices] = useState<{
     essential: any;
     premium: any;
@@ -133,9 +136,10 @@ export default function SomaticPlansPage() {
     }
   };
 
-  const handleSelectPlan = (planKey: 'essential' | 'premium' | 'elite', defaultPrice: number) => {
+  const handleSelectPlan = (planKey: 'essential' | 'premium' | 'elite', defaultPriceInr: number) => {
     const s = planServices ? planServices[planKey] : null;
-    const finalPrice = s?.price_inr || defaultPrice;
+    const finalPriceInr = s?.price_inr || defaultPriceInr;
+    const finalPrice = currency === 'USD' ? Math.round(finalPriceInr / 80) : finalPriceInr;
     const finalTitle = s?.title || (planKey === 'essential' ? 'Plan A · Essential' : planKey === 'elite' ? 'Plan C · Elite' : 'Plan B · Premium');
     const finalId = s?.id || `somatic_${planKey}`;
 
@@ -160,10 +164,16 @@ export default function SomaticPlansPage() {
   }
 
   // Fallback prices & details if not yet fetched/edited
-  const prices = {
+  const rawPrices = {
     essential: planServices?.essential?.price_inr || 4444,
     premium: planServices?.premium?.price_inr || 11000,
     elite: planServices?.elite?.price_inr || 21000,
+  };
+
+  const prices = {
+    essential: currency === 'USD' ? Math.round(rawPrices.essential / 80) : rawPrices.essential,
+    premium: currency === 'USD' ? Math.round(rawPrices.premium / 80) : rawPrices.premium,
+    elite: currency === 'USD' ? Math.round(rawPrices.elite / 80) : rawPrices.elite,
   };
 
   const formatPlanPrice = (priceVal: number) => {
@@ -293,8 +303,8 @@ export default function SomaticPlansPage() {
                 </div>
 
                 <div className="mt-6">
-                  <span className="font-display text-4xl font-semibold text-foreground">
-                    ₹{formatPlanPrice(prices.essential).toLocaleString('en-IN')}
+                  <span className="font-display text-4xl font-semibold text-gold">
+                    {formatPrice(formatPlanPrice(prices.essential), currency)}
                   </span>
                   <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : '30 days'}</span>
                 </div>
@@ -352,8 +362,8 @@ export default function SomaticPlansPage() {
                 </div>
 
                 <div className="mt-6">
-                  <span className="font-display text-4xl font-semibold text-foreground">
-                    ₹{formatPlanPrice(prices.premium).toLocaleString('en-IN')}
+                  <span className="font-display text-4xl font-semibold text-gold">
+                    {formatPrice(formatPlanPrice(prices.premium), currency)}
                   </span>
                   <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : '30 days'}</span>
                 </div>
@@ -408,8 +418,8 @@ export default function SomaticPlansPage() {
                 </div>
 
                 <div className="mt-6">
-                  <span className="font-display text-4xl font-semibold text-foreground">
-                    ₹{formatPlanPrice(prices.elite).toLocaleString('en-IN')}
+                  <span className="font-display text-4xl font-semibold text-gold">
+                    {formatPrice(formatPlanPrice(prices.elite), currency)}
                   </span>
                   <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : '30 days'}</span>
                 </div>
