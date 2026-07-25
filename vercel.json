@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/bookings/remind-cron",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
