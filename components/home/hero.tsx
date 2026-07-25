@@ -202,6 +202,24 @@ export function HomeHero() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingServiceSlug, setPendingServiceSlug] = useState<string | null>(null);
 
+  const handleSubmitAnalysis = () => {
+    const problemsList: string[] = [];
+    Object.values(selectedOptions).forEach((opts) => {
+      problemsList.push(...opts);
+    });
+
+    const surveyData = {
+      category: activeCategory,
+      subcategory: activeSub,
+      problems: problemsList,
+      selectedOptions
+    };
+
+    localStorage.setItem('somatic_plans_selection', JSON.stringify(surveyData));
+    setIsOpen(false);
+    router.push('/plans');
+  };
+
   const [images, setImages] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -254,7 +272,7 @@ export function HomeHero() {
     recRules.forEach((rule) => {
       const matchCat = !rule.category || rule.category.toLowerCase() === activeCategory?.toLowerCase();
       const matchSub = !rule.subcategory || rule.subcategory.toLowerCase() === activeSub?.toLowerCase();
-      
+
       // If problems match
       let matchProb = true;
       if (rule.problems && rule.problems.length > 0) {
@@ -347,7 +365,7 @@ export function HomeHero() {
           });
           const category = CATEGORIES[activeCategory].label;
           const subcategory = activeSub || '';
-          
+
           const recSlugs = getRecommendedServicesSlugs();
           const firstRecService = dbServices.find((s) => recSlugs.includes(s.slug)) || dbServices[0];
           const recommendedService = firstRecService ? firstRecService.title : 'Clarity Session';
@@ -360,7 +378,7 @@ export function HomeHero() {
             recommended_service: recommendedService,
             timestamp: new Date().toISOString(),
           };
-          
+
           const filtered = localVisits.filter((v: any) => !(v.category === category && v.subcategory === subcategory));
           localStorage.setItem('recent_visits_extended', JSON.stringify([newVisit, ...filtered].slice(0, 10)));
 
@@ -604,7 +622,8 @@ export function HomeHero() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1.1, delay: 0.2, ease: EASE }}
             className={cn(
-              "relative aspect-[4/5] rounded-[2rem] shadow-float",
+              "relative aspect-[4/5] rounded-[2rem] shadow-float transition-all duration-300",
+              isOpen ? "z-[99]" : "z-10",
               hasImages
                 ? "border border-border/60 bg-card"
                 : "border border-white/10 bg-black/30 backdrop-blur-md"
@@ -651,7 +670,7 @@ export function HomeHero() {
               </motion.div>
 
               {/* 2. Premium Interactive Search Bar (Middle) */}
-              <div ref={dropdownRef} className="relative w-full z-20">
+              <div ref={dropdownRef} className={cn("relative w-full transition-all duration-300", isOpen ? "z-[100]" : "z-20")}>
                 {/* Outer Search Bar Wrapper */}
                 <div
                   onClick={() => setIsOpen(!isOpen)}
@@ -696,7 +715,7 @@ export function HomeHero() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 8 }}
                       transition={{ duration: 0.15, ease: 'easeOut' }}
-                      className="absolute z-50 left-0 right-0 mt-3 rounded-2xl border border-border/80 bg-card/95 backdrop-blur-xl shadow-glow overflow-hidden h-[420px] sm:h-[480px] flex flex-col"
+                      className="absolute z-[100] left-0 right-0 mt-3 rounded-2xl border border-border/80 bg-card/95 backdrop-blur-xl shadow-glow overflow-hidden h-[410px] sm:h-[430px] flex flex-col"
                     >
                       {/* Header */}
                       <div className="flex items-center justify-between border-b border-border/60 px-5 py-4 bg-muted/40 shrink-0">
@@ -894,12 +913,22 @@ export function HomeHero() {
                         <span className="text-xs text-muted-foreground">
                           {totalSelectedCount > 0 ? `${totalSelectedCount} items selected total` : 'Choose areas to get guidance'}
                         </span>
-                        <button
-                          onClick={() => setIsOpen(false)}
-                          className="rounded-lg bg-gold px-4 py-2 text-xs font-semibold text-gold-foreground shadow-sm hover:bg-gold-hover transition-colors"
-                        >
-                          Done
-                        </button>
+                        {step === 'checklist' ? (
+                          <button
+                            onClick={handleSubmitAnalysis}
+                            disabled={totalSelectedCount === 0}
+                            className="rounded-lg bg-gold px-4 py-2 text-xs font-semibold text-gold-foreground shadow-sm hover:bg-gold-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            Submit &amp; Analysis
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setIsOpen(false)}
+                            className="rounded-lg bg-gold px-4 py-2 text-xs font-semibold text-gold-foreground shadow-sm hover:bg-gold-hover transition-colors"
+                          >
+                            Done
+                          </button>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -934,163 +963,32 @@ export function HomeHero() {
             </div>
           </motion.div>
         </div>
+        <div className="mt-20">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: EASE }}
+            className="rounded-3xl border border-border bg-card/60 backdrop-blur-md p-8 sm:p-12 text-center max-w-4xl mx-auto shadow-float relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 h-40 w-40 bg-gold/5 blur-[80px] rounded-full pointer-events-none" />
+            <div className="absolute bottom-0 left-0 h-40 w-40 bg-primary/5 blur-[80px] rounded-full pointer-events-none" />
+            <span className="text-xs font-semibold uppercase tracking-widest text-gold">Lifeholics Tribe</span>
+            <h3 className="mt-2 font-display text-3xl text-foreground font-medium">Join the Lifeholics Community</h3>
+            <p className="mt-4 text-sm sm:text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
+              A sanctuary for conscious souls. Connect with over 5,000+ members on a shared journey of healing, self-discovery, and spiritual growth. Get access to weekly journals, live circles, and guided meditations.
+            </p>
+            <div className="mt-8 flex justify-center gap-4 flex-wrap">
 
-        {/* Recommendations Section */}
-        <AnimatePresence>
-          {totalSelectedCount > 0 && activeCategory && (
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.8, ease: EASE }}
-              className="mt-24 pt-20 border-t border-border/60"
-            >
-              {/* Summary Card */}
-              <div className="max-w-4xl mx-auto">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="rounded-3xl border border-gold/30 bg-card p-6 sm:p-10 shadow-glow relative overflow-hidden mb-12"
-                >
-                  <div className="absolute top-0 right-0 h-40 w-40 bg-gold/5 blur-[85px] rounded-full pointer-events-none" />
-                  
-                  <div className="flex items-center gap-2 mb-6">
-                    <Sparkles className="h-5 w-5 text-gold animate-pulse" />
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Your Selection Summary</span>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-8 items-start">
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Selected Main Category</p>
-                        <p className="text-base font-medium text-foreground mt-0.5 capitalize">{CATEGORIES[activeCategory].label}</p>
-                      </div>
-                      
-                      {activeSub && (
-                        <div>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Selected Area</p>
-                          <p className="text-base font-medium text-foreground mt-0.5">{activeSub}</p>
-                        </div>
-                      )}
-
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-                          Challenges ({totalSelectedCount} issue{totalSelectedCount !== 1 && 's'} selected)
-                        </p>
-                        <ul className="mt-1.5 space-y-1 text-sm text-foreground/80">
-                          {Object.entries(selectedOptions).map(([subKey, items]) => 
-                            items.map((item) => (
-                              <li key={item} className="flex items-start gap-2">
-                                <span className="text-gold mt-1">•</span>
-                                <span>{item}</span>
-                              </li>
-                            ))
-                          )}
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl bg-muted/40 p-6 border border-border/40">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gold mb-2">AI-Style Healing Insight</p>
-                      <p className="text-sm text-muted-foreground leading-relaxed italic">
-                        &ldquo;{getSummaryText()}&rdquo;
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Service recommendations title */}
-                <div className="text-center max-w-2xl mx-auto mb-10">
-                  <span className="text-xs font-semibold uppercase tracking-widest text-gold">Tailored Healing Options</span>
-                  <h3 className="mt-2 font-display text-3xl text-foreground font-medium">Recommended Pathways</h3>
-                  <p className="mt-3 text-muted-foreground text-sm leading-relaxed">
-                    Based on the concern areas you identified, we recommend beginning with the following sessions, ordered from foundational to deep work.
-                  </p>
-                </div>
-
-                {/* Service Cards Grid */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {dbServices
-                    .filter((s) => s.active !== false && getRecommendedServicesSlugs().includes(s.slug))
-                    .map((s) => (
-                      <div
-                        key={s.id}
-                        className={cn(
-                          "rounded-3xl border bg-card p-6 flex flex-col justify-between hover:border-gold/30 hover:shadow-soft transition-all duration-300 relative",
-                          s.featured ? "border-gold/50 shadow-soft" : "border-border"
-                        )}
-                      >
-                        {s.featured && (
-                          <div className="absolute top-0 right-6 -translate-y-1/2 bg-gold text-gold-foreground text-[8px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-soft">
-                            Featured
-                          </div>
-                        )}
-                        <div>
-                          <div className="flex justify-between items-start">
-                            <span className="rounded-full bg-gold/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold">
-                              {s.duration_minutes} Mins
-                            </span>
-                            <span className="text-xs text-muted-foreground">{s.category}</span>
-                          </div>
-                          <h4 className="mt-4 font-display text-xl font-medium text-foreground">{s.title}</h4>
-                          <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
-                            {s.short}
-                          </p>
-                        </div>
-                        <div className="mt-8 pt-4 border-t border-border/40 flex items-center justify-between">
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Price</p>
-                            <span className="font-semibold text-foreground text-lg">
-                              {formatPrice(s.price_inr, 'INR')}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => handleBookNow(s.slug)}
-                            className="rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
-                          >
-                            Book Now
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-
-              {/* Lifeholics Community Section */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, ease: EASE }}
-                className="mt-20 rounded-3xl border border-border bg-card/60 backdrop-blur-md p-8 sm:p-12 text-center max-w-4xl mx-auto shadow-float relative overflow-hidden"
+              <Link
+                href="/blog"
+                className="rounded-full border border-border px-7 py-3.5 text-sm font-semibold text-foreground hover:bg-muted/50 transition-colors"
               >
-                <div className="absolute top-0 right-0 h-40 w-40 bg-gold/5 blur-[80px] rounded-full pointer-events-none" />
-                <div className="absolute bottom-0 left-0 h-40 w-40 bg-primary/5 blur-[80px] rounded-full pointer-events-none" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-gold">Lifeholics Tribe</span>
-                <h3 className="mt-2 font-display text-3xl text-foreground font-medium">Join the Lifeholics Community</h3>
-                <p className="mt-4 text-sm sm:text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
-                  A sanctuary for conscious souls. Connect with over 5,000+ members on a shared journey of healing, self-discovery, and spiritual growth. Get access to weekly journals, live circles, and guided meditations.
-                </p>
-                <div className="mt-8 flex justify-center gap-4 flex-wrap">
-                  <a
-                    href="https://chat.whatsapp.com/mock-community"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full bg-gold px-7 py-3.5 text-sm font-semibold text-gold-foreground hover:bg-gold-hover transition-colors shadow-soft"
-                  >
-                    Join our WhatsApp Group
-                  </a>
-                  <Link
-                    href="/blog"
-                    className="rounded-full border border-border px-7 py-3.5 text-sm font-semibold text-foreground hover:bg-muted/50 transition-colors"
-                  >
-                    Read the Journal
-                  </Link>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                Read the Journal
+              </Link>
+            </div>
+          </motion.div>
+        </div>
       </div>
 
       {/* scroll cue */}

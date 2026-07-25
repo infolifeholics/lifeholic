@@ -22,11 +22,22 @@ export async function POST(req: Request) {
       subcategory,
       problems,
       summary,
+      is_somatic_plan,
+      somatic_plan_name,
     } = body || {};
 
-    if (!service_id || !client_name || !client_email || !start_time || !end_time || !mode) {
-      return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
+    const isSomatic = is_somatic_plan === true;
+
+    if (isSomatic) {
+      if (!somatic_plan_name || !client_name || !client_email || !start_time || !end_time || !mode) {
+        return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
+      }
+    } else {
+      if (!service_id || !client_name || !client_email || !start_time || !end_time || !mode) {
+        return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
+      }
     }
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client_email)) {
       return NextResponse.json({ error: 'Valid email is required.' }, { status: 400 });
     }
@@ -34,12 +45,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid mode.' }, { status: 400 });
     }
 
-    // Verify the service exists
-    const serviceDoc = await getDoc(doc(db, 'services', service_id));
-    if (!serviceDoc.exists()) {
-      return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
+    let service: any;
+    if (isSomatic) {
+      // Setup dynamic virtual service for somatic plan
+      let duration = 60;
+      if (somatic_plan_name.toLowerCase().includes('essential')) duration = 30;
+      if (somatic_plan_name.toLowerCase().includes('elite')) duration = 90;
+      
+      service = {
+        title: somatic_plan_name,
+        duration_minutes: duration,
+        mode: 'both',
+      };
+    } else {
+      // Verify the service exists
+      const serviceDoc = await getDoc(doc(db, 'services', service_id));
+      if (!serviceDoc.exists()) {
+        return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
+      }
+      service = serviceDoc.data();
     }
-    const service = serviceDoc.data();
 
     const start = new Date(start_time);
     const end = new Date(end_time);
@@ -50,7 +75,7 @@ export async function POST(req: Request) {
     if (Math.abs(expectedDuration - service.duration_minutes) > 1) {
       return NextResponse.json({ error: 'Session duration mismatch.' }, { status: 400 });
     }
-    if ((service.mode === 'online' && mode === 'offline') || (service.mode === 'offline' && mode === 'online')) {
+    if (!isSomatic && ((service.mode === 'online' && mode === 'offline') || (service.mode === 'offline' && mode === 'online'))) {
       return NextResponse.json({ error: 'Mode not available for this service.' }, { status: 400 });
     }
 
@@ -171,9 +196,11 @@ export async function POST(req: Request) {
     const initialStatus = body.status || 'pending';
     const initialPaymentStatus = body.payment_status || 'unpaid';
 
-    const insert = {
-      service_id,
+    const insert: any = {
+      service_id: isSomatic ? `somatic_${somatic_plan_name.toLowerCase().replace(/\s+/g, '_')}` : service_id,
       service_title: service.title || 'Therapy Session',
+      is_somatic_plan: isSomatic,
+      somatic_plan_name: isSomatic ? somatic_plan_name : null,
       user_id: user_id || null,
       client_name,
       client_email,

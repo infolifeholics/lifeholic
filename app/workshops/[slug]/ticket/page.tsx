@@ -7,7 +7,11 @@ import { Loader2, Ticket, Printer, Download, Mail, Calendar, Clock, MapPin, User
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
-export default function TicketPage({ params }: { params: { slug: string } }) {
+import { useParams } from 'next/navigation';
+
+export default function TicketPage() {
+  const unwrappedParams = useParams();
+  const slug = unwrappedParams?.slug as string;
   const [reg, setReg] = useState<any>(null);
   const [ws, setWs] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -15,7 +19,7 @@ export default function TicketPage({ params }: { params: { slug: string } }) {
   useEffect(() => {
     const fetchTicket = async () => {
       try {
-        const q = query(collection(db, 'workshopRegistrations'), where('id', '==', params.slug));
+        const q = query(collection(db, 'workshopRegistrations'), where('id', '==', slug));
         const snap = await getDocs(q);
         if (!snap.empty) {
           const data = snap.docs[0].data();
@@ -34,7 +38,7 @@ export default function TicketPage({ params }: { params: { slug: string } }) {
       }
     };
     fetchTicket();
-  }, [params.slug]);
+  }, [slug]);
 
   const handlePrint = () => {
     window.print();

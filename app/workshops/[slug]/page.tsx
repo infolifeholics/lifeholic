@@ -17,7 +17,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export default function WorkshopDetailsPage({ params }: { params: { slug: string } }) {
+import { useParams } from 'next/navigation';
+
+export default function WorkshopDetailsPage() {
+  const unwrappedParams = useParams();
+  const slug = unwrappedParams?.slug as string;
   const { user } = useAuth();
   const [ws, setWs] = useState<Workshop | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,7 +45,7 @@ export default function WorkshopDetailsPage({ params }: { params: { slug: string
 
   useEffect(() => {
     // Real-time listener for seats sync
-    const q = query(collection(db, 'workshops'), where('slug', '==', params.slug));
+    const q = query(collection(db, 'workshops'), where('slug', '==', slug));
     const unsub = onSnapshot(q, (snap) => {
       if (!snap.empty) {
         const docData = { id: snap.docs[0].id, ...snap.docs[0].data() } as Workshop;
@@ -93,7 +97,7 @@ export default function WorkshopDetailsPage({ params }: { params: { slug: string
       setLoading(false);
     });
     return () => unsub();
-  }, [params.slug]);
+  }, [slug]);
 
   useEffect(() => {
     if (user) {

@@ -129,11 +129,46 @@ const DEFAULT_CERTIFICATE_SETTINGS: CertificateSettings = {
   logo_y: 800
 };
 
+export type SomaticPlanSettings = {
+  essential_title: string;
+  essential_price_inr: number;
+  essential_short: string;
+  essential_benefits: string;
+  
+  premium_title: string;
+  premium_price_inr: number;
+  premium_short: string;
+  premium_benefits: string;
+  
+  elite_title: string;
+  elite_price_inr: number;
+  elite_short: string;
+  elite_benefits: string;
+};
+
+const DEFAULT_SOMATIC_PLAN_SETTINGS: SomaticPlanSettings = {
+  essential_title: 'Plan A · Essential',
+  essential_price_inr: 4444,
+  essential_short: 'Great for tight budgets with solid healing basics.',
+  essential_benefits: "1 targeted somatic clarity session (30m)\nCustomized diagnostic profiling\nActionable home practices guide\nEmail-only support channel",
+  
+  premium_title: 'Plan B · Premium',
+  premium_price_inr: 11000,
+  premium_short: 'Our most popular plan with comprehensive somatic care.',
+  premium_benefits: "4 private somatic therapy sessions (60m)\nCustom daily somatic practices outline\nDirect WhatsApp guidance support\nWeekly progress check-in chats\nFree access to mindfulness archives",
+  
+  elite_title: 'Plan C · Elite',
+  elite_price_inr: 21000,
+  elite_short: 'Top-tier deep customization for ancestral healing.',
+  elite_benefits: "8 deep ancestral lineage release sessions\nCustomized lineage release mapping chart\n24/7 dedicated text/call support line\nBi-weekly virtual progress reviews\nGuaranteed instant priority calendar booking"
+};
+
 export function AdminSettingsPanel() {
-  const [activeTab, setActiveTab] = useState<'global' | 'certificate'>('global');
+  const [activeTab, setActiveTab] = useState<'global' | 'certificate' | 'somatic'>('global');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [somaticSettings, setSomaticSettings] = useState<SomaticPlanSettings>(DEFAULT_SOMATIC_PLAN_SETTINGS);
 
   // Form states
   const [globalSettings, setGlobalSettings] = useState<AdminSettings>({
@@ -171,6 +206,29 @@ export function AdminSettingsPanel() {
       if (certSnap.exists()) {
         setCertSettings({ ...DEFAULT_CERTIFICATE_SETTINGS, ...certSnap.data() } as CertificateSettings);
       }
+
+      // Somatic Plans
+      const somaticDocRef = doc(db, 'settings', 'somatic_plans');
+      const somaticSnap = await getDoc(somaticDocRef);
+      if (somaticSnap.exists()) {
+        const data = somaticSnap.data();
+        setSomaticSettings({
+          essential_title: data.essential_title || DEFAULT_SOMATIC_PLAN_SETTINGS.essential_title,
+          essential_price_inr: data.essential_price_inr ?? DEFAULT_SOMATIC_PLAN_SETTINGS.essential_price_inr,
+          essential_short: data.essential_short || DEFAULT_SOMATIC_PLAN_SETTINGS.essential_short,
+          essential_benefits: Array.isArray(data.essential_benefits) ? data.essential_benefits.join('\n') : (data.essential_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.essential_benefits),
+          
+          premium_title: data.premium_title || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_title,
+          premium_price_inr: data.premium_price_inr ?? DEFAULT_SOMATIC_PLAN_SETTINGS.premium_price_inr,
+          premium_short: data.premium_short || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_short,
+          premium_benefits: Array.isArray(data.premium_benefits) ? data.premium_benefits.join('\n') : (data.premium_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_benefits),
+          
+          elite_title: data.elite_title || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_title,
+          elite_price_inr: data.elite_price_inr ?? DEFAULT_SOMATIC_PLAN_SETTINGS.elite_price_inr,
+          elite_short: data.elite_short || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_short,
+          elite_benefits: Array.isArray(data.elite_benefits) ? data.elite_benefits.join('\n') : (data.elite_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_benefits),
+        });
+      }
     } catch (e: any) {
       console.error(e);
     } finally {
@@ -204,6 +262,36 @@ export function AdminSettingsPanel() {
       toast.success('Certificate settings saved successfully!', { id: toastId });
     } catch (err: any) {
       toast.error('Failed to save certificate configurations: ' + err.message, { id: toastId });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveSomaticSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    const toastId = toast.loading('Saving Somatic plans...');
+    try {
+      const finalObj = {
+        essential_title: somaticSettings.essential_title,
+        essential_price_inr: Number(somaticSettings.essential_price_inr || 0),
+        essential_short: somaticSettings.essential_short,
+        essential_benefits: somaticSettings.essential_benefits.split('\n').map(b => b.trim()).filter(Boolean),
+        
+        premium_title: somaticSettings.premium_title,
+        premium_price_inr: Number(somaticSettings.premium_price_inr || 0),
+        premium_short: somaticSettings.premium_short,
+        premium_benefits: somaticSettings.premium_benefits.split('\n').map(b => b.trim()).filter(Boolean),
+        
+        elite_title: somaticSettings.elite_title,
+        elite_price_inr: Number(somaticSettings.elite_price_inr || 0),
+        elite_short: somaticSettings.elite_short,
+        elite_benefits: somaticSettings.elite_benefits.split('\n').map(b => b.trim()).filter(Boolean),
+      };
+      await setDoc(doc(db, 'settings', 'somatic_plans'), finalObj, { merge: true });
+      toast.success('Somatic plans settings saved successfully!', { id: toastId });
+    } catch (err: any) {
+      toast.error('Failed to save plans: ' + err.message, { id: toastId });
     } finally {
       setSaving(false);
     }
@@ -280,6 +368,15 @@ export function AdminSettingsPanel() {
           )}
         >
           Certificate Configurator
+        </button>
+        <button
+          onClick={() => setActiveTab('somatic')}
+          className={cn(
+            'pb-2 px-1 text-sm font-semibold tracking-wide border-b-2 transition-all',
+            activeTab === 'somatic' ? 'border-gold text-foreground' : 'border-transparent text-muted-foreground'
+          )}
+        >
+          Somatic Plans Editor
         </button>
       </div>
 
@@ -460,7 +557,7 @@ export function AdminSettingsPanel() {
             </div>
           </div>
         </form>
-      ) : (
+      ) : activeTab === 'certificate' ? (
         <div className="grid gap-6 lg:grid-cols-12 text-left">
           {/* Certificate Editor Panels */}
           <div className="lg:col-span-7 space-y-6">
@@ -850,6 +947,144 @@ export function AdminSettingsPanel() {
             </div>
           </div>
         </div>
+      ) : (
+        <form onSubmit={handleSaveSomaticSettings} className="rounded-3xl border border-border bg-card p-6 space-y-6 text-left shadow-soft">
+          <div className="flex justify-between items-center pb-3 border-b border-border/40">
+            <div>
+              <h3 className="font-display text-lg font-medium text-foreground">Somatic Plans Configurator</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Edit titles, prices, descriptions, and feature checklists for Somatic Search Plans.</p>
+            </div>
+            <Button type="submit" disabled={saving} className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground gap-1.5 px-6">
+              <Save className="h-4 w-4" /> Save Somatic Plans
+            </Button>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* PLAN A */}
+            <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
+              <h4 className="font-semibold text-sm text-foreground border-b border-border/20 pb-2">Plan A (Essential)</h4>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Title</Label>
+                  <Input
+                    value={somaticSettings.essential_title}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, essential_title: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Price (INR)</Label>
+                  <Input
+                    type="number"
+                    value={somaticSettings.essential_price_inr}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, essential_price_inr: parseInt(e.target.value) || 0 })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Short Description</Label>
+                  <Input
+                    value={somaticSettings.essential_short}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, essential_short: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Plan Features (One per line)</Label>
+                  <textarea
+                    value={somaticSettings.essential_benefits}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, essential_benefits: e.target.value })}
+                    rows={6}
+                    className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* PLAN B */}
+            <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
+              <h4 className="font-semibold text-sm text-foreground border-b border-border/20 pb-2">Plan B (Premium)</h4>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Title</Label>
+                  <Input
+                    value={somaticSettings.premium_title}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, premium_title: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Price (INR)</Label>
+                  <Input
+                    type="number"
+                    value={somaticSettings.premium_price_inr}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, premium_price_inr: parseInt(e.target.value) || 0 })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Short Description</Label>
+                  <Input
+                    value={somaticSettings.premium_short}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, premium_short: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Plan Features (One per line)</Label>
+                  <textarea
+                    value={somaticSettings.premium_benefits}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, premium_benefits: e.target.value })}
+                    rows={6}
+                    className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* PLAN C */}
+            <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
+              <h4 className="font-semibold text-sm text-foreground border-b border-border/20 pb-2">Plan C (Elite)</h4>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">Title</Label>
+                  <Input
+                    value={somaticSettings.elite_title}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_title: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Price (INR)</Label>
+                  <Input
+                    type="number"
+                    value={somaticSettings.elite_price_inr}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_price_inr: parseInt(e.target.value) || 0 })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Short Description</Label>
+                  <Input
+                    value={somaticSettings.elite_short}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_short: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Plan Features (One per line)</Label>
+                  <textarea
+                    value={somaticSettings.elite_benefits}
+                    onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_benefits: e.target.value })}
+                    rows={6}
+                    className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+                  />
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </form>
       )}
     </div>
   );

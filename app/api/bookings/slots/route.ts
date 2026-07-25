@@ -26,11 +26,19 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'service_id and date are required.' }, { status: 400 });
     }
 
-    const serviceDoc = await getDoc(doc(db, 'services', serviceId));
-    if (!serviceDoc.exists()) return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
-    const service = serviceDoc.data();
+    let duration = 60;
+    let serviceMode = 'both';
 
-    const duration = service.duration_minutes || 60;
+    if (serviceId.startsWith('somatic_')) {
+      if (serviceId.includes('essential')) duration = 30;
+      if (serviceId.includes('elite')) duration = 90;
+    } else {
+      const serviceDoc = await getDoc(doc(db, 'services', serviceId));
+      if (!serviceDoc.exists()) return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
+      const service = serviceDoc.data();
+      duration = service.duration_minutes || 60;
+      serviceMode = service.mode || 'both';
+    }
 
     const availSnap = await getDocs(collection(db, 'availability'));
     const availability = availSnap.docs.map((d) => d.data());
@@ -89,8 +97,8 @@ export async function GET(req: Request) {
     }));
 
     const now = Date.now();
-    const allowOffline = service.mode === 'offline' || service.mode === 'both';
-    const allowOnline = service.mode === 'online' || service.mode === 'both';
+    const allowOffline = serviceMode === 'offline' || serviceMode === 'both';
+    const allowOnline = serviceMode === 'online' || serviceMode === 'both';
 
     const slots = candidateStartsUTC
       .filter((start) => {

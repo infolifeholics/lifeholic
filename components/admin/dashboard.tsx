@@ -33,6 +33,8 @@ type BookingRow = {
   subcategory?: string | null;
   problems?: string[] | null;
   summary?: string | null;
+  is_somatic_plan?: boolean | null;
+  somatic_plan_name?: string | null;
   created_at?: string;
   internal_notes?: string | null;
   status_timeline?: Array<{ status: string; timestamp: string; note: string }>;
@@ -47,6 +49,7 @@ export function AdminDashboard() {
   const [stats, setStats] = useState({ revenue: 0, confirmed: 0, pending: 0, clients: 0 });
   const [selectedBooking, setSelectedBooking] = useState<BookingRow | null>(null);
   const [activeTab, setActiveTab] = useState<'table' | 'calendar'>('table');
+  const [somaticFilter, setSomaticFilter] = useState<'all' | 'normal' | 'somatic'>('all');
 
   // Edit fields
   const [editDate, setEditDate] = useState('');
@@ -334,6 +337,37 @@ export function AdminDashboard() {
               Calendar View
             </button>
           </div>
+
+          {/* Somatic / General Filter */}
+          <div className="flex bg-muted/60 p-1 rounded-full border border-border/40 inline-flex items-center gap-1">
+            <button
+              onClick={() => setSomaticFilter('all')}
+              className={cn(
+                "rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all",
+                somaticFilter === 'all' ? "bg-gold text-gold-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setSomaticFilter('normal')}
+              className={cn(
+                "rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all",
+                somaticFilter === 'normal' ? "bg-gold text-gold-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              General
+            </button>
+            <button
+              onClick={() => setSomaticFilter('somatic')}
+              className={cn(
+                "rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all",
+                somaticFilter === 'somatic' ? "bg-gold text-gold-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Somatic Special
+            </button>
+          </div>
         </div>
 
         {activeTab === 'calendar' ? (
@@ -359,7 +393,15 @@ export function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {bookings.map((b) => (
+                {bookings
+                  .filter((b) =>
+                    somaticFilter === 'all'
+                      ? true
+                      : somaticFilter === 'somatic'
+                      ? b.is_somatic_plan === true
+                      : b.is_somatic_plan !== true
+                  )
+                  .map((b) => (
                   <tr key={b.id} className="border-b border-border/40 hover:bg-muted/10 transition-colors">
                     <td className="py-4 pr-4">
                       <p className="font-medium text-foreground">{b.client_name}</p>
@@ -367,7 +409,14 @@ export function AdminDashboard() {
                       {b.whatsapp && <p className="text-[10px] text-emerald-400 mt-0.5 font-mono">WhatsApp: {b.whatsapp}</p>}
                     </td>
                     <td className="py-4 pr-4">
-                      <p className="text-foreground font-medium">{b.service_title || 'Therapy Session'}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-foreground font-medium">{b.service_title || 'Therapy Session'}</p>
+                        {b.is_somatic_plan && (
+                          <span className="inline-flex bg-gold/10 text-gold border border-gold/20 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                            Somatic Plan
+                          </span>
+                        )}
+                      </div>
                       {b.subcategory && <p className="text-xs text-muted-foreground">{b.category} &gt; {b.subcategory}</p>}
                     </td>
                     <td className="py-4 pr-4 text-muted-foreground">
