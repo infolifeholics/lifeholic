@@ -322,3 +322,96 @@ export async function triggerBookingNotification(
     }
   }
 }
+
+/**
+ * Sends notifications for shop order placement.
+ */
+export async function triggerOrderNotification(orderId: string, orderData: any) {
+  const {
+    number: orderNumber,
+    email,
+    full_name,
+    phone,
+    items,
+    total,
+    currency,
+    user_id,
+  } = orderData;
+
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'info.lifeholics@gmail.com';
+  console.log(`[Notifications] Triggering order notification for Order Number: ${orderNumber}`);
+
+  // Add Dashboard Notification
+  if (user_id) {
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        user_id,
+        type: 'order_created',
+        title: 'Order Confirmed',
+        message: `Your order ${orderNumber} for ${items.length} item(s) has been placed successfully.`,
+        read: false,
+        created_at: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error('[Notifications] Failed to add order notification to Firestore:', err);
+    }
+  }
+
+  // Construct Email HTML
+  const emailSubject = `Order Confirmation (ID: ${orderNumber})`;
+  const emailBody = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+      <h2 style="color: #c5a880; margin-bottom: 20px;">Lifeholics Order Confirmation</h2>
+      <p>Hello ${full_name || 'Customer'}, thank you for your order!</p>
+      <p>We are processing your order <strong>${orderNumber}</strong>. Here are the details:</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+      <h3 style="color: #333; margin-bottom: 10px;">Order Items</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+          <tr style="border-bottom: 2px solid #eee; font-weight: bold; color: #555;">
+            <th style="text-align: left; padding: 8px;">Item</th>
+            <th style="text-align: center; padding: 8px;">Qty</th>
+            <th style="text-align: right; padding: 8px;">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map((item: any) => `
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 8px;">${item.title || 'Product'}</td>
+              <td style="text-align: center; padding: 8px;">${item.quantity || 1}</td>
+              <td style="text-align: right; padding: 8px;">${item.price} ${currency}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top: 15px; text-align: right; font-weight: bold; font-size: 16px; color: #333;">
+        Total: ${total} ${currency}
+      </div>
+    </div>
+  `;
+
+  try {
+    await sendEmailNotification({
+      to: email,
+      subject: emailSubject,
+      html: emailBody,
+    });
+    await sendEmailNotification({
+      to: adminEmail,
+      subject: `[ADMIN] ${emailSubject}`,
+      html: emailBody,
+    });
+  } catch (e) {
+    console.error('[Notifications] Failed to send order emails:', e);
+  }
+
+  // Send WhatsApp Notification
+  if (phone) {
+    const userMsg = `Hello ${full_name || 'Customer'}, thank you for shopping with Lifeholics! Your order ${orderNumber} is confirmed. Total: ${total} ${currency}.`;
+    await sendWhatsAppNotification(phone, userMsg, {
+      name: 'order_confirmed',
+      params: [orderNumber, full_name || 'Customer', total, currency],
+    });
+  }
+}
+

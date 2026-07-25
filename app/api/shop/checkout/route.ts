@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, query, where, getDocs, setDoc } from 'firebase/firestore';
+import { triggerOrderNotification } from '@/lib/notifications';
 
 function orderNumber() {
   const t = Date.now().toString(36).toUpperCase();
@@ -42,6 +43,13 @@ export async function POST(req: Request) {
     };
 
     const docRef = await addDoc(collection(db, 'orders'), orderData);
+
+    // Trigger notification
+    try {
+      await triggerOrderNotification(docRef.id, orderData);
+    } catch (err) {
+      console.error('Failed to trigger order notification:', err);
+    }
 
     // Increment coupon usage if a code was used
     if (coupon_code) {
