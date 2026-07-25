@@ -5,6 +5,14 @@ import { sendEmailNotification, sendWhatsAppNotification } from '@/lib/notificat
 
 export async function GET(req: Request) {
   try {
+    // Secure the cron endpoint in production
+    const authHeader = req.headers.get('authorization');
+    if (process.env.NODE_ENV === 'production' && process.env.CRON_SECRET) {
+      if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+    }
+
     // 1. Fetch global settings
     let reminderHours = 24;
     let defaultMeetLink = '';
