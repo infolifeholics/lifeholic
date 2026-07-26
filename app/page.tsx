@@ -12,6 +12,8 @@ import { NewsletterBlock } from '@/components/site/newsletter-block';
 import { HomeCTA } from '@/components/home/cta';
 import { OfferInlineBanner } from '@/components/site/offer-promo';
 
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   const [allServices, products, testimonials, workshops] = await Promise.all([
     getServices(),

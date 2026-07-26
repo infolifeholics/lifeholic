@@ -293,7 +293,7 @@ export function AdminServices() {
                     }}
                     className="hidden"
                   />
-                  <Button type="button" variant="outline" className="rounded-full flex items-center gap-2 pointer-events-none">
+                  <Button type="button" variant="outline" className="rounded-full flex items-center gap-2">
                     <UploadCloud className="h-4 w-4" /> Upload Image
                   </Button>
                 </label>
