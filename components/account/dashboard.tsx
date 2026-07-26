@@ -23,7 +23,9 @@ import {
   CheckCircle2,
   ArrowRight,
   Loader2,
-  Bell
+  Bell,
+  CalendarDays,
+  Ticket
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -37,7 +39,6 @@ import { collection, query, where, orderBy, getDocs, setDoc, doc, onSnapshot, ad
 import { formatPrice, formatInTz } from '@/lib/format';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Ticket } from 'lucide-react';
 import type { Product, WorkshopRegistration } from '@/lib/types';
 
 type Order = {
@@ -68,6 +69,9 @@ type Booking = {
   status_timeline?: Array<{ status: string; timestamp: string; updated_by?: string; note?: string }>;
   reschedule_request?: { requested_by: string; proposed_start_time: string; proposed_end_time: string; status: string; timestamp: string } | null;
   meeting_link?: string | null;
+  client_name?: string;
+  client_email?: string;
+  client_phone?: string | null;
 };
 
 type Visit = {
@@ -86,7 +90,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function AccountDashboard() {
-  const { user, profile, loading, signOut, refreshProfile } = useAuth();
+  const { user, profile, loading, signOut, refreshProfile, sendVerification, refreshUser } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -342,10 +346,15 @@ export function AccountDashboard() {
 
   // Booking filtering
   const now = new Date();
-  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
-  const pendingBookings = bookings.filter(b => b.status === 'pending');
-  const completedBookings = bookings.filter(b => b.status === 'completed');
+  const upcomingBookings = bookings.filter(b => 
+    (b.status === 'confirmed' || b.status === 'pending') && new Date(b.start_time).getTime() > now.getTime()
+  );
+  const completedBookings = bookings.filter(b => 
+    b.status === 'completed' || 
+    ((b.status === 'confirmed' || b.status === 'pending') && new Date(b.start_time).getTime() <= now.getTime())
+  );
   const cancelledBookings = bookings.filter(b => b.status === 'cancelled' || b.status === 'rejected');
+  const paidBookings = bookings.filter(b => b.payment_status === 'paid');
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
@@ -407,12 +416,12 @@ export function AccountDashboard() {
                   <span className="text-muted-foreground text-sm ml-1">Completed</span>
                 </div>
                 <div>
-                  <span className="font-semibold text-foreground">{confirmedBookings.length}</span>
-                  <span className="text-muted-foreground text-sm ml-1">Confirmed</span>
+                  <span className="font-semibold text-foreground">{upcomingBookings.length}</span>
+                  <span className="text-muted-foreground text-sm ml-1">Upcoming</span>
                 </div>
                 <div>
-                  <span className="font-semibold text-foreground">{pendingBookings.length}</span>
-                  <span className="text-muted-foreground text-sm ml-1">Pending</span>
+                  <span className="font-semibold text-foreground">{cancelledBookings.length}</span>
+                  <span className="text-muted-foreground text-sm ml-1">Cancelled</span>
                 </div>
               </div>
 
@@ -437,12 +446,53 @@ export function AccountDashboard() {
           </div>
         </div>
 
+        {/* EMAIL VERIFICATION WARNING BANNER */}
+        {user && !user.emailVerified && (
+          <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-950/20 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Your Email Address is Unverified</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Please check your inbox for the verification link to secure your account.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs rounded-full border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                onClick={async () => {
+                  const toastId = toast.loading('Sending verification email...');
+                  const { error } = await sendVerification();
+                  if (error) {
+                    toast.error(error, { id: toastId });
+                  } else {
+                    toast.success('Verification link sent! Check your inbox.', { id: toastId });
+                  }
+                }}
+              >
+                Resend Link
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs rounded-full bg-gold hover:bg-gold-hover text-gold-foreground"
+                onClick={async () => {
+                  const toastId = toast.loading('Refreshing state...');
+                  await refreshUser();
+                  toast.success('Status updated.', { id: toastId });
+                }}
+              >
+                Refresh Status
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* TABS OF PROFILE DASHBOARD */}
         <div>
-          <Tabs defaultValue="confirmed">
+          <Tabs defaultValue="upcoming">
             <TabsList className="flex w-full justify-around rounded-full bg-secondary/60 p-1 overflow-x-auto flex-nowrap min-w-full custom-scrollbar">
-              <TabsTrigger value="confirmed" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><CheckCircle2 className="mr-1.5 h-4 w-4" /> Confirmed</TabsTrigger>
-              <TabsTrigger value="pending" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><AlertCircle className="mr-1.5 h-4 w-4" /> Pending</TabsTrigger>
+              <TabsTrigger value="upcoming" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><CalendarDays className="mr-1.5 h-4 w-4" /> Upcoming</TabsTrigger>
               <TabsTrigger value="completed" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><CheckCircle2 className="mr-1.5 h-4 w-4" /> Completed</TabsTrigger>
               <TabsTrigger value="cancelled" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><AlertCircle className="mr-1.5 h-4 w-4" /> Cancelled</TabsTrigger>
               <TabsTrigger value="visits" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><Activity className="mr-1.5 h-4 w-4" /> Visits</TabsTrigger>
@@ -460,33 +510,20 @@ export function AccountDashboard() {
               <TabsTrigger value="personal" className="flex-1 rounded-full py-2.5 whitespace-nowrap"><Settings className="mr-1.5 h-4 w-4" /> Settings</TabsTrigger>
             </TabsList>
 
-            {/* 1. CONFIRMED BOOKINGS */}
-            <TabsContent value="confirmed" className="mt-6">
-              {confirmedBookings.length === 0 ? (
-                <Empty icon={CheckCircle2} title="No confirmed bookings" desc="Explore our services to schedule a transformation." cta={{ href: '/booking', label: 'Book a session' }} />
+            {/* 1. UPCOMING BOOKINGS */}
+            <TabsContent value="upcoming" className="mt-6">
+              {upcomingBookings.length === 0 ? (
+                <Empty icon={CalendarDays} title="No upcoming sessions" desc="Explore our services to schedule a transformation." cta={{ href: '/booking', label: 'Book a session' }} />
               ) : (
                 <div className="grid gap-4">
-                  {confirmedBookings.map((b) => (
+                  {upcomingBookings.map((b) => (
                     <BookingCardKeyed key={b.id} b={b} timezone={timezone} />
                   ))}
                 </div>
               )}
             </TabsContent>
 
-            {/* 2. PENDING BOOKINGS */}
-            <TabsContent value="pending" className="mt-6">
-              {pendingBookings.length === 0 ? (
-                <Empty icon={AlertCircle} title="No pending bookings" desc="All your payments and sessions are fully processed." cta={{ href: '/booking', label: 'Schedule new session' }} />
-              ) : (
-                <div className="grid gap-4">
-                  {pendingBookings.map((b) => (
-                    <BookingCardKeyed key={b.id} b={b} timezone={timezone} />
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            {/* 3. COMPLETED SESSIONS */}
+            {/* 2. COMPLETED SESSIONS */}
             <TabsContent value="completed" className="mt-6">
               {completedBookings.length === 0 ? (
                 <Empty icon={CheckCircle2} title="No completed sessions" desc="Your past completed healing sessions will show up here." cta={{ href: '/booking', label: 'Book a session' }} />
@@ -499,7 +536,7 @@ export function AccountDashboard() {
               )}
             </TabsContent>
 
-            {/* 4. CANCELLED / REJECTED SESSIONS */}
+            {/* 3. CANCELLED / REJECTED SESSIONS */}
             <TabsContent value="cancelled" className="mt-6">
               {cancelledBookings.length === 0 ? (
                 <Empty icon={AlertCircle} title="No cancelled sessions" desc="Your cancelled or rejected bookings will show up here." cta={{ href: '/booking', label: 'Book a session' }} />
@@ -621,11 +658,11 @@ export function AccountDashboard() {
 
             {/* 7. PAYMENT HISTORY */}
             <TabsContent value="payments" className="mt-6">
-              {orders.length === 0 && confirmedBookings.length === 0 ? (
+               {orders.length === 0 && paidBookings.length === 0 ? (
                 <Empty icon={History} title="No transactions" desc="Paid session receipts and orders will display here." cta={{ href: '/shop', label: 'Go to Shop' }} />
               ) : (
                 <div className="space-y-4">
-                  {confirmedBookings.map((b) => (
+                  {paidBookings.map((b) => (
                     <div key={b.id} className="rounded-xl border border-border bg-card p-4.5 shadow-soft flex items-center justify-between text-sm">
                       <div className="space-y-1">
                         <p className="font-medium text-foreground">{b.service_title || 'Session Booking'}</p>
@@ -857,6 +894,50 @@ function BookingCardKeyed({ b, timezone }: { b: Booking; timezone: string }) {
   const [reschedDate, setReschedDate] = useState('');
   const [reschedTime, setReschedTime] = useState('');
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancelBooking = async () => {
+    if (!confirm('Are you sure you want to cancel this healing session? This will immediately free up the slot.')) return;
+    setCancelling(true);
+    try {
+      const { doc, setDoc, deleteDoc } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase');
+      const { writeAuditLog } = await import('@/lib/booking-utils');
+
+      await writeAuditLog('Booking Cancelled', 'User', { bookingId: b.id, clientName: b.client_name, start_time: b.start_time });
+
+      const timeline = b.status_timeline || [];
+      const updatedTimeline = [
+        ...timeline,
+        {
+          status: 'cancelled',
+          timestamp: new Date().toISOString(),
+          note: 'Cancelled by user'
+        }
+      ];
+
+      await setDoc(doc(db, 'bookings', b.id), {
+        status: 'cancelled',
+        status_timeline: updatedTimeline,
+        updated_at: new Date().toISOString()
+      }, { merge: true });
+
+      // Free the slot lock
+      const formatterDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
+      const formatterTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
+      const bookingStartObj = new Date(b.start_time);
+      const dateStr = formatterDate.format(bookingStartObj);
+      const timeStr = formatterTime.format(bookingStartObj);
+      const lockDocRef = doc(db, 'session_locks', `${dateStr}_${timeStr.replace(':', '-')}`);
+      await deleteDoc(lockDocRef).catch(() => {});
+
+      toast.success('Session cancelled successfully.');
+    } catch (e) {
+      toast.error('Failed to cancel session.');
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const handleRequestReschedule = async () => {
     if (!reschedDate || !reschedTime) {
@@ -1005,52 +1086,63 @@ function BookingCardKeyed({ b, timezone }: { b: Booking; timezone: string }) {
                   <p className="text-muted-foreground mt-1">{b.notes}</p>
                 </div>
               )}
-              {b.status === 'confirmed' && (
+              {((b.status === 'confirmed' || b.status === 'pending') && new Date(b.start_time).getTime() > Date.now()) && (
                 <div className="pt-3 border-t border-border/40 mt-3 space-y-2 text-left">
-                  {b.reschedule_request?.status === 'pending' ? (
-                    <div className="p-2.5 rounded-xl bg-warning/10 border border-warning/20 text-warning text-xs">
+                  {b.status === 'confirmed' && b.reschedule_request?.status === 'pending' && (
+                    <div className="p-2.5 rounded-xl bg-warning/10 border border-warning/20 text-warning text-xs mb-2">
                       Reschedule pending: {new Date(b.reschedule_request.proposed_start_time).toLocaleString()}
                     </div>
-                  ) : (
-                    <>
-                      {requesting ? (
-                        <div className="space-y-3 p-3 rounded-2xl bg-secondary/50 border border-border/30">
-                          <p className="font-semibold text-foreground">Propose New Session Time</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="text-[10px] text-muted-foreground uppercase font-semibold">Date</label>
-                              <Input
-                                type="date"
-                                value={reschedDate}
-                                onChange={(e) => setReschedDate(e.target.value)}
-                                className="rounded-xl mt-1 text-xs"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-muted-foreground uppercase font-semibold">Time</label>
-                              <Input
-                                type="time"
-                                value={reschedTime}
-                                onChange={(e) => setReschedTime(e.target.value)}
-                                className="rounded-xl mt-1 text-xs"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex gap-2 justify-end pt-1">
-                            <Button size="sm" variant="outline" onClick={() => setRequesting(false)} className="rounded-full text-xs">
-                              Cancel
-                            </Button>
-                            <Button size="sm" onClick={handleRequestReschedule} disabled={submittingRequest} className="rounded-full text-xs bg-gold hover:bg-gold-hover text-gold-foreground">
-                              {submittingRequest ? 'Submitting...' : 'Submit Request'}
-                            </Button>
-                          </div>
+                  )}
+
+                  {requesting ? (
+                    <div className="space-y-3 p-3 rounded-2xl bg-secondary/50 border border-border/30">
+                      <p className="font-semibold text-foreground">Propose New Session Time</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-muted-foreground uppercase font-semibold">Date</label>
+                          <Input
+                            type="date"
+                            value={reschedDate}
+                            onChange={(e) => setReschedDate(e.target.value)}
+                            className="rounded-xl mt-1 text-xs"
+                          />
                         </div>
-                      ) : (
+                        <div>
+                          <label className="text-[10px] text-muted-foreground uppercase font-semibold">Time</label>
+                          <Input
+                            type="time"
+                            value={reschedTime}
+                            onChange={(e) => setReschedTime(e.target.value)}
+                            className="rounded-xl mt-1 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end pt-1">
+                        <Button size="sm" variant="outline" onClick={() => setRequesting(false)} className="rounded-full text-xs">
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleRequestReschedule} disabled={submittingRequest} className="rounded-full text-xs bg-gold hover:bg-gold-hover text-gold-foreground">
+                          {submittingRequest ? 'Submitting...' : 'Submit Request'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 flex-wrap">
+                      {b.status === 'confirmed' && (
                         <Button size="sm" variant="outline" onClick={() => setRequesting(true)} className="rounded-full text-xs">
                           Request Reschedule
                         </Button>
                       )}
-                    </>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={cancelling}
+                        onClick={handleCancelBooking}
+                        className="rounded-full text-xs border-rose-500/50 text-rose-400 hover:bg-rose-500/10"
+                      >
+                        {cancelling ? 'Cancelling...' : 'Cancel Session'}
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}

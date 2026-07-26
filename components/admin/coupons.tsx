@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, Plus, Trash2, Tag, Calendar, ShieldCheck, DollarSign } from 'lucide-react';
+import { Loader2, Plus, Trash2, Tag, Calendar, ShieldCheck, DollarSign, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ type Coupon = {
   usage_count: number;
   expiry_date: string;
   active: boolean;
+  featured_promo?: boolean;
 };
 
 export function AdminCoupons() {
@@ -34,6 +35,23 @@ export function AdminCoupons() {
   const [maxDiscount, setMaxDiscount] = useState(0);
   const [usageLimit, setUsageLimit] = useState(100);
   const [expiryDate, setExpiryDate] = useState('');
+  const [featuredPromo, setFeaturedPromo] = useState(false);
+  const [broadcastEmail, setBroadcastEmail] = useState(false);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const handleStartEdit = (c: Coupon) => {
+    setEditingId(c.id);
+    setCode(c.code);
+    setType(c.type);
+    setValue(c.value);
+    setMinAmount(c.min_amount || 0);
+    setMaxDiscount(c.max_discount || 0);
+    setUsageLimit(c.usage_limit || 100);
+    setExpiryDate(c.expiry_date || '');
+    setFeaturedPromo(c.featured_promo || false);
+    setCreating(true);
+  };
 
   const fetchCoupons = async () => {
     try {
@@ -58,23 +76,51 @@ export function AdminCoupons() {
     }
 
     const cleanCode = code.trim().toUpperCase();
-    const toastId = toast.loading('Creating coupon...');
+    const targetId = editingId || cleanCode;
+    const toastId = toast.loading(editingId ? 'Saving changes...' : 'Creating coupon...');
     try {
-      await setDoc(doc(db, 'coupons', cleanCode), {
-        id: cleanCode,
-        code: cleanCode,
+      if (featuredPromo) {
+        const otherCoupons = coupons.filter(c => c.id !== targetId && c.featured_promo === true);
+        for (const c of otherCoupons) {
+          await setDoc(doc(db, 'coupons', c.id), { featured_promo: false }, { merge: true });
+        }
+      }
+
+      const payload: any = {
+        id: targetId,
+        code: targetId,
         type,
         value,
         min_amount: minAmount,
         max_discount: maxDiscount,
         usage_limit: usageLimit,
-        usage_count: 0,
         expiry_date: expiryDate,
-        active: true,
-      });
+        featured_promo: featuredPromo,
+      };
 
-      toast.success('Coupon created successfully!', { id: toastId });
+      if (!editingId) {
+        payload.usage_count = 0;
+        payload.active = true;
+      }
+
+      await setDoc(doc(db, 'coupons', targetId), payload, { merge: true });
+
+      if (broadcastEmail && !editingId) {
+        fetch('/api/admin/promo/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: targetId,
+            discount: `${value}${type === 'percent' ? '%' : ' INR'}`
+          })
+        }).catch(console.error);
+      }
+
+      toast.success(editingId ? 'Coupon updated successfully!' : 'Coupon created successfully!', { id: toastId });
       setCode('');
+      setFeaturedPromo(false);
+      setBroadcastEmail(false);
+      setEditingId(null);
       setCreating(false);
       fetchCoupons();
     } catch (err: any) {
@@ -127,8 +173,23 @@ export function AdminCoupons() {
       {creating && (
         <form onSubmit={handleCreate} className="rounded-3xl border border-border bg-card p-6 space-y-4 text-left">
           <div className="flex justify-between items-center pb-2 border-b border-border/40">
-            <h3 className="font-display text-lg font-medium text-foreground">Create Promo Coupon</h3>
-            <Button size="sm" variant="ghost" onClick={() => setCreating(false)} className="rounded-full">&times; Close</Button>
+            <h3 className="font-display text-lg font-medium text-foreground">
+              {editingId ? 'Edit Promo Coupon' : 'Create Promo Coupon'}
+            </h3>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setCreating(false);
+                setEditingId(null);
+                setCode('');
+                setFeaturedPromo(false);
+                setBroadcastEmail(false);
+              }}
+              className="rounded-full"
+            >
+              &times; Close
+            </Button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -138,7 +199,8 @@ export function AdminCoupons() {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="e.g. SPIRIT50"
-                className="mt-1.5 rounded-xl uppercase font-semibold"
+                disabled={!!editingId}
+                className="mt-1.5 rounded-xl uppercase font-semibold disabled:opacity-60"
               />
             </div>
             <div>
@@ -206,8 +268,31 @@ export function AdminCoupons() {
             </div>
           </div>
 
+          <div className="flex flex-col gap-2.5 pt-2 border-t border-border/20">
+            <div className="flex items-center gap-2">
+              <input
+                id="feat-promo"
+                type="checkbox"
+                checked={featuredPromo}
+                onChange={(e) => setFeaturedPromo(e.target.checked)}
+                className="h-4 w-4 rounded border-border bg-card text-gold focus:ring-gold cursor-pointer"
+              />
+              <Label htmlFor="feat-promo" className="text-xs cursor-pointer">Show as Website Homepage Promo Popup</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="broad-email"
+                type="checkbox"
+                checked={broadcastEmail}
+                onChange={(e) => setBroadcastEmail(e.target.checked)}
+                className="h-4 w-4 rounded border-border bg-card text-gold focus:ring-gold cursor-pointer"
+              />
+              <Label htmlFor="broad-email" className="text-xs cursor-pointer text-gold">Send Email Notification to all Members and Subscribers</Label>
+            </div>
+          </div>
+
           <Button type="submit" className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground px-6 mt-2">
-            Generate Code
+            {editingId ? 'Save Changes' : 'Generate Code'}
           </Button>
         </form>
       )}
@@ -249,7 +334,10 @@ export function AdminCoupons() {
               </ul>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-border/20 mt-4">
+            <div className="flex justify-end gap-1 pt-4 border-t border-border/20 mt-4">
+              <Button size="sm" variant="ghost" onClick={() => handleStartEdit(c)} className="rounded-full text-xs hover:text-gold hover:bg-gold/10">
+                <Edit className="h-4 w-4 mr-1.5" /> Edit
+              </Button>
               <Button size="sm" variant="ghost" onClick={() => handleDelete(c.id)} className="rounded-full text-xs hover:text-destructive hover:bg-destructive/10">
                 <Trash2 className="h-4 w-4 mr-1.5" /> Delete
               </Button>

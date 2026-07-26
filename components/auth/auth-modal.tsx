@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/components/providers/auth-provider';
 import { auth } from '@/lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { toast } from 'sonner';
 
 type AuthModalProps = {
@@ -20,7 +20,7 @@ type AuthModalProps = {
 export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const { signIn, signInWithGoogle } = useAuth();
   
-  const [authMode, setAuthMode] = useState<'login' | 'otp'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'otp' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
@@ -112,6 +112,25 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast.error('Email address is required.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast.success('Password reset link sent to your email.');
+      setAuthMode('login');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to send password reset email.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <motion.div
@@ -129,9 +148,13 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
         <div className="text-center">
           <span className="text-xs font-semibold uppercase tracking-widest text-gold">Security</span>
-          <h2 className="mt-2 font-display text-2xl text-foreground font-medium">Log in to Continue</h2>
+          <h2 className="mt-2 font-display text-2xl text-foreground font-medium">
+            {authMode === 'forgot' ? 'Reset Password' : 'Log in to Continue'}
+          </h2>
           <p className="mt-2 text-xs text-muted-foreground">
-            Please log in or sign up to finalize your slot booking and payment.
+            {authMode === 'forgot'
+              ? 'Enter your registered email to receive a password reset link.'
+              : 'Please log in or sign up to finalize your slot booking and payment.'}
           </p>
         </div>
 
@@ -154,7 +177,16 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
             </div>
 
             <div>
-              <Label htmlFor="modal-password">Password</Label>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="modal-password">Password</Label>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('forgot')}
+                  className="text-xs text-gold hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
               <div className="relative mt-1">
                 <Lock className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
                 <Input
@@ -172,6 +204,36 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
             <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log In'}
             </Button>
+          </form>
+        ) : authMode === 'forgot' ? (
+          <form onSubmit={handleForgotPassword} className="mt-6 space-y-4">
+            <div>
+              <Label htmlFor="forgot-email">Email Address</Label>
+              <div className="relative mt-1">
+                <Mail className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10 rounded-xl"
+                  placeholder="name@example.com"
+                  required
+                />
+              </div>
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send Reset Link'}
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => setAuthMode('login')}
+              className="w-full text-center text-xs text-muted-foreground hover:underline"
+            >
+              Back to Login
+            </button>
           </form>
         ) : (
           <div className="mt-6">

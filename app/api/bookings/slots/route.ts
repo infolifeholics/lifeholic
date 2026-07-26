@@ -1,19 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-
-const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
-
-function istToUtc(dateStr: string, timeStr: string): Date {
-  const [h, m] = timeStr.split(':').map(Number);
-  const midnightIstInUtc = new Date(`${dateStr}T00:00:00Z`).getTime() - IST_OFFSET_MS;
-  return new Date(midnightIstInUtc + (h * 60 + m) * 60 * 1000);
-}
-
-function weekdayInIST(dateStr: string): number {
-  const noonIst = new Date(`${dateStr}T12:00:00+05:30`);
-  return noonIst.getDay();
-}
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { seedDefaultSlotsIfEmpty, getIstWeekday, istDateTimeToUtc } from '@/lib/booking-utils';
 
 export async function GET(req: Request) {
   try {
@@ -22,104 +10,99 @@ export async function GET(req: Request) {
     const dateStr = searchParams.get('date'); // yyyy-mm-dd
     const tz = searchParams.get('tz') || 'Asia/Kolkata';
 
-    if (!serviceId || !dateStr) {
-      return NextResponse.json({ error: 'service_id and date are required.' }, { status: 400 });
+    if (!dateStr) {
+      return NextResponse.json({ error: 'date is required.' }, { status: 400 });
     }
 
-    let duration = 60;
-    let serviceMode = 'both';
+    // Ensure session slots are seeded
+    await seedDefaultSlotsIfEmpty();
 
-    if (serviceId.startsWith('somatic_')) {
-      if (serviceId.includes('essential')) duration = 30;
-      if (serviceId.includes('elite')) duration = 90;
-    } else {
-      const serviceDoc = await getDoc(doc(db, 'services', serviceId));
-      if (!serviceDoc.exists()) return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
-      const service = serviceDoc.data();
-      duration = service.duration_minutes || 60;
-      serviceMode = service.mode || 'both';
+    // 1. Fetch holidays for the selected date
+    const holidaysRef = collection(db, 'holidays');
+    const qHolidays = query(holidaysRef, where('date', '==', dateStr));
+    const holidaysSnap = await getDocs(qHolidays);
+    const holidays = holidaysSnap.docs.map(d => d.data());
+
+    // Check if entire day is marked as a holiday
+    const allDayHoliday = holidays.find(h => !h.start_time);
+    if (allDayHoliday) {
+      return NextResponse.json({ slots: [], holiday: allDayHoliday.note || 'Holiday' });
     }
 
-    const availSnap = await getDocs(collection(db, 'availability'));
-    const availability = availSnap.docs.map((d) => d.data());
+    // 2. Fetch session slots configured for the weekday of this date
+    const weekday = getIstWeekday(dateStr);
+    const slotsRef = collection(db, 'session_slots');
+    const qSlots = query(slotsRef, where('day_of_week', '==', weekday), where('active', '==', true));
+    const slotsSnap = await getDocs(qSlots);
+    const configuredSlots = slotsSnap.docs.map(d => d.data());
 
-    const weekdayIST = weekdayInIST(dateStr);
-    const weekly = availability.filter((a) => a.kind === 'weekly' && a.weekday === weekdayIST);
-
-    if (!weekly.length) return NextResponse.json({ slots: [] });
-
-    const holidays = availability.filter(
-      (a) => a.kind === 'holiday' && a.specific_date && a.specific_date.slice(0, 10) === dateStr
-    );
-    if (holidays.length) return NextResponse.json({ slots: [] });
-
-    const candidateStartsUTC: Date[] = [];
-    for (const w of weekly) {
-      if (!w.start_time || !w.end_time) continue;
-      const windowStart = istToUtc(dateStr, String(w.start_time).slice(0, 5));
-      const windowEnd = istToUtc(dateStr, String(w.end_time).slice(0, 5));
-
-      let cursor = windowStart.getTime();
-      const end = windowEnd.getTime();
-      while (cursor + duration * 60_000 <= end) {
-        candidateStartsUTC.push(new Date(cursor));
-        cursor += duration * 60_000;
-      }
+    if (configuredSlots.length === 0) {
+      return NextResponse.json({ slots: [], holiday: null });
     }
 
-    if (!candidateStartsUTC.length) return NextResponse.json({ slots: [] });
-
-    const dayStartUTC = istToUtc(dateStr, '00:00');
+    // 3. Fetch existing bookings for that date in UTC
+    // Start of day and end of day in UTC to narrow down query
+    const dayStartUTC = istDateTimeToUtc(dateStr, '00:00');
     const dayEndUTC = new Date(dayStartUTC.getTime() + 24 * 60 * 60_000);
 
     const bookingsRef = collection(db, 'bookings');
     const qBookings = query(
       bookingsRef,
-      where('service_id', '==', serviceId),
       where('start_time', '>=', dayStartUTC.toISOString()),
       where('start_time', '<', dayEndUTC.toISOString()),
       where('status', 'in', ['pending', 'confirmed'])
     );
     const bookingsSnap = await getDocs(qBookings);
-    const existing = bookingsSnap.docs.map((d) => d.data());
-
-    const bookedRanges = existing.map((b) => ({
+    const existingBookings = bookingsSnap.docs.map(d => d.data());
+    const bookedRanges = existingBookings.map(b => ({
       start: new Date(b.start_time).getTime(),
-      end: new Date(b.end_time).getTime(),
+      end: new Date(b.end_time).getTime()
     }));
 
-    const blocked = availability.filter(
-      (a) => a.kind === 'blocked' && a.specific_date && a.specific_date.slice(0, 10) === dateStr
-    );
-    const blockedRanges = blocked.map((b) => ({
-      start: istToUtc(dateStr, String(b.start_time || '00:00').slice(0, 5)).getTime(),
-      end: istToUtc(dateStr, String(b.end_time || '23:59').slice(0, 5)).getTime(),
-    }));
-
+    // 4. Map and filter slots
     const now = Date.now();
-    const allowOffline = serviceMode === 'offline' || serviceMode === 'both';
-    const allowOnline = serviceMode === 'online' || serviceMode === 'both';
-
-    const slots = candidateStartsUTC
-      .filter((start) => {
-        const s = start.getTime();
-        const e = s + duration * 60_000;
-        if (s < now + 60 * 60_000) return false;
-        if (bookedRanges.some((r) => s < r.end && e > r.start)) return false;
-        if (blockedRanges.some((r) => s < r.end && e > r.start)) return false;
-        return true;
+    const resultSlots = configuredSlots
+      .map(slot => {
+        const startUTC = istDateTimeToUtc(dateStr, slot.start_time);
+        const endUTC = istDateTimeToUtc(dateStr, slot.end_time);
+        return {
+          start: startUTC.toISOString(),
+          end: endUTC.toISOString(),
+          start_time: slot.start_time,
+          end_time: slot.end_time,
+          modes: ['online', 'offline'] as ('online' | 'offline')[]
+        };
       })
-      .map((start) => {
-        const end = new Date(start.getTime() + duration * 60_000);
-        const modes: ('online' | 'offline')[] = [];
-        if (allowOnline) modes.push('online');
-        if (allowOffline) modes.push('offline');
-        return { start: start.toISOString(), end: end.toISOString(), modes, tz };
+      .filter(slot => {
+        const sTime = new Date(slot.start).getTime();
+        const eTime = new Date(slot.end).getTime();
+
+        // 1. Prevent past bookings (1 hour buffer)
+        if (sTime < now + 60 * 60_000) return false;
+
+        // 2. Prevent overlapping with existing bookings
+        if (bookedRanges.some(r => sTime < r.end && eTime > r.start)) return false;
+
+        // 3. Prevent booking during a holiday slot
+        const isHolidaySlot = holidays.some(h => {
+          if (h.start_time && h.end_time) {
+            const hStart = istDateTimeToUtc(dateStr, h.start_time).getTime();
+            const hEnd = istDateTimeToUtc(dateStr, h.end_time).getTime();
+            return sTime < hEnd && eTime > hStart;
+          }
+          return false;
+        });
+        if (isHolidaySlot) return false;
+
+        return true;
       });
 
-    return NextResponse.json({ slots });
+    // Sort slots chronologically
+    resultSlots.sort((a, b) => a.start.localeCompare(b.start));
+
+    return NextResponse.json({ slots: resultSlots, holiday: null });
   } catch (error: any) {
-    console.error('Slots error:', error);
-    return NextResponse.json({ error: 'Server error.' }, { status: 500 });
+    console.error('Slots fetch error:', error);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

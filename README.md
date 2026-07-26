@@ -63,15 +63,8 @@ npm run typecheck
 Use these commands to upload or sync your latest changes to GitHub:
 ```bash
 git add .
-git commit -m "auth fix"
+git commit -m "notification and session and admin panel implementation"
 git push -u origin main
-``` 
-
-
-### भविष्य में जब भी आपको GoDaddy वाले abc@lifeholics.com पर स्विच करना हो, तो बस इन .env फाइलों में क्रेडेंशियल्स और SMTP_FROM बदलकर दोबारा डिप्लॉय कर दीजिएगा। कोड में कोई बदलाव करने की ज़रूरत नहीं होगी!
-
-```bash
-firebase deploy --only functions
 ``` 
 
 ### Firebase Setup & Database Rules Deployment

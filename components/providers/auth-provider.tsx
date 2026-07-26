@@ -10,6 +10,8 @@ import {
   signOut as firebaseSignOut,
   signInWithPopup,
   updateProfile,
+  sendEmailVerification,
+  reload,
   User as FirebaseUser
 } from 'firebase/auth';
 
@@ -45,6 +47,8 @@ type AuthContextValue = {
   signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  sendVerification: () => Promise<{ error: string | null }>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -119,6 +123,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
             await setDoc(docRef, newProfile);
             setProfile(newProfile);
+            try {
+              fetch('/api/auth/welcome', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: newProfile.email,
+                  phone: newProfile.phone,
+                  fullName: newProfile.full_name,
+                  userId: newProfile.id,
+                }),
+              });
+            } catch (err) {
+              console.error('Failed to trigger welcome notification via API:', err);
+            }
           } else {
             const data = docSnap.data() as Profile;
             if (!data.member_id) {
@@ -177,6 +195,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (userCredential.user) {
             await updateProfile(userCredential.user, { displayName: fullName });
             
+            // Automatically send email verification
+            try {
+              await sendEmailVerification(userCredential.user);
+            } catch (verifErr) {
+              console.error('Failed to send verification email on signup:', verifErr);
+            }
+
             const memberId = await generateNextMemberId();
             // Create user profile document in Firestore
             const docRef = doc(db, 'profiles', userCredential.user.uid);
@@ -195,6 +220,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
             await setDoc(docRef, newProfile);
             setProfile(newProfile);
+            try {
+              fetch('/api/auth/welcome', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: newProfile.email,
+                  phone: newProfile.phone,
+                  fullName: newProfile.full_name,
+                  userId: newProfile.id,
+                }),
+              });
+            } catch (err) {
+              console.error('Failed to trigger welcome notification via API:', err);
+            }
           }
           return { error: null };
         } catch (error: any) {
@@ -217,8 +256,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshProfile: async () => {
         if (compatUser?.uid) await loadProfile(compatUser.uid);
       },
+      sendVerification: async () => {
+        try {
+          if (auth.currentUser) {
+            await sendEmailVerification(auth.currentUser);
+            return { error: null };
+          }
+          return { error: 'No user signed in' };
+        } catch (err: any) {
+          return { error: err.message || 'Failed to send verification link' };
+        }
+      },
+      refreshUser: async () => {
+        if (auth.currentUser) {
+          await reload(auth.currentUser);
+          setFirebaseUser({ ...auth.currentUser });
+        }
+      },
     }),
-    [compatUser, session, profile, loading]
+    [compatUser, firebaseUser, session, profile, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

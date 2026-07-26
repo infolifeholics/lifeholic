@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, Save, Key, Mail, MessageSquare, Shield, Globe, Award, Image as ImageIcon, Sparkles, Sliders } from 'lucide-react';
+import { Loader2, Save, Key, Mail, MessageSquare, Shield, Globe, Award, Image as ImageIcon, Sparkles, Sliders, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { EMAIL_TEMPLATES, WHATSAPP_TEMPLATES } from '@/lib/notifications/templates';
+import { useAuth } from '@/components/providers/auth-provider';
 
 type AdminSettings = {
   id: string;
@@ -165,11 +167,61 @@ const DEFAULT_SOMATIC_PLAN_SETTINGS: SomaticPlanSettings = {
 };
 
 export function AdminSettingsPanel() {
-  const [activeTab, setActiveTab] = useState<'global' | 'certificate' | 'somatic'>('global');
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'global' | 'certificate' | 'somatic' | 'notifications'>('global');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [somaticSettings, setSomaticSettings] = useState<SomaticPlanSettings>(DEFAULT_SOMATIC_PLAN_SETTINGS);
+  const [previewTemplateType, setPreviewTemplateType] = useState<string>('welcome');
+
+  const handleDownloadBackup = async () => {
+    const toastId = toast.loading('Generating database backup...');
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch('/api/admin/backup', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Backup failed on server');
+      
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `lifeholics_db_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Database backup downloaded successfully!', { id: toastId });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to download backup', { id: toastId });
+    }
+  };
+
+  const [notificationSettings, setNotificationSettings] = useState({
+    email_notifications_enabled: true,
+    whatsapp_notifications_enabled: true,
+    sender_name: 'TheLifeHolics',
+    support_email: 'info.lifeholics@gmail.com',
+    support_phone: '+919999999999',
+    whatsapp_provider: 'meta',
+    whatsapp_access_token: '',
+    whatsapp_phone_number_id: '',
+    twilio_account_sid: '',
+    twilio_auth_token: '',
+    twilio_phone_number: '',
+    toggles: {
+      welcome: true,
+      booking_confirmation: true,
+      booking_cancelled: true,
+      booking_reminder: true,
+      booking_status_changed: true,
+      certificate_generated: true,
+      rec_letter_generated: true,
+      password_reset: true,
+      admin_alert: true
+    }
+  });
 
   // Form states
   const [globalSettings, setGlobalSettings] = useState<AdminSettings>({
@@ -207,6 +259,21 @@ export function AdminSettingsPanel() {
       const certSnap = await getDoc(certDocRef);
       if (certSnap.exists()) {
         setCertSettings({ ...DEFAULT_CERTIFICATE_SETTINGS, ...certSnap.data() } as CertificateSettings);
+      }
+
+      // Notifications
+      const notifDocRef = doc(db, 'settings', 'notifications');
+      const notifSnap = await getDoc(notifDocRef);
+      if (notifSnap.exists()) {
+        const notifData = notifSnap.data();
+        setNotificationSettings(prev => ({
+          ...prev,
+          ...notifData,
+          toggles: {
+            ...prev.toggles,
+            ...(notifData.toggles || {})
+          }
+        }));
       }
 
       // Somatic Plans
@@ -299,6 +366,20 @@ export function AdminSettingsPanel() {
     }
   };
 
+  const handleSaveNotifications = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    const toastId = toast.loading('Saving notification configurations...');
+    try {
+      await setDoc(doc(db, 'settings', 'notifications'), notificationSettings, { merge: true });
+      toast.success('Notification settings saved successfully!', { id: toastId });
+    } catch (err: any) {
+      toast.error('Failed to save notification settings: ' + err.message, { id: toastId });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleUploadFile = async (file: File, field: 'template_url' | 'logo_url' | 'founder_signature_url' | 'director_signature_url') => {
     // Validate format & size
     if (file.size > 5 * 1024 * 1024) {
@@ -379,6 +460,23 @@ export function AdminSettingsPanel() {
           )}
         >
           Somatic Plans Editor
+        </button>
+        <button
+          onClick={() => setActiveTab('notifications')}
+          className={cn(
+            'pb-2 px-1 text-sm font-semibold tracking-wide border-b-2 transition-all',
+            activeTab === 'notifications' ? 'border-gold text-foreground' : 'border-transparent text-muted-foreground'
+          )}
+        >
+          Notification Settings
+        </button>
+
+        <button
+          onClick={handleDownloadBackup}
+          className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs border border-gold/40 text-gold hover:bg-gold/10 font-semibold transition-all h-7"
+        >
+          <Database className="h-3.5 w-3.5" />
+          Backup JSON
         </button>
       </div>
 
@@ -844,6 +942,229 @@ export function AdminSettingsPanel() {
             </div>
           </div>
         </div>
+      ) : activeTab === 'notifications' ? (
+        <form onSubmit={handleSaveNotifications} className="rounded-3xl border border-border bg-card p-6 space-y-6 text-left shadow-soft">
+          <div className="flex justify-between items-center pb-3 border-b border-border/40">
+            <div>
+              <h3 className="font-display text-lg font-medium text-foreground">Notification Channels & Toggles</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Configure SMTP emails, Meta/Twilio WhatsApp settings, and customize event templates.</p>
+            </div>
+            <Button type="submit" disabled={saving} className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground gap-1.5 px-6">
+              <Save className="h-4 w-4" /> Save Notifications
+            </Button>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Sender and General Info */}
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
+                <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5 border-b border-border/20 pb-2">
+                  <Mail className="h-4 w-4 text-gold" /> Sender Details
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs">Sender Display Name</Label>
+                    <Input
+                      value={notificationSettings.sender_name}
+                      onChange={(e) => setNotificationSettings({ ...notificationSettings, sender_name: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Support Email Address</Label>
+                    <Input
+                      type="email"
+                      value={notificationSettings.support_email}
+                      onChange={(e) => setNotificationSettings({ ...notificationSettings, support_email: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Support Phone Number</Label>
+                    <Input
+                      value={notificationSettings.support_phone}
+                      onChange={(e) => setNotificationSettings({ ...notificationSettings, support_phone: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
+                <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5 border-b border-border/20 pb-2">
+                  <Sliders className="h-4 w-4 text-gold" /> Notification Channels & Timing
+                </h4>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">Outbound Email Notifications</p>
+                      <p className="text-[10px] text-muted-foreground">Send notifications via SMTP mail transporter</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={notificationSettings.email_notifications_enabled}
+                      onChange={(e) => setNotificationSettings({ ...notificationSettings, email_notifications_enabled: e.target.checked })}
+                      className="h-4 w-4 rounded border-border bg-card text-gold focus:ring-gold"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">WhatsApp Notifications</p>
+                      <p className="text-[10px] text-muted-foreground">Send message updates via Meta Cloud or Twilio API</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={notificationSettings.whatsapp_notifications_enabled}
+                      onChange={(e) => setNotificationSettings({ ...notificationSettings, whatsapp_notifications_enabled: e.target.checked })}
+                      className="h-4 w-4 rounded border-border bg-card text-gold focus:ring-gold"
+                    />
+                  </div>
+
+                  <div className="border-t border-border/20 pt-3">
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-2">Individual Toggles</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {Object.keys(notificationSettings.toggles).map((key) => (
+                        <label key={key} className="flex items-center gap-2 cursor-pointer capitalize">
+                          <input
+                            type="checkbox"
+                            checked={(notificationSettings.toggles as any)[key]}
+                            onChange={(e) => setNotificationSettings({
+                              ...notificationSettings,
+                              toggles: {
+                                ...notificationSettings.toggles,
+                                [key]: e.target.checked
+                              }
+                            })}
+                            className="h-3 w-3 rounded text-gold focus:ring-gold"
+                          />
+                          <span>{key.replace(/_/g, ' ')}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* WhatsApp Integration Credentials */}
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
+                <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5 border-b border-border/20 pb-2">
+                  <MessageSquare className="h-4 w-4 text-gold" /> WhatsApp Gateway Credentials
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs font-medium">WhatsApp Service Provider</Label>
+                    <select
+                      value={notificationSettings.whatsapp_provider}
+                      onChange={(e) => setNotificationSettings({ ...notificationSettings, whatsapp_provider: e.target.value })}
+                      className="w-full mt-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-1 focus:ring-gold"
+                    >
+                      <option value="meta">Meta Cloud API (Recommended)</option>
+                      <option value="twilio">Twilio WhatsApp Sandbox/API</option>
+                    </select>
+                  </div>
+
+                  {notificationSettings.whatsapp_provider === 'meta' ? (
+                    <>
+                      <div>
+                        <Label className="text-xs">Meta Access Token</Label>
+                        <Input
+                          type="password"
+                          value={notificationSettings.whatsapp_access_token}
+                          onChange={(e) => setNotificationSettings({ ...notificationSettings, whatsapp_access_token: e.target.value })}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Meta Phone Number ID</Label>
+                        <Input
+                          value={notificationSettings.whatsapp_phone_number_id}
+                          onChange={(e) => setNotificationSettings({ ...notificationSettings, whatsapp_phone_number_id: e.target.value })}
+                          className="mt-1"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <Label className="text-xs">Twilio Account SID</Label>
+                        <Input
+                          value={notificationSettings.twilio_account_sid}
+                          onChange={(e) => setNotificationSettings({ ...notificationSettings, twilio_account_sid: e.target.value })}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Twilio Auth Token</Label>
+                        <Input
+                          type="password"
+                          value={notificationSettings.twilio_auth_token}
+                          onChange={(e) => setNotificationSettings({ ...notificationSettings, twilio_auth_token: e.target.value })}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Twilio WhatsApp Phone Number</Label>
+                        <Input
+                          placeholder="whatsapp:+14155238886"
+                          value={notificationSettings.twilio_phone_number}
+                          onChange={(e) => setNotificationSettings({ ...notificationSettings, twilio_phone_number: e.target.value })}
+                          className="mt-1"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Template Previewer */}
+              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
+                <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5 border-b border-border/20 pb-2">
+                  <Sparkles className="h-4 w-4 text-gold" /> Template Previewer
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs">Select Template to Preview</Label>
+                    <select
+                      value={previewTemplateType}
+                      onChange={(e) => setPreviewTemplateType(e.target.value)}
+                      className="w-full mt-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-1 focus:ring-gold"
+                    >
+                      <option value="welcome">Welcome Message</option>
+                      <option value="booking_confirmation">Booking Confirmation</option>
+                      <option value="booking_cancelled">Booking Cancelled</option>
+                      <option value="booking_reminder">Upcoming Session Reminder</option>
+                      <option value="booking_status_changed">Booking Status Changed</option>
+                      <option value="certificate_generated">Certificate Generated</option>
+                      <option value="rec_letter_generated">Recommendation Letter Generated</option>
+                    </select>
+                  </div>
+                  <div className="border border-border/40 rounded-xl overflow-hidden bg-card/60 p-3">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">WhatsApp Message Copy</p>
+                    <div className="text-xs p-2.5 rounded bg-emerald-950/20 text-foreground border border-emerald-500/20 whitespace-pre-line font-mono">
+                      {typeof WHATSAPP_TEMPLATES[previewTemplateType as keyof typeof WHATSAPP_TEMPLATES] === 'function'
+                        ? WHATSAPP_TEMPLATES[previewTemplateType as keyof typeof WHATSAPP_TEMPLATES]({
+                            memberName: 'Aarav Sharma',
+                            sessionDate: '2026-07-28',
+                            sessionTime: '11:15 AM - 11:45 AM',
+                            bookingId: 'BK_9827',
+                            bookingStatus: 'Confirmed',
+                            orgName: notificationSettings.sender_name,
+                            certUrl: 'https://thelifeholics.com/cert/demo',
+                            recLetterUrl: 'https://thelifeholics.com/rec/demo'
+                          })
+                        : 'No WhatsApp Template Loaded'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </form>
       ) : (
         <form onSubmit={handleSaveSomaticSettings} className="rounded-3xl border border-border bg-card p-6 space-y-6 text-left shadow-soft">
           <div className="flex justify-between items-center pb-3 border-b border-border/40">

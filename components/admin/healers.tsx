@@ -166,7 +166,7 @@ export function AdminHealers() {
                 value={editingHealer.name || ''}
                 onChange={(e) => setEditingHealer({ ...editingHealer, name: e.target.value })}
                 className="mt-1.5 rounded-xl"
-                placeholder="e.g. Anand Dev"
+                placeholder="e.g. Life Holics"
               />
             </div>
             <div>

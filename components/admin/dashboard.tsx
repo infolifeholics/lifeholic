@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, CheckCircle2, Clock, DollarSign, Users, XCircle, Loader2, X, Plus, Edit } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, DollarSign, Users, XCircle, Loader2, X, Plus, Edit, Download } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, doc, setDoc, onSnapshot, getDocs } from 'firebase/firestore';
 import { formatInTz } from '@/lib/format';
@@ -41,15 +41,81 @@ type BookingRow = {
   admin_updates?: Array<{ field: string; old_value: string; new_value: string; timestamp: string }>;
   payment_history?: Array<{ payment_status: string; timestamp: string; amount: number; currency: string }>;
   reschedule_request?: { requested_by: string; proposed_start_time: string; proposed_end_time: string; status: string; timestamp: string } | null;
+  client_country?: string | null;
+  healer_id?: string | null;
+  healer_name?: string | null;
 };
 
-export function AdminDashboard() {
+export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (section: any) => void } = {}) {
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ revenue: 0, confirmed: 0, pending: 0, clients: 0 });
+  const [stats, setStats] = useState({
+    revenue: 0,
+    confirmed: 0,
+    pending: 0,
+    clients: 0,
+    todaysBookings: 0,
+    upcomingBookings: 0,
+    completedBookings: 0,
+    cancelledBookings: 0,
+    activeSlots: 0,
+    registeredMembers: 0
+  });
   const [selectedBooking, setSelectedBooking] = useState<BookingRow | null>(null);
   const [activeTab, setActiveTab] = useState<'table' | 'calendar'>('table');
   const [somaticFilter, setSomaticFilter] = useState<'all' | 'normal' | 'somatic'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
+  const [healers, setHealers] = useState<any[]>([]);
+  const [healerFilter, setHealerFilter] = useState<string>('all');
+
+  // Revenue Modal & Date Filters State
+  const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
+  const [revStartDate, setRevStartDate] = useState('');
+  const [revEndDate, setRevEndDate] = useState('');
+
+  const exportToCSV = () => {
+    try {
+      const filtered = bookings.filter((b) =>
+        somaticFilter === 'all'
+          ? true
+          : somaticFilter === 'somatic'
+          ? b.is_somatic_plan === true
+          : b.is_somatic_plan !== true
+      );
+
+      const headers = ['Booking ID', 'Member Name', 'Email', 'Phone', 'Session Date', 'Session Time', 'Booking Status', 'Created At'];
+      const rows = filtered.map((b) => {
+        const dateObj = new Date(b.start_time);
+        const dateStr = dateObj.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+        const timeStr = dateObj.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
+        return [
+          b.id,
+          `"${b.client_name.replace(/"/g, '""')}"`,
+          b.client_email,
+          b.client_phone || 'N/A',
+          dateStr,
+          timeStr,
+          b.status,
+          b.created_at || 'N/A'
+        ];
+      });
+
+      const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `bookings_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Bookings exported successfully!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to export CSV');
+    }
+  };
 
   // Edit fields
   const [editDate, setEditDate] = useState('');
@@ -57,11 +123,68 @@ export function AdminDashboard() {
   const [internalNotes, setInternalNotes] = useState('');
 
   useEffect(() => {
+    getDocs(collection(db, 'healers')).then((snap) => {
+      setHealers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }).catch(console.error);
+  }, []);
+
+  useEffect(() => {
     let unsubscribeProfiles: (() => void) | null = null;
     let unsubscribeBookings: (() => void) | null = null;
+    let unsubscribeSlots: (() => void) | null = null;
     const profilesMap: Record<string, any> = {};
+    let membersCount = 0;
+    let slotsCount = 0;
+
+    const updateAllStats = (bookingRows: BookingRow[]) => {
+      const revenue = bookingRows.filter((r) => r.payment_status === 'paid').reduce((s, r) => s + Number(r.amount || 0), 0);
+      const todayIstStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date());
+      const nowTime = Date.now();
+
+      const todaysBookingsCount = bookingRows.filter((r) => {
+        if (!r.start_time) return false;
+        try {
+          const dateObj = new Date(r.start_time);
+          const rDateStr = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).format(dateObj);
+          return rDateStr === todayIstStr;
+        } catch {
+          return false;
+        }
+      }).length;
+
+      const upcomingBookingsCount = bookingRows.filter((r) => {
+        return (r.status === 'confirmed' || r.status === 'pending') && new Date(r.start_time).getTime() > nowTime;
+      }).length;
+
+      const completedBookingsCount = bookingRows.filter((r) => r.status === 'completed').length;
+      const cancelledBookingsCount = bookingRows.filter((r) => r.status === 'cancelled' || r.status === 'rejected').length;
+
+      setStats({
+        revenue,
+        confirmed: bookingRows.filter((r) => r.status === 'confirmed').length,
+        pending: bookingRows.filter((r) => r.status === 'pending').length,
+        clients: new Set(bookingRows.map((r) => r.client_email)).size,
+        todaysBookings: todaysBookingsCount,
+        upcomingBookings: upcomingBookingsCount,
+        completedBookings: completedBookingsCount,
+        cancelledBookings: cancelledBookingsCount,
+        activeSlots: slotsCount,
+        registeredMembers: membersCount
+      });
+    };
 
     unsubscribeProfiles = onSnapshot(collection(db, 'profiles'), (snap) => {
+      membersCount = snap.size;
       snap.docs.forEach((doc) => {
         const data = doc.data();
         profilesMap[doc.id] = data;
@@ -69,9 +192,21 @@ export function AdminDashboard() {
           profilesMap[data.email.toLowerCase()] = data;
         }
       });
+      setBookings((prev) => {
+        updateAllStats(prev);
+        return prev;
+      });
     });
 
-    const q = query(collection(db, 'bookings'), orderBy('start_time', 'desc'), limit(50));
+    unsubscribeSlots = onSnapshot(collection(db, 'session_slots'), (snap) => {
+      slotsCount = snap.docs.filter(d => d.data().active === true).length;
+      setBookings((prev) => {
+        updateAllStats(prev);
+        return prev;
+      });
+    });
+
+    const q = query(collection(db, 'bookings'), orderBy('start_time', 'desc'));
     unsubscribeBookings = onSnapshot(q, (snap) => {
       const rows = snap.docs.map((d) => {
         const data = d.data();
@@ -83,14 +218,7 @@ export function AdminDashboard() {
         } as unknown as BookingRow;
       });
       setBookings(rows);
-
-      const revenue = rows.filter((r) => r.payment_status === 'paid').reduce((s, r) => s + Number(r.amount || 0), 0);
-      setStats({
-        revenue,
-        confirmed: rows.filter((r) => r.status === 'confirmed').length,
-        pending: rows.filter((r) => r.status === 'pending').length,
-        clients: new Set(rows.map((r) => r.client_email)).size,
-      });
+      updateAllStats(rows);
       setLoading(false);
     }, (err) => {
       console.error(err);
@@ -101,11 +229,19 @@ export function AdminDashboard() {
     return () => {
       if (unsubscribeProfiles) unsubscribeProfiles();
       if (unsubscribeBookings) unsubscribeBookings();
+      if (unsubscribeSlots) unsubscribeSlots();
     };
   }, []);
 
   const updateStatus = async (b: BookingRow, status: string) => {
     try {
+      const { writeAuditLog } = await import('@/lib/booking-utils');
+      await writeAuditLog(
+        status === 'cancelled' || status === 'rejected' ? 'Booking Cancelled' : 'Booking Status Changed',
+        'Admin',
+        { bookingId: b.id, clientName: b.client_name, status }
+      );
+
       const timeline = b.status_timeline || [];
       const updatedTimeline = [
         ...timeline,
@@ -121,14 +257,23 @@ export function AdminDashboard() {
         updated_at: new Date().toISOString() 
       }, { merge: true });
 
-      // Trigger server-side notification
-      if (status === 'confirmed' || status === 'cancelled') {
-        fetch('/api/bookings/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookingId: b.id, eventType: status }),
-        }).catch((err) => console.error('Failed to trigger notification:', err));
+      if (status === 'cancelled' || status === 'rejected') {
+        const { deleteDoc } = await import('firebase/firestore');
+        const formatterDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
+        const formatterTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
+        const bookingStartObj = new Date(b.start_time);
+        const dateStr = formatterDate.format(bookingStartObj);
+        const timeStr = formatterTime.format(bookingStartObj);
+        const lockDocRef = doc(db, 'session_locks', `${dateStr}_${timeStr.replace(':', '-')}`);
+        await deleteDoc(lockDocRef).catch(() => {});
       }
+
+      // Trigger server-side notification
+      fetch('/api/bookings/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: b.id, eventType: status }),
+      }).catch((err) => console.error('Failed to trigger notification:', err));
 
       toast.success(`Booking status changed to ${status}.`);
       if (selectedBooking?.id === b.id) {
@@ -232,6 +377,13 @@ export function AdminDashboard() {
         updated_at: new Date().toISOString()
       }, { merge: true });
 
+      // Trigger server-side notification for reschedule
+      fetch('/api/bookings/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: selectedBooking.id, eventType: 'meeting_updated' }),
+      }).catch((err) => console.error('Failed to trigger reschedule notification:', err));
+
       toast.success('Session time updated successfully!');
       setSelectedBooking(null);
     } catch (e) {
@@ -305,12 +457,36 @@ export function AdminDashboard() {
     <div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: 'Revenue (paid)', value: stats.revenue, prefix: '₹', icon: DollarSign, fmt: (v: number) => v.toLocaleString('en-IN') },
-          { label: 'Confirmed', value: stats.confirmed, icon: CheckCircle2, fmt: (v: number) => String(v) },
-          { label: 'Pending', value: stats.pending, icon: Clock, fmt: (v: number) => String(v) },
-          { label: 'Clients', value: stats.clients, icon: Users, fmt: (v: number) => String(v) },
+          { label: 'Revenue (paid)', value: stats.revenue, prefix: '₹', icon: DollarSign, clickable: true },
+          { label: "Today's Bookings", value: stats.todaysBookings, icon: Calendar, clickable: true, onClickSection: 'todays_bookings' },
+          { label: 'Upcoming Bookings', value: stats.upcomingBookings, icon: Clock, clickable: true, onClickStatus: 'upcoming' },
+          { label: 'Completed Sessions', value: stats.completedBookings, icon: CheckCircle2, clickable: true, onClickStatus: 'completed' },
+          { label: 'Cancelled Sessions', value: stats.cancelledBookings, icon: XCircle, clickable: true, onClickStatus: 'cancelled' },
+          { label: 'Active Slots', value: stats.activeSlots, icon: Clock, clickable: true, onClickSection: 'slots_management' },
+          { label: 'Registered Members', value: stats.registeredMembers, icon: Users, clickable: true, onClickSection: 'members' },
+          { label: 'Total Clients', value: stats.clients, icon: Users, clickable: true, onClickSection: 'members' },
         ].map((s) => (
-          <div key={s.label} className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
+          <div
+            key={s.label}
+            onClick={() => {
+              if (s.label === 'Revenue (paid)') {
+                setIsRevenueModalOpen(true);
+              } else if (s.onClickSection) {
+                onNavigateSection?.(s.onClickSection);
+              } else if (s.onClickStatus) {
+                setStatusFilter(s.onClickStatus as any);
+                setActiveTab('table');
+                const target = document.getElementById('bookings-list-section');
+                if (target) {
+                  target.scrollIntoView({ behavior: 'smooth' });
+                }
+              }
+            }}
+            className={cn(
+              "rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft",
+              s.clickable && "cursor-pointer hover:bg-card/80 transition-all border-gold/30 hover:border-gold/60"
+            )}
+          >
             <div className="flex items-center justify-between">
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-foreground">
                 <s.icon className="h-4 w-4" />
@@ -324,9 +500,22 @@ export function AdminDashboard() {
         ))}
       </div>
 
-      <div className="mt-10 rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
+      <div id="bookings-list-section" className="mt-10 rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pb-4 border-b border-border/40 mb-6">
-          <h2 className="font-display text-xl font-medium text-foreground">Recent Bookings</h2>
+          <h2 className="font-display text-xl font-medium text-foreground flex items-center gap-2">
+            Recent Bookings
+            {statusFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider uppercase bg-gold/15 text-gold border border-gold/30 px-2.5 py-0.5 rounded-full">
+                Filtered: {statusFilter}
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  className="ml-1 rounded-full hover:bg-gold/20 p-0.5"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </span>
+            )}
+          </h2>
           <div className="flex rounded-full bg-secondary/80 p-1">
             <button
               onClick={() => setActiveTab('table')}
@@ -347,6 +536,17 @@ export function AdminDashboard() {
               Calendar View
             </button>
           </div>
+
+          {/* Export Bookings Button */}
+          <Button
+            onClick={exportToCSV}
+            variant="outline"
+            size="sm"
+            className="rounded-full gap-1.5 h-8 text-xs border-gold text-gold hover:bg-gold/10 ml-auto mr-2"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </Button>
 
           {/* Somatic / General Filter */}
           <div className="flex bg-muted/60 p-1 rounded-full border border-border/40 inline-flex items-center gap-1">
@@ -378,6 +578,21 @@ export function AdminDashboard() {
               Somatic Special
             </button>
           </div>
+
+          {/* Healer Filter */}
+          <div className="flex bg-muted/60 p-1 rounded-full border border-border/40 inline-flex items-center gap-1.5 px-3 h-8">
+            <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Healer:</span>
+            <select
+              value={healerFilter}
+              onChange={(e) => setHealerFilter(e.target.value)}
+              className="bg-transparent text-xs text-foreground font-semibold outline-none cursor-pointer border-none pr-1 focus:ring-0"
+            >
+              <option value="all" className="bg-card text-foreground">All Healers</option>
+              {healers.map((h) => (
+                <option key={h.id} value={h.id} className="bg-card text-foreground">{h.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {activeTab === 'calendar' ? (
@@ -404,13 +619,25 @@ export function AdminDashboard() {
               </thead>
               <tbody>
                 {bookings
-                  .filter((b) =>
-                    somaticFilter === 'all'
+                  .filter((b) => {
+                    const matchesSomatic = somaticFilter === 'all'
                       ? true
                       : somaticFilter === 'somatic'
                       ? b.is_somatic_plan === true
-                      : b.is_somatic_plan !== true
-                  )
+                      : b.is_somatic_plan !== true;
+
+                    const matchesStatus = statusFilter === 'all'
+                      ? true
+                      : statusFilter === 'completed'
+                      ? b.status === 'completed'
+                      : statusFilter === 'cancelled'
+                      ? b.status === 'cancelled' || b.status === 'rejected'
+                      : b.status === 'confirmed' || b.status === 'pending';
+
+                    const matchesHealer = healerFilter === 'all' || b.healer_id === healerFilter;
+
+                    return matchesSomatic && matchesStatus && matchesHealer;
+                  })
                   .map((b) => (
                   <tr key={b.id} className="border-b border-border/40 hover:bg-muted/10 transition-colors">
                     <td className="py-4 pr-4">
@@ -428,6 +655,11 @@ export function AdminDashboard() {
                         )}
                       </div>
                       {b.subcategory && <p className="text-xs text-muted-foreground">{b.category} &gt; {b.subcategory}</p>}
+                      {b.healer_name && (
+                        <p className="text-[10px] text-gold mt-1 font-semibold uppercase tracking-wider">
+                          Healer: {b.healer_name}
+                        </p>
+                      )}
                     </td>
                     <td className="py-4 pr-4 text-muted-foreground">
                       <p className="text-foreground text-xs">{formatInTz(b.start_time, 'Asia/Kolkata', { dateStyle: 'medium', timeStyle: 'short' })}</p>
@@ -676,6 +908,173 @@ export function AdminDashboard() {
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REVENUE DETAILED ANALYTICS MODAL */}
+      {isRevenueModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-left">
+          <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl border border-white/10 bg-card p-6 sm:p-8 shadow-glow flex flex-col max-h-[90vh]">
+            <button
+              onClick={() => setIsRevenueModalOpen(false)}
+              className="absolute top-4 right-4 rounded-full p-1.5 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="border-b border-border/40 pb-4">
+              <h3 className="font-display text-xl font-medium text-foreground">Income Analytics &amp; Revenue Breakdown</h3>
+              <p className="text-xs text-muted-foreground mt-1">Track international currency payments, client geocoding country, and calculate earnings over selected dates.</p>
+            </div>
+
+            {/* Date Filters & Currency Totals */}
+            <div className="grid gap-4 md:grid-cols-2 mt-4 pb-4 border-b border-border/40">
+              <div className="flex gap-2 items-center">
+                <div>
+                  <Label htmlFor="rev-start" className="text-[10px] uppercase tracking-wider text-muted-foreground">Start Date</Label>
+                  <Input
+                    id="rev-start"
+                    type="date"
+                    value={revStartDate}
+                    onChange={(e) => setRevStartDate(e.target.value)}
+                    className="h-8 rounded-lg text-xs mt-1 bg-secondary/30"
+                  />
+                </div>
+                <div className="text-muted-foreground pt-5 px-1">to</div>
+                <div>
+                  <Label htmlFor="rev-end" className="text-[10px] uppercase tracking-wider text-muted-foreground">End Date</Label>
+                  <Input
+                    id="rev-end"
+                    type="date"
+                    value={revEndDate}
+                    onChange={(e) => setRevEndDate(e.target.value)}
+                    className="h-8 rounded-lg text-xs mt-1 bg-secondary/30"
+                  />
+                </div>
+                <div className="pt-5">
+                  <Button
+                    onClick={() => {
+                      setRevStartDate('');
+                      setRevEndDate('');
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs rounded-lg hover:bg-white/5"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+
+              {/* Aggregated Totals */}
+              <div className="flex flex-wrap gap-3 items-center justify-end">
+                <div className="bg-secondary/40 border border-border/40 rounded-xl px-4 py-2 text-right">
+                  <span className="block text-[9px] uppercase tracking-wider text-muted-foreground">Filtered Revenue</span>
+                  <div className="flex gap-2 items-center flex-wrap justify-end mt-0.5">
+                    {Object.keys(
+                      bookings
+                        .filter((b) => {
+                          if (b.payment_status !== 'paid') return false;
+                          const bDate = b.start_time.split('T')[0];
+                          if (revStartDate && bDate < revStartDate) return false;
+                          if (revEndDate && bDate > revEndDate) return false;
+                          return true;
+                        })
+                        .reduce((acc: Record<string, number>, b) => {
+                          const cur = b.currency || 'INR';
+                          acc[cur] = (acc[cur] || 0) + Number(b.amount || 0);
+                          return acc;
+                        }, {})
+                    ).length === 0 ? (
+                      <span className="text-sm font-bold text-foreground">₹0</span>
+                    ) : (
+                      Object.entries(
+                        bookings
+                          .filter((b) => {
+                            if (b.payment_status !== 'paid') return false;
+                            const bDate = b.start_time.split('T')[0];
+                            if (revStartDate && bDate < revStartDate) return false;
+                            if (revEndDate && bDate > revEndDate) return false;
+                            return true;
+                          })
+                          .reduce((acc: Record<string, number>, b) => {
+                            const cur = b.currency || 'INR';
+                            acc[cur] = (acc[cur] || 0) + Number(b.amount || 0);
+                            return acc;
+                          }, {})
+                      ).map(([cur, total]) => (
+                        <span key={cur} className="text-sm font-bold text-gold">
+                          {cur === 'INR' ? '₹' : cur + ' '}{total}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Transactions List */}
+            <div className="flex-1 overflow-y-auto mt-4 custom-scrollbar pr-1">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border/60 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <th className="pb-2 pr-2">Member</th>
+                    <th className="pb-2 pr-2">Email</th>
+                    <th className="pb-2 pr-2">Country</th>
+                    <th className="pb-2 pr-2">Session Date</th>
+                    <th className="pb-2 pr-2">Paid Amount</th>
+                    <th className="pb-2 text-right">Currency</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bookings
+                    .filter((b) => {
+                      if (b.payment_status !== 'paid') return false;
+                      const bDate = b.start_time.split('T')[0];
+                      if (revStartDate && bDate < revStartDate) return false;
+                      if (revEndDate && bDate > revEndDate) return false;
+                      return true;
+                    })
+                    .map((b) => {
+                      const dateObj = new Date(b.start_time);
+                      const formattedDate = dateObj.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium' });
+                      return (
+                        <tr key={b.id} className="border-b border-border/20 hover:bg-secondary/10 transition-colors">
+                          <td className="py-2.5 pr-2 font-medium text-foreground">{b.client_name}</td>
+                          <td className="py-2.5 pr-2 text-muted-foreground">{b.client_email}</td>
+                          <td className="py-2.5 pr-2">
+                            <span className="px-1.5 py-0.5 rounded bg-secondary text-[9px] font-bold tracking-wide uppercase border border-border/40">
+                              {b.client_country || 'IN'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 pr-2 text-muted-foreground">{formattedDate}</td>
+                          <td className="py-2.5 pr-2 font-semibold text-foreground">{b.amount}</td>
+                          <td className="py-2.5 text-right font-bold text-gold">{b.currency || 'INR'}</td>
+                        </tr>
+                      );
+                    })}
+                  {bookings.filter((b) => {
+                    if (b.payment_status !== 'paid') return false;
+                    const bDate = b.start_time.split('T')[0];
+                    if (revStartDate && bDate < revStartDate) return false;
+                    if (revEndDate && bDate > revEndDate) return false;
+                    return true;
+                  }).length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-muted-foreground">No payments found in selected date range.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="border-t border-border/40 pt-4 mt-4 flex justify-between items-center text-[10px] text-muted-foreground">
+              <span>Date format: Asia/Kolkata timezone</span>
+              <Button onClick={() => setIsRevenueModalOpen(false)} size="sm" className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground h-8 px-6">
+                Close
+              </Button>
             </div>
           </div>
         </div>

@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, runTransaction } from 'firebase/firestore';
 import { triggerBookingNotification } from '@/lib/notifications';
+import { getIstWeekday, istDateTimeToUtc, writeAuditLog } from '@/lib/booking-utils';
+
+import { rateLimiter, getIpFromRequest } from '@/lib/rate-limit';
 
 export async function POST(req: Request) {
   try {
+    const ip = getIpFromRequest(req);
+    const limitCheck = rateLimiter(ip, { limit: 15, windowMs: 60 * 1000 });
+    if (!limitCheck.success) {
+      return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
+    }
+
     const body = await req.json();
     const {
       service_id,
@@ -88,8 +97,8 @@ export async function POST(req: Request) {
     // Filter by service support
     const assignedHealers = healers.filter((h) => h.services && h.services.includes(service_id));
 
-    let assignedHealerId = null;
-    let assignedHealerName = null;
+    let assignedHealerId: string | null = null;
+    let assignedHealerName: string | null = null;
 
     if (assignedHealers.length > 0) {
       const selectedDayName = start.toLocaleDateString('en-US', { weekday: 'long' });
@@ -146,122 +155,184 @@ export async function POST(req: Request) {
       assignedHealerName = chosen.name;
     }
 
-    const bookingsRef = collection(db, 'bookings');
-    const qClash = query(
-      bookingsRef,
-      where('start_time', '==', start.toISOString()),
-      where('status', 'in', ['pending', 'confirmed'])
-    );
-    const clashSnap = await getDocs(qClash);
-    if (!clashSnap.empty && assignedHealers.length === 0) {
-      // Suggest the next 3 available slots
-      const suggestions = [];
-      let checkTime = new Date(start.getTime() + service.duration_minutes * 60_000);
-      let attempts = 0;
-      while (suggestions.length < 3 && attempts < 15) {
-        attempts++;
-        const mins = checkTime.getMinutes();
-        if (mins > 0 && mins < 30) {
-          checkTime.setMinutes(30, 0, 0);
-        } else if (mins > 30) {
-          checkTime.setHours(checkTime.getHours() + 1, 0, 0, 0);
-        }
-        
-        const testStart = checkTime.toISOString();
-        const testEnd = new Date(checkTime.getTime() + service.duration_minutes * 60_000).toISOString();
-        
-        const qTest = query(
-          bookingsRef,
-          where('start_time', '==', testStart),
+    // 1. Prevent booking for past dates
+    if (start.getTime() < Date.now()) {
+      return NextResponse.json({ error: 'Cannot book sessions in the past.' }, { status: 400 });
+    }
+
+    const formatterDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const dateStr = formatterDate.format(start); // YYYY-MM-DD
+    const formatterTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
+    const timeStr = formatterTime.format(start); // HH:MM
+    const weekday = getIstWeekday(dateStr);
+
+    // 2. Prevent same user booking same slot twice
+    if (user_id) {
+      const userClashSnap = await getDocs(
+        query(
+          collection(db, 'bookings'),
+          where('user_id', '==', user_id),
+          where('start_time', '==', start.toISOString()),
           where('status', 'in', ['pending', 'confirmed'])
-        );
-        const testSnap = await getDocs(qTest);
-        if (testSnap.empty) {
-          suggestions.push({
-            start_time: testStart,
-            end_time: testEnd
-          });
-        }
-        checkTime = new Date(checkTime.getTime() + 60 * 60_000);
-      }
-
-      return NextResponse.json(
-        { 
-          error: 'This slot is already booked. Please choose another slot.',
-          suggestions 
-        },
-        { status: 409 }
+        )
       );
-    }
-
-    const initialStatus = body.status || 'pending';
-    const initialPaymentStatus = body.payment_status || 'unpaid';
-
-    // Fetch global settings for meeting link
-    const globalSettingsRef = doc(db, 'settings', 'global');
-    const globalSettingsSnap = await getDoc(globalSettingsRef);
-    let meetingLink = null;
-    if (globalSettingsSnap.exists()) {
-      const gSettings = globalSettingsSnap.data();
-      if (gSettings.meeting_provider === 'gmeet' && gSettings.google_meet_link) {
-        meetingLink = gSettings.google_meet_link;
+      if (!userClashSnap.empty) {
+        return NextResponse.json({ error: 'You have already booked this session slot.' }, { status: 400 });
       }
     }
 
-    const insert: any = {
-      service_id: isSomatic ? `somatic_${somatic_plan_name.toLowerCase().replace(/\s+/g, '_')}` : service_id,
-      service_title: service.title || 'Therapy Session',
-      is_somatic_plan: isSomatic,
-      somatic_plan_name: isSomatic ? somatic_plan_name : null,
-      user_id: user_id || null,
-      client_name,
-      client_email,
-      client_phone: client_phone || null,
-      client_timezone: client_timezone || 'Asia/Kolkata',
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      mode,
-      status: initialStatus,
-      payment_status: initialPaymentStatus,
-      amount: amount ?? 0,
-      currency: currency || 'INR',
-      notes: notes || null,
-      category: category || null,
-      subcategory: subcategory || null,
-      problems: problems || null,
-      summary: summary || null,
-      meeting_link: meetingLink,
-      status_timeline: [
-        {
-          status: initialStatus,
-          timestamp: new Date().toISOString(),
-          note: 'Booking created'
+    // 3. Retrieve references for slot configuration and holidays to verify inside transaction
+    const slotsRef = collection(db, 'session_slots');
+    const qSlots = query(slotsRef, where('day_of_week', '==', weekday), where('start_time', '==', timeStr));
+    const slotsSnap = await getDocs(qSlots);
+    if (slotsSnap.empty) {
+      return NextResponse.json({ error: 'This session slot is not configured.' }, { status: 400 });
+    }
+    const slotDocRef = doc(db, 'session_slots', slotsSnap.docs[0].id);
+
+    const holidaysRef = collection(db, 'holidays');
+    const qHolidays = query(holidaysRef, where('date', '==', dateStr));
+    const holidaysSnap = await getDocs(qHolidays);
+    const holidayDocRefs = holidaysSnap.docs.map(d => doc(db, 'holidays', d.id));
+
+    // 4. Strict transactional check using lock documents to completely prevent double booking
+    const lockDocRef = doc(db, 'session_locks', `${dateStr}_${timeStr.replace(':', '-')}`);
+    let newBookingId = '';
+    let insertedBookingData: any = null;
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        // Read and verify Slot configuration inside the transaction
+        const slotDoc = await transaction.get(slotDocRef);
+        if (!slotDoc.exists() || !slotDoc.data()?.active) {
+          throw new Error('SLOT_INACTIVE');
         }
-      ],
-      admin_updates: [],
-      payment_history: [
-        {
+
+        // Read and verify Holiday documents inside the transaction
+        for (const ref of holidayDocRefs) {
+          const hDoc = await transaction.get(ref);
+          if (hDoc.exists()) {
+            const hData = hDoc.data();
+            if (!hData.start_time || hData.start_time === timeStr) {
+              throw new Error('HOLIDAY_BLOCK');
+            }
+          }
+        }
+
+        const lockDoc = await transaction.get(lockDocRef);
+        if (lockDoc.exists()) {
+          const lockData = lockDoc.data();
+          if (lockData && lockData.booking_id) {
+            const linkedBookingRef = doc(db, 'bookings', lockData.booking_id);
+            const linkedBooking = await transaction.get(linkedBookingRef);
+            if (linkedBooking.exists()) {
+              const bStatus = linkedBooking.data()?.status;
+              if (bStatus !== 'cancelled' && bStatus !== 'rejected') {
+                throw new Error('SLOT_TAKEN');
+              }
+            }
+          }
+        }
+
+        const initialStatus = body.status || 'pending';
+        const initialPaymentStatus = body.payment_status || 'unpaid';
+
+        // Fetch global settings inside the transaction to follow correct order (reads before writes)
+        const globalSettingsRef = doc(db, 'settings', 'global');
+        const globalSettingsSnap = await transaction.get(globalSettingsRef);
+        let meetingLink = null;
+        if (globalSettingsSnap.exists()) {
+          const gSettings = globalSettingsSnap.data();
+          if (gSettings.meeting_provider === 'gmeet' && gSettings.google_meet_link) {
+            meetingLink = gSettings.google_meet_link;
+          }
+        }
+
+        const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
+
+        const insert: any = {
+          service_id: isSomatic ? `somatic_${somatic_plan_name.toLowerCase().replace(/\s+/g, '_')}` : service_id,
+          service_title: service.title || 'Therapy Session',
+          is_somatic_plan: isSomatic,
+          somatic_plan_name: isSomatic ? somatic_plan_name : null,
+          user_id: user_id || null,
+          client_name,
+          client_email,
+          client_phone: client_phone || null,
+          client_timezone: client_timezone || 'Asia/Kolkata',
+          client_country: clientCountry,
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          mode,
+          status: initialStatus,
           payment_status: initialPaymentStatus,
-          timestamp: new Date().toISOString(),
           amount: amount ?? 0,
           currency: currency || 'INR',
-        }
-      ],
-      healer_id: assignedHealerId,
-      healer_name: assignedHealerName,
-      created_at: new Date().toISOString(),
-    };
+          notes: notes || null,
+          category: category || null,
+          subcategory: subcategory || null,
+          problems: problems || null,
+          summary: summary || null,
+          meeting_link: meetingLink,
+          status_timeline: [
+            {
+              status: initialStatus,
+              timestamp: new Date().toISOString(),
+              note: 'Booking created'
+            }
+          ],
+          admin_updates: [],
+          payment_history: [
+            {
+              payment_status: initialPaymentStatus,
+              timestamp: new Date().toISOString(),
+              amount: amount ?? 0,
+              currency: currency || 'INR',
+            }
+          ],
+          healer_id: assignedHealerId,
+          healer_name: assignedHealerName,
+          created_at: new Date().toISOString(),
+        };
 
-    const docRef = await addDoc(bookingsRef, insert);
+        const newBookingRef = doc(collection(db, 'bookings'));
+        newBookingId = newBookingRef.id;
 
-    // Trigger Notification
-    try {
-      await triggerBookingNotification(docRef.id, insert, 'created');
-    } catch (err) {
-      console.error('[Notification Trigger Error]:', err);
+        transaction.set(newBookingRef, insert);
+        transaction.set(lockDocRef, {
+          booking_id: newBookingId,
+          status: initialStatus,
+          start_time: start.toISOString(),
+          created_at: new Date().toISOString()
+        });
+
+        insertedBookingData = insert;
+      });
+    } catch (txError: any) {
+      if (txError.message === 'SLOT_TAKEN') {
+        return NextResponse.json({ error: 'This slot is already booked. Please choose another slot.' }, { status: 409 });
+      }
+      if (txError.message === 'SLOT_INACTIVE') {
+        return NextResponse.json({ error: 'This session slot is inactive.' }, { status: 400 });
+      }
+      if (txError.message === 'HOLIDAY_BLOCK') {
+        return NextResponse.json({ error: 'Cannot book: Marked as holiday.' }, { status: 400 });
+      }
+      console.error('Transaction error:', txError);
+      return NextResponse.json({ error: 'Double booking detected or transaction failed.' }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, id: docRef.id });
+    // Trigger Notification outside transaction (since it relies on network calls)
+    if (insertedBookingData && newBookingId) {
+      try {
+        await writeAuditLog('Booking Created', 'User', { bookingId: newBookingId, clientName: insertedBookingData.client_name, start_time: insertedBookingData.start_time });
+        await triggerBookingNotification(newBookingId, insertedBookingData, 'created');
+      } catch (err) {
+        console.error('[Notification Trigger/Audit Error]:', err);
+      }
+    }
+
+    return NextResponse.json({ ok: true, id: newBookingId });
   } catch (error: any) {
     console.error('Booking error:', error);
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });

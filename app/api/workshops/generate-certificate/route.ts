@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db, storage } from '@/lib/firebase';
+import { queueNotification } from '@/lib/notifications/notification-service';
 import { collection, query, where, getDocs, setDoc, addDoc, doc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
@@ -7,28 +8,43 @@ import QRCode from 'qrcode';
 import fs from 'fs';
 import path from 'path';
 
-async function dispatchEmail(reg: any, certNo: string, downloadUrl: string, attempt = 1): Promise<boolean> {
+async function dispatchEmail(reg: any, certNo: string, downloadUrl: string): Promise<boolean> {
   try {
-    console.log(`[Email Attempt ${attempt}] Sending Certificate PDF to ${reg.client_email}. Download Link: ${downloadUrl}`);
+    await queueNotification(
+      'certificate_generated',
+      reg.client_email,
+      null,
+      {
+        memberName: reg.client_name || 'Member',
+        certUrl: downloadUrl,
+        bookingId: certNo,
+      },
+      certNo,
+      reg.user_id || undefined
+    );
     return true;
-  } catch (err: any) {
-    if (attempt < 3) {
-      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-      return dispatchEmail(reg, certNo, downloadUrl, attempt + 1);
-    }
+  } catch (err) {
+    console.error('Failed to queue certificate email:', err);
     return false;
   }
 }
 
-async function dispatchWhatsApp(reg: any, downloadUrl: string, attempt = 1): Promise<boolean> {
+async function dispatchWhatsApp(reg: any, downloadUrl: string): Promise<boolean> {
   try {
-    console.log(`[WhatsApp Attempt ${attempt}] Sending Certificate Link to ${reg.client_phone}. Download Link: ${downloadUrl}`);
+    await queueNotification(
+      'certificate_generated',
+      '',
+      reg.client_phone || null,
+      {
+        memberName: reg.client_name || 'Member',
+        certUrl: downloadUrl,
+      },
+      undefined,
+      reg.user_id || undefined
+    );
     return true;
-  } catch (err: any) {
-    if (attempt < 3) {
-      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-      return dispatchWhatsApp(reg, downloadUrl, attempt + 1);
-    }
+  } catch (err) {
+    console.error('Failed to queue certificate WhatsApp:', err);
     return false;
   }
 }

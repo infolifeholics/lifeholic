@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Sparkles, Search, ChevronRight, ArrowLeft, Check, Users, Heart, Activity, Briefcase, X, Clock } from 'lucide-react';
 import { MagneticLink } from '@/components/site/magnetic';
 import { db } from '@/lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AuthModal } from '@/components/auth/auth-modal';
@@ -226,8 +226,26 @@ export function HomeHero() {
   // Dynamic services & recommendation rules
   const [dbServices, setDbServices] = useState<any[]>([]);
   const [recRules, setRecRules] = useState<any[]>([]);
+  const [promoCoupon, setPromoCoupon] = useState<any | null>(null);
+  const [showPromoPopup, setShowPromoPopup] = useState(false);
 
   useEffect(() => {
+    // Load featured promo coupon
+    getDocs(query(collection(db, 'coupons'), where('active', '==', true), where('featured_promo', '==', true)))
+      .then((snap) => {
+        if (!snap.empty) {
+          const cData = snap.docs[0].data();
+          const dismissed = localStorage.getItem(`dismiss_promo_${cData.code}`);
+          if (!dismissed) {
+            setPromoCoupon(cData);
+            setTimeout(() => {
+              setShowPromoPopup(true);
+            }, 2000);
+          }
+        }
+      })
+      .catch((e) => console.error('Error fetching featured promo:', e));
+
     // Load services from Firestore
     getDocs(collection(db, 'services'))
       .then((snap) => {
@@ -1007,6 +1025,67 @@ export function HomeHero() {
             />
           </div>
         </motion.div>
+      )}
+
+      {/* PROMO POPUP MODAL */}
+      {showPromoPopup && promoCoupon && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 text-left">
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-card/90 p-6 sm:p-8 shadow-glow flex flex-col text-center">
+            <button
+              onClick={() => {
+                setShowPromoPopup(false);
+                localStorage.setItem(`dismiss_promo_${promoCoupon.code}`, 'true');
+              }}
+              className="absolute top-4 right-4 rounded-full p-1.5 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gold/10 text-gold mx-auto mb-4">
+              <Sparkles className="h-6 w-6 animate-pulse" />
+            </div>
+
+            <h3 className="font-display text-xl font-bold text-foreground">Special Offer Just For You!</h3>
+            <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+              Get an exclusive discount on your next healing session or somatic transformation workshop.
+            </p>
+
+            <div className="bg-secondary/40 border border-border/40 rounded-2xl p-5 my-6">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Use Code At Checkout</p>
+              <div className="text-3xl font-mono font-extrabold tracking-widest text-gold mt-1 selection:bg-gold/20 select-all">
+                {promoCoupon.code}
+              </div>
+              <p className="text-xs font-semibold text-foreground mt-2 uppercase tracking-wide">
+                SAVE {promoCoupon.value}{promoCoupon.type === 'percent' ? '%' : ' INR'} OFF
+              </p>
+              {promoCoupon.min_amount > 0 && (
+                <p className="text-[9px] text-muted-foreground mt-1">Min booking value: ₹{promoCoupon.min_amount}</p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowPromoPopup(false);
+                  localStorage.setItem(`dismiss_promo_${promoCoupon.code}`, 'true');
+                  router.push('/booking');
+                }}
+                className="w-full py-3 rounded-full bg-gold hover:bg-gold-hover text-gold-foreground text-xs font-bold uppercase tracking-wider shadow-soft transition-all duration-300 transform hover:scale-[1.02]"
+              >
+                Claim Discount Now
+              </button>
+              <button
+                onClick={() => {
+                  setShowPromoPopup(false);
+                  localStorage.setItem(`dismiss_promo_${promoCoupon.code}`, 'true');
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+              >
+                No thanks, maybe later
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <AuthModal

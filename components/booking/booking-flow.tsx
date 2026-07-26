@@ -72,6 +72,8 @@ export function BookingFlow({ services }: { services: Service[] }) {
   const [submitting, setSubmitting] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [suggestions, setSuggestions] = useState<Array<{ start_time: string; end_time: string }>>([]);
+  const [holidayNote, setHolidayNote] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [questionnaire, setQuestionnaire] = useState<{
     category: string;
@@ -125,21 +127,69 @@ export function BookingFlow({ services }: { services: Service[] }) {
   }, [serviceSlug, mode]);
 
   // Fetch slots when date changes
+  // Fetch slots in real-time when date, service, or Firestore booking/slots/holiday state changes
   useEffect(() => {
     if (!selectedDate || !service) return;
     setLoadingSlots(true);
     setSlots([]);
     setSelectedSlot(null);
-    const ctrl = new AbortController();
-    fetch(`/api/bookings/slots?service_id=${service.id}&date=${selectedDate}&tz=${encodeURIComponent(tz)}`, {
-      signal: ctrl.signal,
-    })
-      .then((r) => r.json())
-      .then((d) => setSlots(d.slots || []))
-      .catch(() => {})
-      .finally(() => setLoadingSlots(false));
-    return () => ctrl.abort();
-  }, [selectedDate, service, tz]);
+
+    let active = true;
+
+    const fetchSlotsData = () => {
+      if (!active) return;
+      fetch(`/api/bookings/slots?service_id=${service.id}&date=${selectedDate}&tz=${encodeURIComponent(tz)}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (!active) return;
+          setSlots(d.slots || []);
+          if (d.holiday) {
+            setHolidayNote(d.holiday);
+          } else {
+            setHolidayNote(null);
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (active) setLoadingSlots(false);
+        });
+    };
+
+    let unsubBookings: () => void = () => {};
+    let unsubHolidays: () => void = () => {};
+    let unsubSlots: () => void = () => {};
+
+    // Load firebase dynamic listeners dynamically to support SSR
+    const initListeners = async () => {
+      const { collection, query, where, onSnapshot } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase');
+
+      const qBookings = query(collection(db, 'bookings'), where('status', 'in', ['pending', 'confirmed']));
+      const qHolidays = query(collection(db, 'holidays'), where('date', '==', selectedDate));
+      const qSlots = query(collection(db, 'session_slots'));
+
+      // Call initially
+      fetchSlotsData();
+
+      // Listeners
+      unsubBookings = onSnapshot(qBookings, () => fetchSlotsData());
+      unsubHolidays = onSnapshot(qHolidays, () => fetchSlotsData());
+      unsubSlots = onSnapshot(qSlots, () => fetchSlotsData());
+    };
+
+    initListeners().catch((e) => {
+      console.error('Failed to init real-time listeners:', e);
+      // Fallback
+      fetchSlotsData();
+    });
+
+    return () => {
+      active = false;
+      unsubBookings();
+      unsubHolidays();
+      unsubSlots();
+    };
+  }, [selectedDate, service, tz, refreshTrigger]);
 
   const days = useMemo(() => {
     const first = new Date(month);
@@ -192,11 +242,13 @@ export function BookingFlow({ services }: { services: Service[] }) {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || 'Could not book the session.');
         if (res.status === 409) {
-          setSuggestions(data.suggestions || []);
+          toast.error("This session has just been booked by another user. Please select another available slot.");
+          setRefreshTrigger((prev) => prev + 1);
           setStep(1);
           setSelectedSlot(null);
+        } else {
+          toast.error(data.error || 'Could not book the session.');
         }
         return;
       }
@@ -411,9 +463,11 @@ export function BookingFlow({ services }: { services: Service[] }) {
                       </div>
                     ) : slots.length === 0 ? (
                       <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/40 p-6 text-center">
-                        <p className="text-sm font-medium text-foreground">No sessions available this day.</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {holidayNote ? 'Holiday - No Sessions Available' : 'No sessions available this day.'}
+                        </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Working hours are Mon–Sat (IST). Try another date.
+                          {holidayNote ? holidayNote : 'Working hours are Mon–Sat (IST). Try another date.'}
                         </p>
                       </div>
                     ) : (

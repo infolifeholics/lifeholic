@@ -57,6 +57,12 @@ service cloud.firestore {
     match /availability/{document} {
       allow read, write: if true;
     }
+    match /session_slots/{document} {
+      allow read, write: if true;
+    }
+    match /holidays/{document} {
+      allow read, write: if true;
+    }
     match /coupons/{document} {
       allow read, write: if true;
     }
@@ -90,6 +96,20 @@ service cloud.firestore {
     }
     match /notifications/{document} {
       allow read, write: if true;
+    }
+    match /notification_logs/{document} {
+      // Workers write logs server-side; admins can read
+      allow read: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
+      allow write: if true; // written by server-side workers only
+    }
+    match /failed_notifications/{document} {
+      // DLQ entries written server-side; admins can read and delete
+      allow read, delete: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
+      allow create: if true; // written by server-side DLQ writer
+    }
+    match /audit_logs/{document} {
+      allow read: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
+      allow create: if true;
     }
   }
 }
