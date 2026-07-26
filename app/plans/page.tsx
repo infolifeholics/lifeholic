@@ -139,7 +139,7 @@ export default function SomaticPlansPage() {
   const handleSelectPlan = (planKey: 'essential' | 'premium' | 'elite', defaultPriceInr: number) => {
     const s = planServices ? planServices[planKey] : null;
     const finalPriceInr = s?.price_inr || defaultPriceInr;
-    const finalPrice = currency === 'USD' ? Math.round(finalPriceInr / 80) : finalPriceInr;
+    const finalPrice = currency === 'USD' ? Math.round(finalPriceInr / 85) : finalPriceInr;
     const finalTitle = s?.title || (planKey === 'essential' ? 'Plan A · Essential' : planKey === 'elite' ? 'Plan C · Elite' : 'Plan B · Premium');
     const finalId = s?.id || `somatic_${planKey}`;
 
@@ -171,9 +171,9 @@ export default function SomaticPlansPage() {
   };
 
   const prices = {
-    essential: currency === 'USD' ? Math.round(rawPrices.essential / 80) : rawPrices.essential,
-    premium: currency === 'USD' ? Math.round(rawPrices.premium / 80) : rawPrices.premium,
-    elite: currency === 'USD' ? Math.round(rawPrices.elite / 80) : rawPrices.elite,
+    essential: currency === 'USD' ? Math.round(rawPrices.essential / 85) : rawPrices.essential,
+    premium: currency === 'USD' ? Math.round(rawPrices.premium / 85) : rawPrices.premium,
+    elite: currency === 'USD' ? Math.round(rawPrices.elite / 85) : rawPrices.elite,
   };
 
   const formatPlanPrice = (priceVal: number) => {
@@ -189,7 +189,7 @@ export default function SomaticPlansPage() {
       <main className="min-h-screen pt-28 pb-20 sm:pt-36 bg-background relative overflow-hidden">
         {/* Subtle blur highlights */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gold/10 rounded-full blur-[120px] pointer-events-none z-0" />
-        
+
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Back button */}
           <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8 group">
@@ -256,17 +256,15 @@ export default function SomaticPlansPage() {
             <div className="bg-secondary/60 p-1 rounded-full border border-border/40 inline-flex items-center gap-1">
               <button
                 onClick={() => setBillingCycle('day')}
-                className={`px-5 py-2 rounded-full text-xs font-semibold transition-all ${
-                  billingCycle === 'day' ? 'bg-gold text-gold-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`px-5 py-2 rounded-full text-xs font-semibold transition-all ${billingCycle === 'day' ? 'bg-gold text-gold-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
               >
                 Price / day
               </button>
               <button
                 onClick={() => setBillingCycle('total')}
-                className={`px-5 py-2 rounded-full text-xs font-semibold transition-all ${
-                  billingCycle === 'total' ? 'bg-gold text-gold-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`px-5 py-2 rounded-full text-xs font-semibold transition-all ${billingCycle === 'total' ? 'bg-gold text-gold-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
               >
                 Total / 30 days
               </button>
@@ -275,7 +273,7 @@ export default function SomaticPlansPage() {
 
           {/* Three Premium Plans Grid */}
           <div className="grid gap-8 lg:grid-cols-3 items-stretch">
-            
+
             {/* Plan A: Essential */}
             <div className="rounded-3xl border border-border/60 bg-card/40 p-6 md:p-8 flex flex-col justify-between shadow-soft hover:shadow-hover transition-all duration-300">
               <div>
@@ -325,8 +323,40 @@ export default function SomaticPlansPage() {
               </div>
 
               <div className="mt-8">
-                <Button onClick={() => handleSelectPlan('essential', 4444)} className="w-full rounded-full bg-secondary hover:bg-muted text-foreground border border-border/80 py-6 font-semibold">
-                  Subscribe Now
+                <Button onClick={() => handleSelectPlan('essential', 4444)} className="
+group
+relative
+overflow-hidden
+w-full
+rounded-full
+bg-sky-600
+hover:bg-sky-700
+text-white
+py-6
+font-semibold
+shadow-soft
+transition-all
+duration-500
+hover:scale-[1.03]
+hover:shadow-[0_15px_35px_rgba(14,165,233,0.45)]
+before:absolute
+before:top-0
+before:-left-full
+before:h-full
+before:w-1/2
+before:bg-gradient-to-r
+before:from-transparent
+before:via-white/70
+before:to-transparent
+before:skew-x-[-25deg]
+hover:before:left-[150%]
+before:transition-all
+before:duration-1000
+">
+                  <span className="relative z-10 flex items-center justify-center">
+                    <Sparkles className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-180" />
+                    Choose Plan
+                  </span>
                 </Button>
               </div>
             </div>
@@ -336,7 +366,7 @@ export default function SomaticPlansPage() {
               <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gold text-gold-foreground text-[10px] font-bold uppercase tracking-wider px-4 py-1 rounded-full shadow-soft">
                 Recommended
               </span>
-              
+
               <div>
                 <div className="flex justify-between items-start">
                   <div>
@@ -385,7 +415,46 @@ export default function SomaticPlansPage() {
               </div>
 
               <div className="mt-8">
-                <Button onClick={() => handleSelectPlan('premium', 11000)} className="w-full rounded-full bg-gold hover:bg-gold-hover text-gold-foreground py-6 font-semibold shadow-soft">
+                <Button
+                  onClick={() => handleSelectPlan('premium', 11000)}
+                  className="
+    group
+    relative
+    overflow-hidden
+    w-full
+    rounded-full
+    bg-gradient-to-r
+    from-[#C99700]
+    via-[#FFD95A]
+    to-[#B8860B]
+    hover:from-[#FFD700]
+    hover:via-[#FFF4B0]
+    hover:to-[#D4AF37]
+    text-black
+    py-6
+    font-bold
+    shadow-[0_10px_30px_rgba(255,215,0,0.35)]
+    hover:shadow-[0_15px_45px_rgba(255,215,0,0.6)]
+    transition-all
+    duration-500
+    hover:scale-[1.03]
+    before:absolute
+    before:top-0
+    before:-left-full
+    before:h-full
+    before:w-1/2
+    before:bg-gradient-to-r
+    before:from-transparent
+    before:via-white/70
+    before:to-transparent
+    before:skew-x-[-25deg]
+    hover:before:left-[150%]
+    before:transition-all
+    before:duration-1000
+  "
+                >
+                  <Sparkles className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-180" />
+                  <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition duration-500 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.35),transparent_70%)]" />
                   Choose Recommended Plan
                 </Button>
               </div>
@@ -441,8 +510,45 @@ export default function SomaticPlansPage() {
               </div>
 
               <div className="mt-8">
-                <Button onClick={() => handleSelectPlan('elite', 21000)} className="w-full rounded-full bg-secondary hover:bg-muted text-foreground border border-border/80 py-6 font-semibold">
-                  Subscribe Now
+                <Button onClick={() => handleSelectPlan('elite', 21000)} className="
+group
+relative
+overflow-hidden
+w-full
+rounded-full
+bg-gradient-to-r
+from-violet-700
+via-fuchsia-700
+to-purple-800
+hover:from-violet-800
+hover:via-fuchsia-800
+hover:to-purple-900
+text-white
+py-6
+font-semibold
+shadow-xl
+transition-all
+duration-500
+hover:scale-[1.03]
+hover:shadow-[0_15px_45px_rgba(168,85,247,0.55)]
+before:absolute
+before:top-0
+before:-left-full
+before:h-full
+before:w-1/2
+before:bg-gradient-to-r
+before:from-transparent
+before:via-white/70
+before:to-transparent
+before:skew-x-[-25deg]
+hover:before:left-[150%]
+before:transition-all
+before:duration-1000
+" >
+                  <span className="relative z-10 flex items-center justify-center">
+                    <Sparkles className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-180" />
+                    Choose Plan
+                  </span>
                 </Button>
               </div>
             </div>
@@ -450,7 +556,6 @@ export default function SomaticPlansPage() {
           </div>
         </div>
       </main>
-      <SiteFooter />
     </>
   );
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Menu, X, ShoppingBag, Heart, User } from 'lucide-react';
+import { Menu, X, ShoppingBag, Heart, User, Bell } from 'lucide-react';
 import { Logo } from '@/components/site/logo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,8 @@ import { useWishlist } from '@/components/providers/wishlist-provider';
 import { useAuth } from '@/components/providers/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { db } from '@/lib/firebase';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 
 const NAV = [
   { href: '/', label: 'Home' },
@@ -29,6 +31,36 @@ export function SiteHeader() {
   const { count } = useCart();
   const { count: wishCount } = useWishlist();
   const { user, profile, refreshProfile } = useAuth();
+
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+    const qNotifs = query(
+      collection(db, 'notifications'),
+      where('user_id', '==', user.id),
+      orderBy('created_at', 'desc')
+    );
+    const unsubscribe = onSnapshot(qNotifs, (snap) => {
+      setNotifications(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, (err) => {
+      console.error('Error listening to notifications in header:', err);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const handleMarkSingleRead = async (id: string) => {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'notifications', id), { read: true });
+    } catch (e) {}
+  };
 
   const [showWhatsAppBanner, setShowWhatsAppBanner] = useState(false);
   const [whatsappVal, setWhatsappVal] = useState('');
@@ -175,6 +207,89 @@ export function SiteHeader() {
                 </span>
               )}
             </Link>
+            {user && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                  className="relative rounded-full p-2.5 text-muted-foreground transition-all hover:bg-white/10 hover:text-foreground"
+                  aria-label="Notifications"
+                >
+                  <Bell className="h-[18px] w-[18px]" />
+                  {unreadCount > 0 && (
+                    <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-bold text-gold-foreground animate-pulse">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                <AnimatePresence>
+                  {showNotifDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowNotifDropdown(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl border border-white/10 bg-[#161210]/95 backdrop-blur-xl p-4 shadow-glow z-50 text-left"
+                      >
+                        <div className="flex justify-between items-center pb-2 border-b border-white/10 mb-3">
+                          <span className="font-semibold text-sm text-foreground">Notifications</span>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const { doc, writeBatch } = await import('firebase/firestore');
+                                const batch = writeBatch(db);
+                                notifications.forEach((n) => {
+                                  if (!n.read) batch.update(doc(db, 'notifications', n.id), { read: true });
+                                });
+                                await batch.commit();
+                                toast.success('All notifications marked as read.');
+                              } catch (e) {
+                                toast.error('Failed to mark notifications.');
+                              }
+                            }}
+                            className="text-xs text-gold hover:underline"
+                          >
+                            Mark all read
+                          </button>
+                        </div>
+                        <div className="max-h-72 overflow-y-auto space-y-2.5 custom-scrollbar pr-1">
+                          {notifications.length === 0 ? (
+                            <p className="text-xs text-muted-foreground text-center py-6">No notifications found.</p>
+                          ) : (
+                            notifications.slice(0, 5).map((n) => (
+                              <div
+                                key={n.id}
+                                onClick={async () => {
+                                  if (!n.read) await handleMarkSingleRead(n.id);
+                                  setShowNotifDropdown(false);
+                                  window.location.href = '/account?tab=notifications';
+                                }}
+                                className={cn(
+                                  "p-2.5 rounded-xl border text-xs cursor-pointer transition-colors",
+                                  n.read ? "bg-white/5 border-transparent text-muted-foreground" : "bg-gold/10 border-gold/30 text-foreground font-medium"
+                                )}
+                              >
+                                <p className="font-semibold text-[11px] text-foreground">{n.title}</p>
+                                <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        <div className="border-t border-white/10 mt-3 pt-2 text-center">
+                          <Link
+                            href="/account?tab=notifications"
+                            onClick={() => setShowNotifDropdown(false)}
+                            className="text-xs text-gold font-medium hover:underline inline-block"
+                          >
+                            View all notifications &rarr;
+                          </Link>
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
             <Link
               href={user ? '/account' : '/auth/login'}
               className="hidden rounded-full p-2.5 text-muted-foreground transition-all hover:bg-white/10 hover:text-foreground sm:inline-flex"

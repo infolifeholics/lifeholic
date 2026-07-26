@@ -16,9 +16,9 @@ export function formatPrice(amount: number, currency: CurrencyCode): string {
   return `${c.symbol}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-// Detect a likely currency from a timezone string. India → INR, else USD.
 export function currencyForTimezone(tz: string): CurrencyCode {
-  return tz?.toLowerCase().includes('kolkata') || tz?.toLowerCase().includes('india') ? 'INR' : 'USD';
+  const t = tz?.toLowerCase() || '';
+  return t.includes('kolkata') || t.includes('calcutta') || t.includes('india') ? 'INR' : 'USD';
 }
 
 export const COMMON_TIMEZONES = [

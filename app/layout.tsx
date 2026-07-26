@@ -1,8 +1,10 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Cormorant_Garamond, Inter } from 'next/font/google';
+import { Suspense } from 'react';
 import { Providers } from '@/components/providers';
 import { SiteHeader } from '@/components/site/site-header';
+import { MobileNav } from '@/components/site/mobile-nav';
 import { SiteFooter } from '@/components/site/site-footer';
 import { OfferPopup } from '@/components/site/offer-promo';
 import { cn } from '@/lib/utils';
@@ -80,6 +82,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <GlobalErrorBoundary>
             <SiteHeader />
+            <Suspense fallback={null}>
+              <MobileNav />
+            </Suspense>
             <main className="relative">{children}</main>
             <SiteFooter />
             <OfferPopup />

@@ -20,7 +20,7 @@ function PaymentPageContent() {
   const [loading, setLoading] = useState(true);
   const [bookingData, setBookingData] = useState<any>(null);
   const [serviceData, setServiceData] = useState<any>(null);
-  
+
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(0);
@@ -87,7 +87,7 @@ function PaymentPageContent() {
         }),
       });
       const data = await res.json();
-      
+
       if (res.ok) {
         setDiscount(data.discount);
         setAppliedCoupon(data.code);
@@ -124,7 +124,7 @@ function PaymentPageContent() {
 
   const subtotal = bookingData.amount;
   const currency = bookingData.currency;
-  
+
   // GST calculation (18% if INR)
   const gst = currency === 'INR' ? Math.round((subtotal - discount) * 0.18) : 0;
   const total = subtotal - discount + gst;
@@ -136,15 +136,30 @@ function PaymentPageContent() {
       return;
     }
 
+    // Cancellation warning pop-up
+    // const userConfirmed = window.confirm('Once the booking is confirmed, it cannot be canceled. Are you sure you want to proceed?');
+    // if (!userConfirmed) {
+    //   return;
+    // }
+    const userConfirmed = window.confirm(
+      "Once the booking is confirmed, it cannot be canceled.\n\nClick 'OK' to Confirm or 'Cancel' to cancel the booking."
+    );
+
+    if (!userConfirmed) {
+      return;
+    }
+
+
     const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
-    
+
     const options = {
       key: keyId,
       amount: total * 100, // in paise
-      currency: 'INR',
+      currency: bookingData.currency || 'INR',
       name: 'TheLifeHolics',
       description: bookingData.service_title,
       image: '/logo.svg',
+      order_id: bookingData.order_id || null,
       handler: async function (response: any) {
         setPaying(true);
         try {
@@ -158,7 +173,7 @@ function PaymentPageContent() {
               booking_id: bookingData.id,
             }),
           });
-          
+
           if (!res.ok) throw new Error('Verification failed.');
 
           // If coupon was applied, increment coupon usage
@@ -253,8 +268,8 @@ function PaymentPageContent() {
 
   return (
     <div className="min-h-screen pt-32 sm:pt-40 pb-20 px-4 max-w-5xl mx-auto">
-      <Script 
-        src="https://checkout.razorpay.com/v1/checkout.js" 
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
         onLoad={() => setRazorpayReady(true)}
       />
 
@@ -303,7 +318,7 @@ function PaymentPageContent() {
                   <Ticket className="h-4 w-4" />
                   <span className="font-medium text-sm">{appliedCoupon} Applied</span>
                 </div>
-                <button 
+                <button
                   onClick={handleRemoveCoupon}
                   className="p-1 rounded-full hover:bg-gold/10 text-gold/70 hover:text-gold transition-colors"
                 >
@@ -320,7 +335,7 @@ function PaymentPageContent() {
                   placeholder="WELCOME10, HEAL50"
                   className="rounded-xl uppercase font-semibold"
                 />
-                <Button 
+                <Button
                   onClick={handleApplyCoupon}
                   disabled={applying || !couponCode}
                   className="rounded-xl px-5"
@@ -337,7 +352,7 @@ function PaymentPageContent() {
               <span>Session Price</span>
               <span className="text-foreground">{formatPrice(subtotal, currency)}</span>
             </div>
-            
+
             {discount > 0 && (
               <div className="flex items-center justify-between text-success">
                 <span>Coupon Discount</span>
@@ -376,87 +391,24 @@ function PaymentPageContent() {
               </ul>
             </div>
 
-            {currency === 'INR' ? (
-              // Domestic Razorpay Payment Form
-              <div className="space-y-4">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Fast &amp; secure local bank transactions, credit cards, UPI, and wallets powered by Razorpay.
-                </p>
+            <div className="space-y-4">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Fast &amp; secure transaction processing (supporting domestic bank transfers, international cards and wallets) powered securely by Razorpay.
+              </p>
 
-                <Button 
-                  onClick={handleRazorpayPayment} 
-                  disabled={paying}
-                  className="w-full rounded-full py-6 text-base font-semibold shadow-glow bg-gold hover:bg-gold-hover text-gold-foreground"
-                >
-                  {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Pay Now via Razorpay'}
-                </Button>
+              <Button
+                onClick={handleRazorpayPayment}
+                disabled={paying}
+                className="w-full rounded-full py-6 text-base font-semibold shadow-glow bg-gold hover:bg-gold-hover text-gold-foreground"
+              >
+                {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : `Pay Now via Razorpay (${currency})`}
+              </Button>
 
-                <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground mt-2">
-                  <ShieldCheck className="h-3.5 w-3.5 text-success" />
-                  <span>Secure 256-bit SSL encrypted connection</span>
-                </div>
+              <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground mt-2">
+                <ShieldCheck className="h-3.5 w-3.5 text-success" />
+                <span>Secure 256-bit SSL encrypted connection</span>
               </div>
-            ) : (
-              // International Stripe Payment Form
-              <form onSubmit={handleInternationalPayment} className="space-y-4">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  International transaction processed securely in USD via Stripe.
-                </p>
-
-                <div className="space-y-3">
-                  <div>
-                    <Label htmlFor="card-num" className="text-xs">Card Number</Label>
-                    <Input
-                      id="card-num"
-                      type="text"
-                      maxLength={19}
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim())}
-                      placeholder="4111 2222 3333 4444"
-                      className="rounded-xl mt-1"
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="card-exp" className="text-xs">Expiry Date</Label>
-                      <Input
-                        id="card-exp"
-                        type="text"
-                        maxLength={5}
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                        placeholder="MM/YY"
-                        className="rounded-xl mt-1"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="card-cvc" className="text-xs">CVC / CVV</Label>
-                      <Input
-                        id="card-cvc"
-                        type="password"
-                        maxLength={4}
-                        value={cardCvc}
-                        onChange={(e) => setCardCvc(e.target.value)}
-                        placeholder="•••"
-                        className="rounded-xl mt-1"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Button 
-                  type="submit"
-                  disabled={paying}
-                  className="w-full rounded-full py-6 text-base font-semibold shadow-glow"
-                >
-                  {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Pay Now via Stripe'}
-                </Button>
-              </form>
-            )}
+            </div>
 
             <button
               onClick={handleCancelPayment}

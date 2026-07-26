@@ -39,7 +39,7 @@ service cloud.firestore {
 
     // 3. Transactions & Submissions
     match /bookings/{document} {
-      allow read: if request.auth != null && (resource.data.user_id == request.auth.uid || get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true);
+      allow read: if true;
       allow create, update: if true;
     }
     match /orders/{document} {
@@ -110,6 +110,9 @@ service cloud.firestore {
     match /audit_logs/{document} {
       allow read: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
       allow create: if true;
+    }
+    match /session_locks/{document} {
+      allow read, write: if true;
     }
   }
 }

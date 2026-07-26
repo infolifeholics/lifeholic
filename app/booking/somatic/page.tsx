@@ -80,7 +80,6 @@ function SomaticBookingFlowContent() {
         }
 
         setPlanName(currentPlan);
-        setPrice(currentPrice);
         setSurvey(currentSurvey);
 
         // Fetch price dynamically from Firestore Settings to stay connected to Admin Panel edits
@@ -98,16 +97,16 @@ function SomaticBookingFlowContent() {
             priceKey = 'elite_price_inr';
           }
           const rawPrice = sData[priceKey] || currentPrice;
-          setPrice(currency === 'USD' ? Math.round(rawPrice / 80) : rawPrice);
+          setPrice(currency === 'USD' ? Math.round(rawPrice / 85) : rawPrice);
         } else {
-          setPrice(currency === 'USD' ? Math.round(currentPrice / 80) : currentPrice);
+          setPrice(currency === 'USD' ? Math.round(currentPrice / 85) : currentPrice);
         }
       } catch (e) {
         console.error('Error fetching service details:', e);
       }
     };
     fetchServiceDetails();
-  }, [search, serviceId]);
+  }, [search, serviceId, tz]);
 
   // Pre-fill user profile info if logged in
   useEffect(() => {

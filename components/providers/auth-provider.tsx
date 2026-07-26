@@ -27,6 +27,8 @@ type Profile = {
   bio?: string | null;
   address?: string | null;
   avatar_url?: string | null;
+  city?: string | null;
+  country?: string | null;
 };
 
 // Compatible type with both Firebase and previous Supabase User structure

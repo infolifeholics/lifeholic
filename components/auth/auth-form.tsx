@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Chrome, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,9 @@ import Link from 'next/link';
 export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect') || '/account';
+
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +35,7 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
           return;
         }
         toast.success('Welcome back.');
-        router.push('/account');
+        router.push(redirect);
       } else if (mode === 'signup') {
         const { error } = await signUp(email, password, fullName);
         if (error) {
@@ -40,7 +43,7 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
           return;
         }
         toast.success('Account created. Welcome to TheLifeHolics.');
-        router.push('/account');
+        router.push(redirect);
       } else {
         await sendPasswordResetEmail(auth, email);
         toast.success('Password reset link sent to your email.');
@@ -62,7 +65,7 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
         return;
       }
       toast.success('Welcome back.');
-      router.push('/account');
+      router.push(redirect);
     } finally {
       setLoading(false);
     }

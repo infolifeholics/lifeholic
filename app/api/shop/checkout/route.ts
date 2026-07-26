@@ -22,6 +22,38 @@ export async function POST(req: Request) {
     }
 
     const number = orderNumber();
+    
+    // Create Razorpay Order if currency is INR and gateway is Razorpay
+    let pgOrderId = null;
+    if (currency === 'INR' || !currency) {
+      try {
+        const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
+        const keySecret = process.env.RAZORPAY_KEY_SECRET || 'rzp_test_secret';
+        
+        const response = await fetch('https://api.razorpay.com/v1/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + Buffer.from(keyId + ':' + keySecret).toString('base64'),
+          },
+          body: JSON.stringify({
+            amount: Math.round(Number(total) * 100), // paise
+            currency: 'INR',
+            receipt: number,
+          }),
+        });
+
+        if (response.ok) {
+          const rzpOrder = await response.json();
+          pgOrderId = rzpOrder.id;
+        } else {
+          console.error('Razorpay order creation failed:', await response.text());
+        }
+      } catch (err) {
+        console.error('Error calling Razorpay API:', err);
+      }
+    }
+
     const orderData = {
       number,
       email,
@@ -34,9 +66,10 @@ export async function POST(req: Request) {
       shipping: Number(shipping) || 0,
       total: Number(total) || 0,
       currency: currency || 'INR',
-      status: 'paid',
-      payment_provider: 'manual',
-      payment_ref: `demo-${number}`,
+      status: 'pending',
+      payment_status: 'unpaid',
+      payment_provider: 'razorpay',
+      payment_ref: pgOrderId || `order-${number}`,
       coupon_code: coupon_code || null,
       user_id: user_id || null,
       created_at: new Date().toISOString(),
@@ -44,29 +77,7 @@ export async function POST(req: Request) {
 
     const docRef = await addDoc(collection(db, 'orders'), orderData);
 
-    // Trigger notification
-    try {
-      await triggerOrderNotification(docRef.id, orderData);
-    } catch (err) {
-      console.error('Failed to trigger order notification:', err);
-    }
-
-    // Increment coupon usage if a code was used
-    if (coupon_code) {
-      try {
-        const q = query(collection(db, 'coupons'), where('code', '==', coupon_code.toUpperCase()));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const couponDoc = snap.docs[0];
-          const newUses = (couponDoc.data().uses || 0) + 1;
-          await setDoc(couponDoc.ref, { uses: newUses }, { merge: true });
-        }
-      } catch (err) {
-        console.error('Error incrementing coupon uses:', err);
-      }
-    }
-
-    return NextResponse.json({ ok: true, id: docRef.id, number });
+    return NextResponse.json({ ok: true, id: docRef.id, number, pgOrderId, total });
   } catch (error: any) {
     console.error('Checkout error:', error);
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });

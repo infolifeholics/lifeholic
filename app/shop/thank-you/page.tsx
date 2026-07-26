@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, CheckCircle2, Download, Mail, Package } from 'lucide-react';
+import { ArrowRight, Download, Mail, Package } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { formatPrice } from '@/lib/format';
+import { ThankYouAnimation } from '@/components/shop/thank-you-animation';
 
 export const metadata: Metadata = {
   title: 'Thank you',
@@ -35,9 +36,13 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
     <div className="flex min-h-[80vh] items-center pt-32">
       <div className="mx-auto max-w-xl px-4 sm:px-6 lg:px-8">
         <div className="rounded-[2rem] border border-border/60 bg-card/70 p-10 text-center shadow-float">
-          <span className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/15 text-success">
-            <CheckCircle2 className="h-7 w-7" />
-          </span>
+          <ThankYouAnimation />
+          <div className="checkmark-container mb-4">
+            <svg className="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+              <circle className="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+              <path className="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+            </svg>
+          </div>
           <h1 className="mt-6 font-display text-4xl font-medium tracking-tight text-foreground text-balance">
             Thank you for your order
           </h1>

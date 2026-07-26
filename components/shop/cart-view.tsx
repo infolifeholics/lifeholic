@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { useCart } from '@/components/providers/cart-provider';
+import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/format';
 
 export function CartView() {
   const { items, setQuantity, remove, subtotal, clear, count } = useCart();
+  const { user } = useAuth();
 
   if (count === 0) {
     return (
@@ -91,7 +93,9 @@ export function CartView() {
             <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, 'INR')}</dd></div>
           </dl>
           <Button asChild className="mt-6 w-full rounded-full" size="lg">
-            <Link href="/shop/checkout">Proceed to checkout <ArrowRight className="ml-1 h-4 w-4" /></Link>
+            <Link href={user ? "/shop/checkout" : "/auth/login?redirect=/shop/checkout"}>
+              Proceed to checkout <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
           </Button>
           <p className="mt-3 text-center text-xs text-muted-foreground">Secure checkout · Razorpay (INR) · Stripe (USD)</p>
         </aside>

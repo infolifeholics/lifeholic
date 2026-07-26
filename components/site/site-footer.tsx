@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const COLS = [
   {
@@ -65,7 +66,10 @@ export function SiteFooter() {
   };
 
   return (
-    <footer className="relative mt-32 border-t border-white/5 bg-black/10 backdrop-blur-md">
+    <footer className={cn(
+      "relative mt-32 border-t border-white/5 bg-black/10 backdrop-blur-md",
+      pathname.startsWith('/account') && "hidden md:block"
+    )}>
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1.6fr]">
           <div>

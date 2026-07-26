@@ -277,8 +277,15 @@ export function BookingFlow({ services }: { services: Service[] }) {
   };
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
-  const availableModes = selectedSlot?.modes || [];
-  const effectiveMode = availableModes.includes(mode) ? mode : availableModes[0];
+  // Determine available modes from all slots if none is selected
+  const availableModes = useMemo(() => {
+    if (selectedSlot) return selectedSlot.modes || [];
+    const allModes = new Set<string>();
+    slots.forEach(s => s.modes?.forEach(m => allModes.add(m)));
+    return allModes.size > 0 ? Array.from(allModes) as ('online' | 'offline')[] : ['online', 'offline'];
+  }, [selectedSlot, slots]);
+
+  const effectiveMode = (availableModes.includes(mode) ? mode : availableModes[0] || 'online') as 'online' | 'offline';
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
@@ -478,7 +485,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
                             {availableModes.map((m) => (
                               <button
                                 key={m}
-                                onClick={() => setMode(m)}
+                                onClick={() => setMode(m as 'online' | 'offline')}
                                 className={cn(
                                   'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium capitalize transition-colors',
                                   effectiveMode === m

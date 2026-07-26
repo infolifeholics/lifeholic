@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Lock, Tag, X } from 'lucide-react';
+import { Loader2, Lock, Tag, X, ShieldCheck } from 'lucide-react';
 import { useCart } from '@/components/providers/cart-provider';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -10,10 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
+import Script from 'next/script';
 
 export function CheckoutView() {
   const { items, subtotal, clear } = useCart();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -30,12 +31,44 @@ export function CheckoutView() {
   const [applied, setApplied] = useState<{ code: string; discount: number } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [placing, setPlacing] = useState(false);
+  const [razorpayReady, setRazorpayReady] = useState(false);
+
+  const [detectedCurrency, setDetectedCurrency] = useState<'INR' | 'USD'>('INR');
+
+  useEffect(() => {
+    // Detect currency dynamically based on client timezone
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+      const isIndia = tz.toLowerCase().includes('kolkata') || tz.toLowerCase().includes('india');
+      setDetectedCurrency(isIndia ? 'INR' : 'USD');
+    } catch {
+      setDetectedCurrency('INR');
+    }
+  }, []);
+
+  // Sync profile details if they load dynamically later
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        email: user.email || prev.email,
+        full_name: user.user_metadata?.full_name || prev.full_name,
+      }));
+    }
+  }, [user]);
 
   const hasPhysical = items.some((i) => i.type === 'physical');
   const baseShipping = subtotal > 1500 || !hasPhysical ? 0 : 149;
   const discount = applied?.discount || 0;
   const shipping = Math.max(0, baseShipping);
-  const total = Math.max(0, subtotal - discount + shipping);
+
+  // If USD is detected, we perform simple conversion (e.g. 1 USD = 85 INR)
+  // Check if we need to convert items prices or subtotal
+  const currencyRate = detectedCurrency === 'USD' ? 85 : 1;
+  const convertedSubtotal = subtotal / currencyRate;
+  const convertedDiscount = discount / currencyRate;
+  const convertedShipping = shipping / currencyRate;
+  const total = Math.max(0, convertedSubtotal - convertedDiscount + convertedShipping);
 
   const applyCoupon = async () => {
     if (!coupon) return;
@@ -53,7 +86,7 @@ export function CheckoutView() {
         return;
       }
       setApplied({ code: data.code, discount: data.discount });
-      toast.success(`Code ${data.code} applied — you saved ${formatPrice(data.discount, 'INR')}.`);
+      toast.success(`Code ${data.code} applied — you saved ${formatPrice(data.discount / currencyRate, detectedCurrency)}.`);
     } catch {
       toast.error('Something went wrong.');
     } finally {
@@ -64,6 +97,19 @@ export function CheckoutView() {
   const placeOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
+
+    // Razorpay script check
+    if (!(window as any).Razorpay) {
+      toast.error('Razorpay SDK is loading. Please wait a moment and try again.');
+      return;
+    }
+
+    // Cancellation warning pop-up
+    const userConfirmed = window.confirm('Ek bar order karne ke baad cancel nahi hoga. Kya aap confirm karna chahte hain?');
+    if (!userConfirmed) {
+      return;
+    }
+
     setPlacing(true);
     try {
       const address = hasPhysical
@@ -80,17 +126,18 @@ export function CheckoutView() {
           address,
           items: items.map((i) => ({
             id: i.id,
+            slug: i.slug,
             name: i.name,
-            price: i.price,
+            price: i.price / currencyRate,
             quantity: i.quantity,
             image: i.image,
             type: i.type,
           })),
-          subtotal,
-          discount,
-          shipping,
+          subtotal: convertedSubtotal,
+          discount: convertedDiscount,
+          shipping: convertedShipping,
           total,
-          currency: 'INR',
+          currency: detectedCurrency,
           coupon_code: applied?.code || null,
           user_id: user?.id || null,
         }),
@@ -98,16 +145,88 @@ export function CheckoutView() {
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.error || 'Could not place order.');
+        setPlacing(false);
         return;
       }
-      clear();
-      router.push(`/shop/thank-you?order=${data.number}`);
+
+      const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
+      const options = {
+        key: keyId,
+        amount: Math.round(Number(total) * 100),
+        currency: 'INR',
+        name: 'TheLifeHolics',
+        description: `Order ${data.number}`,
+        image: '/logo.svg',
+        order_id: data.pgOrderId,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch('/api/shop/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                order_id: data.id,
+              }),
+            });
+
+            if (!verifyRes.ok) throw new Error('Verification failed.');
+
+            toast.success('Payment verified & order confirmed!');
+            clear();
+            router.push(`/shop/thank-you?order=${data.number}`);
+          } catch (err) {
+            toast.error('Failed to verify payment status.');
+            setPlacing(false);
+          }
+        },
+        prefill: {
+          name: form.full_name,
+          email: form.email,
+          contact: form.phone || '',
+        },
+        theme: {
+          color: '#d4af37',
+        },
+        modal: {
+          ondismiss: function () {
+            toast.info('Payment cancelled. You can retry placing the order.');
+            setPlacing(false);
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
     } catch {
       toast.error('Something went wrong.');
-    } finally {
       setPlacing(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-sm text-muted-foreground">Checking authentication status...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+        <h1 className="font-display text-3xl font-medium text-foreground">Sign in required</h1>
+        <p className="mt-3 max-w-sm text-pretty text-muted-foreground">
+          You must be signed in to check out and complete your order.
+        </p>
+        <Button asChild className="mt-6 rounded-full">
+          <a href={`/auth/login?redirect=/shop/checkout`}>Sign in to continue</a>
+        </Button>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -121,6 +240,10 @@ export function CheckoutView() {
 
   return (
     <div>
+      <Script 
+        src="https://checkout.razorpay.com/v1/checkout.js" 
+        onLoad={() => setRazorpayReady(true)}
+      />
       <h1 className="font-display text-4xl font-medium tracking-tight text-foreground">Checkout</h1>
       <div className="mt-10 grid gap-10 lg:grid-cols-[1.4fr_1fr]">
         <form onSubmit={placeOrder} className="space-y-6">
@@ -162,13 +285,17 @@ export function CheckoutView() {
             <legend className="px-2 font-display text-lg font-medium text-foreground">Payment</legend>
             <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border bg-secondary/40 p-4 text-sm text-muted-foreground">
               <Lock className="h-4 w-4 text-gold" />
-              You&apos;ll be redirected to a secure payment page (Razorpay for India, Stripe for international).
-              This demo confirms the order instantly for you to experience the flow.
+              <div>
+                <p className="font-semibold text-foreground">Secure Payment Gateway</p>
+                <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
+                  Fast &amp; secure transaction powered by Razorpay. Note: Orders once placed cannot be cancelled.
+                </p>
+              </div>
             </div>
           </fieldset>
 
           <Button type="submit" size="lg" disabled={placing} className="w-full rounded-full">
-            {placing ? (<><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Placing order…</>) : `Place order · ${formatPrice(total, 'INR')}`}
+            {placing ? (<><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Processing payment…</>) : `Pay Now · ${formatPrice(total, detectedCurrency)}`}
           </Button>
         </form>
 
@@ -183,7 +310,7 @@ export function CheckoutView() {
                   <p className="text-sm font-medium text-foreground">{i.name}</p>
                   <p className="text-xs text-muted-foreground">Qty {i.quantity}</p>
                 </div>
-                <span className="text-sm font-medium text-foreground">{formatPrice(i.price * i.quantity, 'INR')}</span>
+                <span className="text-sm font-medium text-foreground">{formatPrice((i.price / currencyRate) * i.quantity, detectedCurrency)}</span>
               </li>
             ))}
           </ul>
@@ -213,10 +340,10 @@ export function CheckoutView() {
           )}
 
           <dl className="mt-5 space-y-3 border-t border-border/50 pt-5 text-sm">
-            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(subtotal, 'INR')}</dd></div>
-            {discount > 0 && <div className="flex justify-between"><dt className="text-success">Discount</dt><dd className="font-medium text-success">−{formatPrice(discount, 'INR')}</dd></div>}
-            <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{shipping === 0 ? 'Free' : formatPrice(shipping, 'INR')}</dd></div>
-            <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, 'INR')}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, detectedCurrency)}</dd></div>
+            {discount > 0 && <div className="flex justify-between"><dt className="text-success">Discount</dt><dd className="font-medium text-success">−{formatPrice(convertedDiscount, detectedCurrency)}</dd></div>}
+            <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{shipping === 0 ? 'Free' : formatPrice(convertedShipping, detectedCurrency)}</dd></div>
+            <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, detectedCurrency)}</dd></div>
           </dl>
         </aside>
       </div>

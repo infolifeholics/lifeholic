@@ -250,6 +250,38 @@ export async function POST(req: Request) {
 
         const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
 
+        // Check if we need to create a Razorpay Order
+        let pgOrderId = null;
+        const finalCurrency = currency || 'INR';
+        const finalAmount = amount ?? 0;
+        if (finalAmount > 0) {
+          try {
+            const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
+            const keySecret = process.env.RAZORPAY_KEY_SECRET || 'rzp_test_secret';
+            
+            const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic ' + Buffer.from(keyId + ':' + keySecret).toString('base64'),
+              },
+              body: JSON.stringify({
+                amount: Math.round(Number(finalAmount) * 100), // paise/cents
+                currency: finalCurrency,
+              }),
+            });
+
+            if (rzpRes.ok) {
+              const rzpOrder = await rzpRes.json();
+              pgOrderId = rzpOrder.id;
+            } else {
+              console.error('Razorpay order creation failed for booking:', await rzpRes.text());
+            }
+          } catch (err) {
+            console.error('Error generating Razorpay Order ID for booking:', err);
+          }
+        }
+
         const insert: any = {
           service_id: isSomatic ? `somatic_${somatic_plan_name.toLowerCase().replace(/\s+/g, '_')}` : service_id,
           service_title: service.title || 'Therapy Session',
@@ -266,14 +298,15 @@ export async function POST(req: Request) {
           mode,
           status: initialStatus,
           payment_status: initialPaymentStatus,
-          amount: amount ?? 0,
-          currency: currency || 'INR',
+          amount: finalAmount,
+          currency: finalCurrency,
           notes: notes || null,
           category: category || null,
           subcategory: subcategory || null,
           problems: problems || null,
           summary: summary || null,
           meeting_link: meetingLink,
+          order_id: pgOrderId || null,
           status_timeline: [
             {
               status: initialStatus,
@@ -286,8 +319,8 @@ export async function POST(req: Request) {
             {
               payment_status: initialPaymentStatus,
               timestamp: new Date().toISOString(),
-              amount: amount ?? 0,
-              currency: currency || 'INR',
+              amount: finalAmount,
+              currency: finalCurrency,
             }
           ],
           healer_id: assignedHealerId,
