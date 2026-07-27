@@ -8,6 +8,14 @@ const REQUIRED_ENV_VARS = [
 ];
 
 export function validateEnv() {
+  // Skip during build/export phase to avoid build failures on Vercel build servers
+  if (
+    process.env.NEXT_PHASE === 'phase-production-build' ||
+    process.env.NEXT_PHASE === 'phase-export'
+  ) {
+    return;
+  }
+
   const missing: string[] = [];
   for (const key of REQUIRED_ENV_VARS) {
     if (!process.env[key]) {
