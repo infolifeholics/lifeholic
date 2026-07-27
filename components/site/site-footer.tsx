@@ -28,7 +28,7 @@ const COLS = [
       { href: '/contact', label: 'Contact' },
       { href: '/faq', label: 'FAQ' },
       { href: '/account', label: 'My Account' },
-      { href: '/admin', label: 'Admin' },
+      // { href: '/admin', label: 'Admin' },
     ],
   },
   {
@@ -81,9 +81,9 @@ export function SiteFooter() {
             <div className="mt-6 flex items-center gap-2">
               {[
                 { Icon: Instagram, href: 'https://instagram.com', label: 'Instagram' },
-                { Icon: MessageCircle, href: 'https://wa.me/919999999999', label: 'WhatsApp' },
-                { Icon: Mail, href: 'mailto:hello@thelifeholics.com', label: 'Email' },
-                { Icon: Phone, href: 'tel:+919999999999', label: 'Phone' },
+                { Icon: MessageCircle, href: `https://wa.me/${process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || '919999999999'}`, label: 'WhatsApp' },
+                { Icon: Mail, href: `mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'hello@thelifeholics.com'}`, label: 'Email' },
+                { Icon: Phone, href: `tel:${process.env.NEXT_PUBLIC_CONTACT_PHONE || '+919999999999'}`, label: 'Phone' },
               ].map(({ Icon, href, label }) => (
                 <a
                   key={label}

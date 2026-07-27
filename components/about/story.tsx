@@ -9,26 +9,25 @@ export function AboutStory() {
           <div>
             <SectionHeading
               align="left"
-              eyebrow="My story"
+              eyebrow="OUR STORY"
               title="The path that brought me here"
             />
             <Reveal delay={0.1}>
               <div className="mt-8 space-y-5 text-pretty text-base leading-relaxed text-muted-foreground">
                 <p>
-                  I did not arrive at this work through certainty. I arrived through my own
-                  unraveling — the kind that asks you to either harden or soften, and the slow
-                  discovery that softening was the only thing that ever helped.
+                  As I began my own journey of healing and self-discovery, I realized that many of our struggles—whether related to health, relationships, finances, or emotions—often have deeper roots than what we see on the surface.
                 </p>
                 <p>
-                  Years of my own therapy, study, meditation and grief taught me that healing is
-                  not a destination but a relationship — with yourself, your history, and the
-                  quiet truth beneath the noise. I trained formally in psychology, then went
-                  deeper into spiritual psychology, somatic work and inner child modalities,
-                  because the mind alone was never enough.
+                  The more I explored these deeper emotional, energetic, and spiritual patterns, the more I started understanding myself. As I healed and applied these learnings in my own life, I began noticing meaningful changes—not just in how I felt, but in how I experienced life itself.
                 </p>
                 <p>
-                  Today I sit with others the way I once needed someone to sit with me: present,
-                  unhurried, and willing to meet the whole of who they are.
+                  LifeHolics began with a profound inner experience. On the night of 14th August 2019, I heard a female voice say, <strong className="text-gold">"I'm pregnant."</strong> Spiritually, pregnancy symbolizes the birth of something that needs to be nurtured with love and care. Within a few weeks, LifeHolics came into existence. Looking back, I now understand that it wasn't just the birth of a platform—it was the birth of a purpose. Over the years, my own healing journey has taught me that real transformation begins from within, and this community is an extension of everything life and the Universe have helped me learn.
+                </p>
+                <p>
+                  Lifeholics was created with the intention of helping people gain clarity about their life’s challenges, understand the deeper patterns influencing them, and begin a journey of healing and transformation.
+                </p>
+                <p>
+                  Our goal is not simply to solve problems, but to help you understand why they are happening, so you can create lasting change. We believe that when you understand yourself at a deeper level, you make different choices, experience healthier relationships, greater peace, and a more fulfilling life.
                 </p>
               </div>
             </Reveal>
@@ -65,7 +64,7 @@ export function AboutStory() {
 
         <RevealText
           as="p"
-          text="I believe people come to therapy not to be fixed, but to be witnessed. The fixing, when it happens, is something they do themselves — once they feel safe enough to try."
+          text="If Lifeholics can help even one person understand themselves a little better and move towards the life they truly wish to live, then its purpose is being fulfilled."
           className="mx-auto mt-20 max-w-3xl text-center font-display text-2xl font-medium leading-relaxed text-foreground sm:text-3xl text-balance"
         />
       </div>

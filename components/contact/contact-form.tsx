@@ -71,9 +71,9 @@ export function ContactForm() {
 
 export function ContactInfo() {
   const items = [
-    { icon: Mail, label: 'Email', value: 'hello@thelifeholics.com', href: 'mailto:hello@thelifeholics.com' },
-    { icon: Phone, label: 'Phone', value: '+91 99999 99999', href: 'tel:+919999999999' },
-    { icon: MessageCircle, label: 'WhatsApp', value: 'Chat on WhatsApp', href: 'https://wa.me/919999999999' },
+    { icon: Mail, label: 'Email', value: process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'hello@thelifeholics.com', href: `mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'hello@thelifeholics.com'}` },
+    { icon: Phone, label: 'Phone', value: process.env.NEXT_PUBLIC_CONTACT_PHONE || '+91 99999 99999', href: `tel:${process.env.NEXT_PUBLIC_CONTACT_PHONE || '+919999999999'}` },
+    { icon: MessageCircle, label: 'WhatsApp', value: 'Chat on WhatsApp', href: `https://wa.me/${process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || '919999999999'}` },
     { icon: MapPin, label: 'Studio', value: 'Online worldwide · In person in Pune, India', href: null },
   ];
   return (

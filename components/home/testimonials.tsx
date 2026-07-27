@@ -23,6 +23,15 @@ export function HomeTestimonials({ items }: { items: Testimonial[] }) {
     onSelect();
   }, [embla, onSelect]);
 
+  // Autoplay functionality
+  useEffect(() => {
+    if (!embla) return;
+    const interval = setInterval(() => {
+      embla.scrollNext();
+    }, 3000); // 3 seconds interval
+    return () => clearInterval(interval);
+  }, [embla]);
+
   if (!items.length) return null;
 
   return (

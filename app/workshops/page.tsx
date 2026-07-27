@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import Link from 'next/link';
-import { CalendarDays, Clock, MapPin, Sparkles, Loader2, ArrowRight } from 'lucide-react';
+import { CalendarDays, Clock, Sparkles, Loader2, ArrowRight } from 'lucide-react';
 import { formatPrice } from '@/lib/format';
 import type { Workshop } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 export default function WorkshopsPage() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'current' | 'completed'>('upcoming');
 
   useEffect(() => {
     const q = query(collection(db, 'workshops'));
@@ -23,106 +24,90 @@ export default function WorkshopsPage() {
     return () => unsub();
   }, []);
 
+  const parsedWorkshops = useMemo(() => {
+    const now = Date.now();
+    return workshops.map(w => {
+      const wDate = new Date(`${w.date}T${w.start_time || '00:00'}`).getTime();
+      const wEndDate = new Date(`${w.date}T${w.end_time || '23:59'}`).getTime();
+      
+      let calculatedStatus: 'upcoming' | 'current' | 'completed' = 'upcoming';
+      if (now > wEndDate) {
+        calculatedStatus = 'completed';
+      } else if (now >= wDate && now <= wEndDate) {
+        calculatedStatus = 'current';
+      }
+      
+      return {
+        ...w,
+        calculatedStatus
+      };
+    });
+  }, [workshops]);
+
+  const filteredWorkshops = useMemo(() => {
+    return parsedWorkshops.filter(w => w.calculatedStatus === activeTab && w.status === 'published');
+  }, [parsedWorkshops, activeTab]);
+
   if (loading) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin text-gold mb-2" />
-        <p className="text-sm">Aligning upcoming somatic gatherings...</p>
+        <p className="text-sm">Aligning somatic gatherings...</p>
       </div>
     );
   }
 
-  const featured = workshops.filter((w) => w.featured && w.status === 'published');
-  const upcoming = workshops.filter((w) => !w.featured && w.status === 'published');
-  const completed = workshops.filter((w) => w.status === 'completed');
-
   return (
     <div className="min-h-screen bg-background-2/30 py-16 sm:py-24 text-left">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-16">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
         
         {/* Header */}
-        <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gold">Gather in Community</p>
-          <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-            Somatic Workshops &amp; Retreats
+        <div className="text-center max-w-3xl mx-auto space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Gather in Community</p>
+          <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+            WORKSHOPS
           </h1>
-          <p className="mt-4 text-base text-muted-foreground leading-relaxed">
-            Deep group experiences, inner child alignments, and ancestral patterns release led by certified somatic facilitators.
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+            At Lifeholics, our workshops are designed to help you understand yourself on a deeper level while experiencing practical healing techniques that you can apply in your daily life. Each workshop focuses on a specific area of healing and personal transformation.
           </p>
         </div>
 
-        {/* Featured Workshop */}
-        {featured.length > 0 && (
-          <div className="space-y-6">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 fill-gold" /> Featured Somatic Experience
-            </h2>
-            <div className="grid gap-8 lg:grid-cols-12 rounded-3xl border border-border/60 bg-card p-6 lg:p-8 shadow-soft items-center">
-              <div className="lg:col-span-7 aspect-[16/9] overflow-hidden rounded-2xl relative border border-border/20">
-                <img src={featured[0].image} alt={featured[0].title} className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                <span className="absolute bottom-4 left-4 bg-gold text-gold-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full">
-                  Featured Gathering
-                </span>
-              </div>
-              <div className="lg:col-span-5 flex flex-col justify-between h-full space-y-6">
-                <div>
-                  <h3 className="font-display text-2xl lg:text-3xl font-medium text-foreground">{featured[0].title}</h3>
-                  <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{featured[0].short_description}</p>
-                </div>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground border-t border-b border-border/40 py-3">
-                    <span className="flex items-center gap-1.5">
-                      <CalendarDays className="h-4 w-4 text-gold" />
-                      {new Date(featured[0].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="h-4 w-4 text-gold" />
-                      {featured[0].start_time} - {featured[0].end_time}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Exchange</p>
-                      <p className="text-lg font-bold text-foreground">{formatPrice(featured[0].price_inr, 'INR')}</p>
-                    </div>
-                    <Link href={`/workshops/${featured[0].slug}`}>
-                      <Button className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground gap-1.5">
-                        Reserve Slot <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Tab selection */}
+        <div className="flex justify-center border-b border-border/40 pb-px">
+          <div className="flex bg-secondary/60 p-1 rounded-full border border-border/40 items-center gap-1.5">
+            {(['upcoming', 'current', 'completed'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-all",
+                  activeTab === tab 
+                    ? "bg-gold text-gold-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
 
-        {/* Upcoming Workshops */}
-        <div className="space-y-6">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gold">Upcoming Gatherings</h2>
-          {upcoming.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No upcoming workshops scheduled at this time. Stay tuned!</p>
+        {/* List Section */}
+        <div className="space-y-8">
+          {filteredWorkshops.length === 0 ? (
+            <div className="text-center py-16 rounded-3xl border border-dashed border-border bg-card/40">
+              <p className="text-sm font-medium text-foreground">No {activeTab} workshops found.</p>
+              <p className="mt-1 text-xs text-muted-foreground">More Workshops Coming Soon. We’re continuously creating new workshops to support different aspects of healing, self-discovery, and personal growth.</p>
+            </div>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {upcoming.map((w) => (
-                <WorkshopCard key={w.id} w={w} />
+              {filteredWorkshops.map((w) => (
+                <WorkshopCard key={w.id} w={w} isCompleted={w.calculatedStatus === 'completed'} />
               ))}
             </div>
           )}
         </div>
 
-        {/* Completed Workshops */}
-        {completed.length > 0 && (
-          <div className="space-y-6 pt-8 border-t border-border/40">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-gold">Past Memories &amp; Integrations</h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {completed.map((w) => (
-                <WorkshopCard key={w.id} w={w} isCompleted />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

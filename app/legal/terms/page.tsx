@@ -15,49 +15,80 @@ export default function TermsPage() {
       updated="July 2026"
       sections={[
         {
-          heading: 'Welcome',
+          heading: '1. Booking & Payment',
           body: [
-            'By using this website and booking sessions or purchasing products, you agree to these terms. Please read them carefully — they are written in plain language.',
+            'All sessions must be booked in advance.',
+            'Full payment is required to confirm your booking.',
+            'Clients booked in the 4-Week Deep Transformation Program must book and complete all 4 sessions within 31 days of enrollment. Any session not used within this time will be considered cancelled.',
+            "The next session slot will open for booking only after the current session is completed. It is the client's responsibility to keep track of their sessions and book them on time. The healer will not be responsible for sending reminders."
           ],
         },
         {
-          heading: 'Therapeutic relationship',
+          heading: '2. Rescheduling Policy',
           body: [
-            'Sessions are a collaborative process between you and the therapist. They are not a substitute for medical care in emergencies. If you are in crisis or at risk of harm, please contact your local emergency services or a crisis helpline immediately.',
-            'The therapist does not diagnose, prescribe, or provide medical treatment through this website.',
+            'You may reschedule your session by informing us at least 48 hours before your scheduled appointment.',
+            'Rescheduling requests made less than 48 hours before the session may not be accommodated.'
           ],
         },
         {
-          heading: 'Bookings',
+          heading: '3. Missed Sessions',
           body: [
-            'When you book a session, the slot is reserved for you instantly. You agree to provide accurate contact information so we can send confirmations and reminders.',
-            'Cancellation and rescheduling are governed by our Refund Policy.',
+            'If you do not attend your scheduled session without prior notice, the session will be considered completed and cannot be rescheduled or refunded.',
+            'It is your responsibility to join the session on time.'
           ],
         },
         {
-          heading: 'Shop',
+          heading: '4. Cancellation by Lifeaholics',
           body: [
-            'All prices are listed in INR and USD. We reserve the right to update prices and availability at any time.',
-            'You agree to provide accurate shipping information for physical orders. We are not responsible for delays caused by incorrect addresses.',
+            'If Lifeaholics needs to cancel or reschedule your session due to unforeseen circumstances, you will be offered the next available suitable appointment at no additional cost.'
           ],
         },
         {
-          heading: 'Intellectual property',
+          heading: '5. Refund Policy',
           body: [
-            'All content on this site — writing, imagery, meditations, courses — is owned by TheLifeHolics and protected by copyright. You may not copy, redistribute, or resell it without permission.',
-            'Digital products are licensed for your personal use only.',
+            'All payments made towards sessions, workshops, or healing programs are non-refundable.'
           ],
         },
         {
-          heading: 'Limitation of liability',
+          heading: '6. Healing Process',
           body: [
-            'TheLifeHolics is not liable for indirect or incidental damages arising from the use of this site or its services. Our liability is limited to the amount you have paid for the relevant service.',
+            'Every individual’s healing journey is unique.',
+            'While we strive to support you to the best of our ability, the number of sessions required varies from person to person.',
+            'No specific outcome or timeline can be guaranteed.'
           ],
         },
         {
-          heading: 'Changes',
-          body: ['We may update these terms from time to time. Continued use of the site after changes constitutes acceptance of the new terms.'],
+          heading: '7. Personal Responsibility',
+          body: [
+            'Healing is a collaborative process. Your willingness to participate, reflect, and apply the guidance shared during the sessions plays an important role in your journey.'
+          ],
         },
+        {
+          heading: '8. Medical Disclaimer',
+          body: [
+            'Our sessions are intended to support your emotional, energetic, and spiritual well-being.',
+            'They are not a substitute for medical, psychological, psychiatric, or legal advice, diagnosis, or treatment.',
+            'Please continue any treatment or medication prescribed by your healthcare professional.'
+          ],
+        },
+        {
+          heading: '9. Confidentiality',
+          body: [
+            'All information shared during your sessions will be treated with respect and kept confidential, except where disclosure is required by law.'
+          ],
+        },
+        {
+          heading: '10. Respectful Conduct',
+          body: [
+            'We are committed to creating a safe and respectful healing space. We reserve the right to end or decline a session in cases of abusive, threatening, or inappropriate behaviour.'
+          ],
+        },
+        {
+          heading: '11. Acceptance of Terms',
+          body: [
+            'By booking a session with Lifeaholics, you acknowledge that you have read, understood, and agreed to these Terms & Conditions.'
+          ],
+        }
       ]}
     />
   );
