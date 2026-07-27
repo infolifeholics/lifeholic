@@ -31,9 +31,6 @@ export function validateEnv() {
   if (missing.length > 0) {
     const errorMsg = `[CRITICAL ENV ERROR] Missing required environment variables: ${missing.join(', ')}`;
     console.error(errorMsg);
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(errorMsg);
-    }
   }
 }
 
