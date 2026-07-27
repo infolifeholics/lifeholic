@@ -6,6 +6,29 @@ import { getIstWeekday, istDateTimeToUtc, writeAuditLog } from '@/lib/booking-ut
 
 import { rateLimiter, getIpFromRequest } from '@/lib/rate-limit';
 
+import { z } from 'zod';
+
+const bookingBodySchema = z.object({
+  service_id: z.string().optional().nullable(),
+  client_name: z.string().min(1),
+  client_email: z.string().email(),
+  client_phone: z.string().optional().nullable(),
+  client_timezone: z.string().optional().nullable(),
+  start_time: z.string().min(1),
+  end_time: z.string().min(1),
+  mode: z.enum(['online', 'offline']),
+  notes: z.string().optional().nullable(),
+  amount: z.number().optional().nullable(),
+  currency: z.string().optional().nullable(),
+  user_id: z.string().optional().nullable(),
+  category: z.string().optional().nullable(),
+  subcategory: z.string().optional().nullable(),
+  problems: z.string().optional().nullable(),
+  summary: z.string().optional().nullable(),
+  is_somatic_plan: z.boolean().optional().nullable(),
+  somatic_plan_name: z.string().optional().nullable(),
+});
+
 export async function POST(req: Request) {
   try {
     const ip = getIpFromRequest(req);
@@ -15,6 +38,11 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+    const parsed = bookingBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input parameters.' }, { status: 400 });
+    }
+
     const {
       service_id,
       client_name,
@@ -34,7 +62,7 @@ export async function POST(req: Request) {
       summary,
       is_somatic_plan,
       somatic_plan_name,
-    } = body || {};
+    } = parsed.data;
 
     const isSomatic = is_somatic_plan === true;
 
@@ -48,6 +76,9 @@ export async function POST(req: Request) {
       }
     }
 
+    const somaticPlanName = somatic_plan_name as string;
+    const serviceId = service_id as string;
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client_email)) {
       return NextResponse.json({ error: 'Valid email is required.' }, { status: 400 });
     }
@@ -59,17 +90,17 @@ export async function POST(req: Request) {
     if (isSomatic) {
       // Setup dynamic virtual service for somatic plan
       let duration = 60;
-      if (somatic_plan_name.toLowerCase().includes('essential')) duration = 30;
-      if (somatic_plan_name.toLowerCase().includes('elite')) duration = 90;
+      if (somaticPlanName.toLowerCase().includes('essential')) duration = 30;
+      if (somaticPlanName.toLowerCase().includes('elite')) duration = 90;
       
       service = {
-        title: somatic_plan_name,
+        title: somaticPlanName,
         duration_minutes: duration,
         mode: 'both',
       };
     } else {
       // Verify the service exists
-      const serviceDoc = await getDoc(doc(db, 'services', service_id));
+      const serviceDoc = await getDoc(doc(db, 'services', serviceId));
       if (!serviceDoc.exists()) {
         return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
       }
@@ -95,7 +126,7 @@ export async function POST(req: Request) {
     const healers = healersSnap.docs.map((d) => d.data());
     
     // Filter by service support
-    const assignedHealers = healers.filter((h) => h.services && h.services.includes(service_id));
+    const assignedHealers = healers.filter((h) => h.services && h.services.includes(serviceId));
 
     let assignedHealerId: string | null = null;
     let assignedHealerName: string | null = null;
@@ -318,10 +349,12 @@ export async function POST(req: Request) {
 
         // Check somatic package number tracking if user is booking a subsequent session
         let sessionNumber = 1;
+        let packageSnapForUpdate: any = null;
         if (isSomatic && user_id) {
           const packageRef = doc(db, 'somatic_packages', user_id);
           const packageSnap = await transaction.get(packageRef);
           if (packageSnap.exists()) {
+            packageSnapForUpdate = packageSnap;
             const pkgData = packageSnap.data();
             const currentBookingCount = (pkgData.booking_ids || []).length;
             sessionNumber = currentBookingCount + 1;
@@ -329,10 +362,10 @@ export async function POST(req: Request) {
         }
 
         const insert: any = {
-          service_id: isSomatic ? `somatic_${somatic_plan_name.toLowerCase().replace(/\s+/g, '_')}` : service_id,
+          service_id: isSomatic ? `somatic_${somaticPlanName.toLowerCase().replace(/\s+/g, '_')}` : serviceId,
           service_title: service.title || 'Therapy Session',
           is_somatic_plan: isSomatic,
-          somatic_plan_name: isSomatic ? somatic_plan_name : null,
+          somatic_plan_name: isSomatic ? somaticPlanName : null,
           user_id: user_id || null,
           client_name,
           client_email,
@@ -387,18 +420,15 @@ export async function POST(req: Request) {
         });
 
         // Write update to somatic package booking list inside the same transaction
-        if (isSomatic && user_id) {
+        if (isSomatic && user_id && packageSnapForUpdate && packageSnapForUpdate.exists()) {
           const packageRef = doc(db, 'somatic_packages', user_id);
-          const packageSnap = await transaction.get(packageRef);
-          if (packageSnap.exists()) {
-            const pkgData = packageSnap.data();
-            const currentBookingIds = pkgData.booking_ids || [];
-            transaction.update(packageRef, {
-              booking_ids: [...currentBookingIds, newBookingId],
-              remaining_sessions: Math.max(0, 4 - sessionNumber),
-              updated_at: new Date().toISOString()
-            });
-          }
+          const pkgData = packageSnapForUpdate.data();
+          const currentBookingIds = pkgData.booking_ids || [];
+          transaction.update(packageRef, {
+            booking_ids: [...currentBookingIds, newBookingId],
+            remaining_sessions: Math.max(0, 4 - sessionNumber),
+            updated_at: new Date().toISOString()
+          });
         }
 
         insertedBookingData = insert;

@@ -307,7 +307,15 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
         body: JSON.stringify({ bookingId: b.id, eventType: status }),
       }).catch((err) => console.error('Failed to trigger notification:', err));
 
-      toast.success(`Booking status changed to ${status}.`);
+      if (status === 'confirmed') {
+        toast.success('Session approved');
+      } else if (status === 'cancelled') {
+        toast.success('Session cancelled');
+      } else if (status === 'rejected') {
+        toast.success('Session rejected');
+      } else {
+        toast.success(`Booking status changed to ${status}.`);
+      }
       if (selectedBooking?.id === b.id) {
         setSelectedBooking({ ...selectedBooking, status, status_timeline: updatedTimeline });
       }
@@ -333,7 +341,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
         payment_history: updatedHistory,
         updated_at: new Date().toISOString() 
       }, { merge: true });
-      toast.success(`Payment status changed to ${payment_status}.`);
+      toast.success('Payment status updated');
       if (selectedBooking?.id === b.id) {
         setSelectedBooking({ ...selectedBooking, payment_status, payment_history: updatedHistory });
       }
@@ -416,7 +424,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
         body: JSON.stringify({ bookingId: selectedBooking.id, eventType: 'meeting_updated' }),
       }).catch((err) => console.error('Failed to trigger reschedule notification:', err));
 
-      toast.success('Session time updated successfully!');
+      toast.success('Session rescheduled');
       setSelectedBooking(null);
     } catch (e) {
       toast.error('Failed to update session time.');
@@ -448,7 +456,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
         updated_at: new Date().toISOString()
       }, { merge: true });
 
-      toast.success('Reschedule request accepted!');
+      toast.success('Session rescheduled');
       setSelectedBooking(null);
     } catch (e) {
       toast.error('Failed to accept reschedule.');
@@ -650,8 +658,8 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                 </tr>
               </thead>
               <tbody>
-                {bookings
-                  .filter((b) => {
+                {(() => {
+                  const filtered = bookings.filter((b) => {
                     const matchesSomatic = somaticFilter === 'all'
                       ? true
                       : somaticFilter === 'somatic'
@@ -669,63 +677,87 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                     const matchesHealer = healerFilter === 'all' || b.healer_id === healerFilter;
 
                     return matchesSomatic && matchesStatus && matchesHealer;
-                  })
-                  .map((b) => (
-                  <tr key={b.id} className="border-b border-border/40 hover:bg-muted/10 transition-colors">
-                    <td className="py-4 pr-4">
-                      <p className="font-medium text-foreground">{b.client_name}</p>
-                      <p className="text-xs text-muted-foreground">{b.client_email}</p>
-                      {b.whatsapp && <p className="text-[10px] text-emerald-400 mt-0.5 font-mono">WhatsApp: {b.whatsapp}</p>}
-                    </td>
-                    <td className="py-4 pr-4">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-foreground font-medium">{b.service_title || 'Therapy Session'}</p>
-                        {b.is_somatic_plan && (
-                          <span className="inline-flex bg-gold/10 text-gold border border-gold/20 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
-                            Somatic Plan
+                  });
+
+                  // Group by unique client_email
+                  const groupedMap: Record<string, typeof filtered> = {};
+                  filtered.forEach(b => {
+                    const email = b.client_email?.toLowerCase() || 'no-email';
+                    if (!groupedMap[email]) {
+                      groupedMap[email] = [];
+                    }
+                    groupedMap[email].push(b);
+                  });
+
+                  return Object.entries(groupedMap).map(([email, memberBookings]) => {
+                    const b = memberBookings[0]; // Primary representative row
+                    const totalSessions = memberBookings.length;
+
+                    return (
+                      <tr key={email} className="border-b border-border/40 hover:bg-muted/10 transition-colors">
+                        <td className="py-4 pr-4">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-foreground">{b.client_name}</p>
+                            {totalSessions > 1 && (
+                              <span className="inline-flex bg-primary/20 text-gold border border-gold/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                {totalSessions} Bookings
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{b.client_email}</p>
+                          {b.whatsapp && <p className="text-[10px] text-emerald-400 mt-0.5 font-mono">WhatsApp: {b.whatsapp}</p>}
+                        </td>
+                        <td className="py-4 pr-4">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-foreground font-medium">{b.service_title || 'Therapy Session'}</p>
+                            {b.is_somatic_plan && (
+                              <span className="inline-flex bg-gold/10 text-gold border border-gold/20 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                                Somatic Plan
+                              </span>
+                            )}
+                          </div>
+                          {b.subcategory && <p className="text-xs text-muted-foreground">{b.category} &gt; {b.subcategory}</p>}
+                          {b.healer_name && (
+                            <p className="text-[10px] text-gold mt-1 font-semibold uppercase tracking-wider">
+                              Healer: {b.healer_name}
+                            </p>
+                          )}
+                        </td>
+                        <td className="py-4 pr-4 text-muted-foreground">
+                          <p className="text-foreground text-xs">{formatInTz(b.start_time, 'Asia/Kolkata', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Mode: {b.mode}</p>
+                        </td>
+                        <td className="py-4 pr-4 font-semibold text-foreground">
+                          {b.amount ? `₹${b.amount}` : '—'}
+                        </td>
+                        <td className="py-4 pr-4">
+                          <span className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border', 
+                            b.payment_status === 'paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-warning/10 text-warning border-warning/20'
+                          )}>
+                            {b.payment_status}
                           </span>
-                        )}
-                      </div>
-                      {b.subcategory && <p className="text-xs text-muted-foreground">{b.category} &gt; {b.subcategory}</p>}
-                      {b.healer_name && (
-                        <p className="text-[10px] text-gold mt-1 font-semibold uppercase tracking-wider">
-                          Healer: {b.healer_name}
-                        </p>
-                      )}
-                    </td>
-                    <td className="py-4 pr-4 text-muted-foreground">
-                      <p className="text-foreground text-xs">{formatInTz(b.start_time, 'Asia/Kolkata', { dateStyle: 'medium', timeStyle: 'short' })}</p>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Mode: {b.mode}</p>
-                    </td>
-                    <td className="py-4 pr-4 font-semibold text-foreground">
-                      {b.amount ? `₹${b.amount}` : '—'}
-                    </td>
-                    <td className="py-4 pr-4">
-                      <span className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border', 
-                        b.payment_status === 'paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-warning/10 text-warning border-warning/20'
-                      )}>
-                        {b.payment_status}
-                      </span>
-                    </td>
-                    <td className="py-4 pr-4">
-                      <span className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border', 
-                        statusColor(b.status)
-                      )}>
-                        {b.status}
-                      </span>
-                    </td>
-                    <td className="py-4 text-right">
-                      <div className="inline-flex gap-1.5">
-                        <button
-                          onClick={() => handleOpenDetails(b)}
-                          className="rounded-full bg-secondary hover:bg-muted px-3 py-1.5 text-xs font-semibold text-foreground transition-colors"
-                        >
-                          Manage
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        </td>
+                        <td className="py-4 pr-4">
+                          <span className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border', 
+                            statusColor(b.status)
+                          )}>
+                            {b.status}
+                          </span>
+                        </td>
+                        <td className="py-4 text-right">
+                          <div className="inline-flex gap-1.5">
+                            <button
+                              onClick={() => handleOpenDetails(b)}
+                              className="rounded-full bg-secondary hover:bg-muted px-3 py-1.5 text-xs font-semibold text-foreground transition-colors"
+                            >
+                              Manage
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>
@@ -789,6 +821,42 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                     <p className="text-xs text-muted-foreground mt-1">{selectedBooking.notes}</p>
                   </div>
                 )}
+
+                {/* Group Member Bookings switcher inside details modal */}
+                {(() => {
+                  const clientB = bookings.filter(item => item.client_email?.toLowerCase() === selectedBooking.client_email?.toLowerCase());
+                  if (clientB.length <= 1) return null;
+                  return (
+                    <div className="pt-3 border-t border-border/20 space-y-2">
+                      <h4 className="text-xs font-semibold text-gold uppercase tracking-wider">Other Sessions from Client ({clientB.length})</h4>
+                      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                        {clientB.map((item, index) => (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              setSelectedBooking(item);
+                              setInternalNotes(item.internal_notes || '');
+                              if (item.start_time) {
+                                const dt = new Date(item.start_time);
+                                setEditDate(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`);
+                                setEditTime(dt.toTimeString().slice(0, 5));
+                              }
+                            }}
+                            className={cn(
+                              "text-[10px] font-semibold px-2 py-1 rounded-full border transition-all",
+                              item.id === selectedBooking.id
+                                ? "bg-gold text-gold-foreground border-gold"
+                                : "bg-secondary text-muted-foreground border-border/40 hover:text-foreground"
+                            )}
+                          >
+                            #{index + 1} · {new Date(item.start_time).toLocaleDateString([], { month: 'short', day: 'numeric' })} ({item.status})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <BookingTimelineVisualizer timeline={selectedBooking.status_timeline} />
               </div>
 
@@ -815,27 +883,40 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                     </div>
                   )}
                   
-                  {/* Status Actions */}
                   <div className="flex flex-wrap gap-2 pt-1">
-                    {selectedBooking.status !== 'confirmed' && (
-                      <Button onClick={() => updateStatus(selectedBooking, 'confirmed')} size="sm" className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white">
-                        Approve (Confirm)
-                      </Button>
-                    )}
-                    {selectedBooking.status !== 'completed' && selectedBooking.status === 'confirmed' && (
-                      <Button onClick={() => updateStatus(selectedBooking, 'completed')} size="sm" className="rounded-full bg-primary hover:bg-primary/95 text-white">
-                        Complete Session
-                      </Button>
-                    )}
-                    {selectedBooking.status !== 'rejected' && selectedBooking.status === 'pending' && (
-                      <Button onClick={() => updateStatus(selectedBooking, 'rejected')} size="sm" variant="destructive" className="rounded-full">
-                        Reject
-                      </Button>
-                    )}
-                    {selectedBooking.status !== 'cancelled' && (
-                      <Button onClick={() => updateStatus(selectedBooking, 'cancelled')} size="sm" variant="outline" className="rounded-full border-destructive/50 text-destructive hover:bg-destructive/10">
-                        Cancel Booking
-                      </Button>
+                    {selectedBooking.status === 'completed' ? (
+                      <span className="text-xs font-semibold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                        Session Completed
+                      </span>
+                    ) : selectedBooking.status === 'cancelled' ? (
+                      <span className="text-xs font-semibold text-destructive bg-destructive/10 border border-destructive/20 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                        Session Cancelled
+                      </span>
+                    ) : selectedBooking.status === 'rejected' ? (
+                      <span className="text-xs font-semibold text-destructive bg-destructive/10 border border-destructive/20 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                        Session Rejected
+                      </span>
+                    ) : (
+                      <>
+                        {selectedBooking.status !== 'confirmed' && (
+                          <Button onClick={() => updateStatus(selectedBooking, 'confirmed')} size="sm" className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                            Approve (Confirm)
+                          </Button>
+                        )}
+                        {selectedBooking.status === 'confirmed' && (
+                          <Button onClick={() => updateStatus(selectedBooking, 'completed')} size="sm" className="rounded-full bg-primary hover:bg-primary/95 text-white">
+                            Complete Session
+                          </Button>
+                        )}
+                        {selectedBooking.status === 'pending' && (
+                          <Button onClick={() => updateStatus(selectedBooking, 'rejected')} size="sm" variant="destructive" className="rounded-full">
+                            Reject
+                          </Button>
+                        )}
+                        <Button onClick={() => updateStatus(selectedBooking, 'cancelled')} size="sm" variant="outline" className="rounded-full border-destructive/50 text-destructive hover:bg-destructive/10">
+                          Cancel Booking
+                        </Button>
+                      </>
                     )}
                   </div>
 

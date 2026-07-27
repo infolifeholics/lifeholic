@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, doc, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, setDoc, getDocs } from 'firebase/firestore';
 import { formatInTz } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,7 +58,6 @@ export function AdminTodaysBookings() {
   const [endDate, setEndDate] = useState(todayIstStr);
 
   useEffect(() => {
-    const { getDocs, collection } = require('firebase/firestore');
     getDocs(collection(db, 'healers')).then((snap: any) => {
       setHealers(snap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
     }).catch(console.error);
@@ -126,7 +125,15 @@ export function AdminTodaysBookings() {
         body: JSON.stringify({ bookingId: id, eventType: newStatus }),
       }).catch((err) => console.error('Failed to trigger notification:', err));
 
-      toast.success(`Booking status changed to ${newStatus}.`);
+      if (newStatus === 'confirmed') {
+        toast.success('Session approved');
+      } else if (newStatus === 'cancelled') {
+        toast.success('Session cancelled');
+      } else if (newStatus === 'rejected') {
+        toast.success('Session rejected');
+      } else {
+        toast.success(`Booking status changed to ${newStatus}.`);
+      }
       if (selectedBooking?.id === id) {
         setSelectedBooking(prev => prev ? { ...prev, status: newStatus } : null);
       }
@@ -531,15 +538,40 @@ export function AdminTodaysBookings() {
               <div className="pt-4 border-t border-border/20 space-y-2">
                 <h4 className="text-xs font-semibold text-gold uppercase tracking-wider">Change Status</h4>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={() => updateStatus(selectedBooking.id, 'confirmed')} size="sm" className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white">
-                    Approve
-                  </Button>
-                  <Button onClick={() => updateStatus(selectedBooking.id, 'cancelled')} size="sm" variant="destructive" className="rounded-full">
-                    Cancel
-                  </Button>
-                  <Button onClick={() => updateStatus(selectedBooking.id, 'completed')} size="sm" variant="secondary" className="rounded-full">
-                    Complete
-                  </Button>
+                  {selectedBooking.status === 'completed' ? (
+                    <span className="text-xs font-semibold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                      Session Completed
+                    </span>
+                  ) : selectedBooking.status === 'cancelled' ? (
+                    <span className="text-xs font-semibold text-destructive bg-destructive/10 border border-destructive/20 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                      Session Cancelled
+                    </span>
+                  ) : selectedBooking.status === 'rejected' ? (
+                    <span className="text-xs font-semibold text-destructive bg-destructive/10 border border-destructive/20 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                      Session Rejected
+                    </span>
+                  ) : (
+                    <>
+                      {selectedBooking.status !== 'confirmed' && (
+                        <Button onClick={() => updateStatus(selectedBooking.id, 'confirmed')} size="sm" className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                          Approve
+                        </Button>
+                      )}
+                      {selectedBooking.status === 'confirmed' && (
+                        <Button onClick={() => updateStatus(selectedBooking.id, 'completed')} size="sm" className="rounded-full bg-primary hover:bg-primary/95 text-white">
+                          Complete
+                        </Button>
+                      )}
+                      {selectedBooking.status === 'pending' && (
+                        <Button onClick={() => updateStatus(selectedBooking.id, 'rejected')} size="sm" variant="destructive" className="rounded-full">
+                          Reject
+                        </Button>
+                      )}
+                      <Button onClick={() => updateStatus(selectedBooking.id, 'cancelled')} size="sm" variant="outline" className="rounded-full border-destructive/50 text-destructive hover:bg-destructive/10">
+                        Cancel
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
 

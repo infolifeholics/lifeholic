@@ -190,7 +190,10 @@ function SomaticBookingFlowContent() {
           client_phone: details.phone,
           client_timezone: tz,
           start_time: selectedSlot.start,
-          end_time: selectedSlot.end,
+          end_time: new Date(
+            new Date(selectedSlot.start).getTime() + 
+            (planName.toLowerCase().includes('essential') ? 30 : planName.toLowerCase().includes('elite') ? 90 : 60) * 60_000
+          ).toISOString(),
           mode,
           notes: details.notes,
           amount: price,

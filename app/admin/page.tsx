@@ -50,7 +50,7 @@ import { AdminErrorLogsViewer } from '@/components/admin/error-logs-viewer';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 
 const NAV = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  // { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'analytics', label: 'Analytics Trends', icon: TrendingUp },
   { id: 'todays_bookings', label: "Today's Bookings", icon: CalendarDays },
   { id: 'bookings', label: 'Bookings & Calendar', icon: CalendarDays },
@@ -84,7 +84,7 @@ export default function AdminPage() {
 }
 
 function AdminShell() {
-  const [section, setSection] = useState<Section>('overview');
+  const [section, setSection] = useState<Section>();
   const [count, setCount] = useState(0);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -152,7 +152,7 @@ function AdminShell() {
             {NAV.find((n) => n.id === section)?.label}
           </h1>
           <div className="mt-6">
-            {section === 'overview' && <AdminDashboard onNavigateSection={setSection} />}
+            {/* {section === 'overview' && <AdminDashboard onNavigateSection={setSection} />} */}
             {section === 'analytics' && <AdminAnalyticsDashboard />}
             {section === 'todays_bookings' && <AdminTodaysBookings />}
             {section === 'bookings' && <AdminDashboard onNavigateSection={setSection} />}

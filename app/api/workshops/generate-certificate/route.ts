@@ -50,11 +50,20 @@ async function dispatchWhatsApp(reg: any, downloadUrl: string): Promise<boolean>
 }
 
 // Convert hex color to rgb array
-function hexToRgb(hex: string) {
+function hexToRgb(hex: any) {
+  if (typeof hex !== 'string') {
+    return rgb(0, 0, 0);
+  }
   const cleanHex = hex.replace('#', '');
-  const r = parseInt(cleanHex.substring(0, 2), 16) / 255 || 0;
-  const g = parseInt(cleanHex.substring(2, 4), 16) / 255 || 0;
-  const b = parseInt(cleanHex.substring(4, 6), 16) / 255 || 0;
+  if (cleanHex.length === 3) {
+    const r = (parseInt(cleanHex[0] + cleanHex[0], 16) / 255) || 0;
+    const g = (parseInt(cleanHex[1] + cleanHex[1], 16) / 255) || 0;
+    const b = (parseInt(cleanHex[2] + cleanHex[2], 16) / 255) || 0;
+    return rgb(r, g, b);
+  }
+  const r = (parseInt(cleanHex.substring(0, 2), 16) / 255) || 0;
+  const g = (parseInt(cleanHex.substring(2, 4), 16) / 255) || 0;
+  const b = (parseInt(cleanHex.substring(4, 6), 16) / 255) || 0;
   return rgb(r, g, b);
 }
 
@@ -82,7 +91,7 @@ export async function POST(req: Request) {
     // Load Certificate settings document dynamically from Firestore
     const certSettingsRef = doc(db, 'settings', 'certificate');
     const certSettingsSnap = await getDoc(certSettingsRef);
-    const s = certSettingsSnap.exists() ? certSettingsSnap.data() : {};
+    const s: any = certSettingsSnap.exists() ? certSettingsSnap.data() : {};
 
     // Apply defaults if settings are empty
     const settings = {
@@ -132,27 +141,41 @@ export async function POST(req: Request) {
     };
 
     // Load template image bytes
-    let templateBytes: Buffer;
+    let templateBytes: Buffer = Buffer.alloc(0);
     if (settings.template_url.startsWith('http')) {
       const imgRes = await fetch(settings.template_url);
       templateBytes = Buffer.from(await imgRes.arrayBuffer());
     } else {
-      const templatePath = path.join(process.cwd(), 'public', 'certificates', 'template.png');
+      const cleanPath = settings.template_url.startsWith('/') ? settings.template_url.substring(1) : settings.template_url;
+      const templatePath = path.join(process.cwd(), 'public', cleanPath);
       if (!fs.existsSync(templatePath)) {
-        return NextResponse.json({ error: 'Local template not found.' }, { status: 500 });
+        return NextResponse.json({ error: `Local template not found at ${templatePath}.` }, { status: 500 });
       }
       templateBytes = fs.readFileSync(templatePath);
     }
 
     // Generate Certificate ID
-    const certNo = regData.certificate_number || `CERT-${regData.workshop_id.substring(0, 4).toUpperCase()}-${Math.random().toString(36).substring(4, 10).toUpperCase()}`;
+    const workshopIdPrefix = (regData.workshop_id && typeof regData.workshop_id === 'string')
+      ? regData.workshop_id.substring(0, 4).toUpperCase()
+      : 'WS';
+    const certNo = regData.certificate_number || `CERT-${workshopIdPrefix}-${Math.random().toString(36).substring(4, 10).toUpperCase()}`;
 
     // Create PDF Document
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([1000, 1000]);
 
     // Draw Template Image
-    const templateImage = await pdfDoc.embedPng(templateBytes);
+    let templateImage;
+    try {
+      if (templateBytes[0] === 0x89 && templateBytes[1] === 0x50) {
+        templateImage = await pdfDoc.embedPng(new Uint8Array(templateBytes));
+      } else {
+        templateImage = await pdfDoc.embedJpg(new Uint8Array(templateBytes));
+      }
+    } catch (e) {
+      console.error('Failed to embed template image as PNG, trying JPG:', e);
+      templateImage = await pdfDoc.embedJpg(new Uint8Array(templateBytes));
+    }
     page.drawImage(templateImage, { x: 0, y: 0, width: 1000, height: 1000 });
 
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -160,7 +183,7 @@ export async function POST(req: Request) {
 
     // Render User Name
     if (settings.show_user_name) {
-      const nameText = regData.client_name;
+      const nameText = regData.client_name || 'Member';
       const nameSize = settings.user_name_font_size;
       const nameWidth = fontBold.widthOfTextAtSize(nameText, nameSize);
       page.drawText(nameText, {
@@ -174,7 +197,7 @@ export async function POST(req: Request) {
 
     // Render Workshop Name
     if (settings.show_workshop_name) {
-      const titleText = regData.workshop_title;
+      const titleText = regData.workshop_title || 'Workshop';
       const titleSize = settings.workshop_name_font_size;
       const titleWidth = fontBold.widthOfTextAtSize(titleText, titleSize);
       page.drawText(titleText, {
@@ -214,7 +237,9 @@ export async function POST(req: Request) {
       try {
         const logoRes = await fetch(settings.logo_url);
         const logoBytes = Buffer.from(await logoRes.arrayBuffer());
-        const logoImage = await pdfDoc.embedPng(logoBytes);
+        const logoImage = logoBytes[0] === 0x89 && logoBytes[1] === 0x50
+          ? await pdfDoc.embedPng(new Uint8Array(logoBytes))
+          : await pdfDoc.embedJpg(new Uint8Array(logoBytes));
         page.drawImage(logoImage, {
           x: settings.logo_x - 50,
           y: settings.logo_y - 25,
@@ -231,7 +256,7 @@ export async function POST(req: Request) {
       const verificationUrl = `https://lifeholics.com/verify-certificate/${certNo}`;
       const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 200 });
       const qrImageBytes = Buffer.from(qrCodeDataUrl.split(',')[1], 'base64');
-      const qrImage = await pdfDoc.embedPng(qrImageBytes);
+      const qrImage = await pdfDoc.embedPng(new Uint8Array(qrImageBytes));
       page.drawImage(qrImage, {
         x: settings.qr_code_x - 45,
         y: settings.qr_code_y - 45,
@@ -253,7 +278,9 @@ export async function POST(req: Request) {
         try {
           const sigRes = await fetch(settings.founder_signature_url);
           const sigBytes = Buffer.from(await sigRes.arrayBuffer());
-          const sigImage = await pdfDoc.embedPng(sigBytes);
+          const sigImage = sigBytes[0] === 0x89 && sigBytes[1] === 0x50
+            ? await pdfDoc.embedPng(new Uint8Array(sigBytes))
+            : await pdfDoc.embedJpg(new Uint8Array(sigBytes));
           page.drawImage(sigImage, {
             x: settings.founder_sig_x - 50,
             y: settings.founder_sig_y,
@@ -278,7 +305,9 @@ export async function POST(req: Request) {
         try {
           const sigRes = await fetch(settings.director_signature_url);
           const sigBytes = Buffer.from(await sigRes.arrayBuffer());
-          const sigImage = await pdfDoc.embedPng(sigBytes);
+          const sigImage = sigBytes[0] === 0x89 && sigBytes[1] === 0x50
+            ? await pdfDoc.embedPng(new Uint8Array(sigBytes))
+            : await pdfDoc.embedJpg(new Uint8Array(sigBytes));
           page.drawImage(sigImage, {
             x: settings.director_sig_x - 50,
             y: settings.director_sig_y,

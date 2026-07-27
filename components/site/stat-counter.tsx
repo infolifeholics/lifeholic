@@ -21,18 +21,16 @@ export function StatCounter({
   className?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-10% 0px' });
   const [display, setDisplay] = useState(0);
 
   useEffect(() => {
-    if (!inView) return;
     const controls = animate(0, value, {
       duration,
       ease: EASE,
       onUpdate: (v) => setDisplay(v),
     });
     return () => controls.stop();
-  }, [inView, value, duration]);
+  }, [value, duration]);
 
   return (
     <span ref={ref} className={className}>

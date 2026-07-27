@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import Link from 'next/link';
-import { CalendarDays, Clock, Sparkles, Loader2, ArrowRight } from 'lucide-react';
+import { CalendarDays, Clock, Sparkles, Loader2, ArrowRight, MapPin } from 'lucide-react';
 import { formatPrice } from '@/lib/format';
 import type { Workshop } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -13,7 +13,14 @@ import { Button } from '@/components/ui/button';
 export default function WorkshopsPage() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'current' | 'completed'>('upcoming');
+  const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'current' | 'completed'>('all');
+
+  const TABS = [
+    { id: 'all', label: 'All Workshops' },
+    { id: 'upcoming', label: 'Upcoming Workshops' },
+    { id: 'current', label: 'Current Workshops' },
+    { id: 'completed', label: 'Completed Workshops' },
+  ] as const;
 
   useEffect(() => {
     const q = query(collection(db, 'workshops'));
@@ -45,7 +52,11 @@ export default function WorkshopsPage() {
   }, [workshops]);
 
   const filteredWorkshops = useMemo(() => {
-    return parsedWorkshops.filter(w => w.calculatedStatus === activeTab && w.status === 'published');
+    return parsedWorkshops.filter(w => {
+      if (w.status === 'draft' || w.status === 'cancelled') return false;
+      if (activeTab === 'all') return true;
+      return w.calculatedStatus === activeTab;
+    });
   }, [parsedWorkshops, activeTab]);
 
   if (loading) {
@@ -74,19 +85,19 @@ export default function WorkshopsPage() {
 
         {/* Tab selection */}
         <div className="flex justify-center border-b border-border/40 pb-px">
-          <div className="flex bg-secondary/60 p-1 rounded-full border border-border/40 items-center gap-1.5">
-            {(['upcoming', 'current', 'completed'] as const).map((tab) => (
+          <div className="flex flex-wrap bg-secondary/60 p-1 rounded-3xl border border-border/40 items-center justify-center gap-1.5">
+            {TABS.map((tab) => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   "rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-all",
-                  activeTab === tab 
+                  activeTab === tab.id 
                     ? "bg-gold text-gold-foreground shadow-sm" 
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {tab}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -96,7 +107,7 @@ export default function WorkshopsPage() {
         <div className="space-y-8">
           {filteredWorkshops.length === 0 ? (
             <div className="text-center py-16 rounded-3xl border border-dashed border-border bg-card/40">
-              <p className="text-sm font-medium text-foreground">No {activeTab} workshops found.</p>
+              <p className="text-sm font-medium text-foreground">No workshops found.</p>
               <p className="mt-1 text-xs text-muted-foreground">More Workshops Coming Soon. We’re continuously creating new workshops to support different aspects of healing, self-discovery, and personal growth.</p>
             </div>
           ) : (
@@ -144,6 +155,10 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
           <span className="flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" />
             {w.start_time}
+          </span>
+          <span className="flex items-center gap-1">
+            <MapPin className="h-3.5 w-3.5" />
+            {w.venue_name || w.location || 'Online'}
           </span>
         </div>
 

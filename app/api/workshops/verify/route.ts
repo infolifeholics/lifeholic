@@ -1,14 +1,22 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, updateDoc, runTransaction } from 'firebase/firestore';
+import { z } from 'zod';
+
+const verifySchema = z.object({
+  registration_id: z.string().min(1),
+  razorpay_payment_id: z.string().min(1),
+  razorpay_signature: z.string().min(1),
+});
 
 export async function POST(req: Request) {
   try {
-    const { registration_id, razorpay_payment_id, razorpay_signature } = await req.json();
-
-    if (!registration_id) {
-      return NextResponse.json({ error: 'Registration reference is required.' }, { status: 400 });
+    const body = await req.json();
+    const parsed = verifySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input parameters.' }, { status: 400 });
     }
+    const { registration_id, razorpay_payment_id, razorpay_signature } = parsed.data;
 
     // 1. Locate the registration document
     const regQuery = query(
@@ -25,6 +33,11 @@ export async function POST(req: Request) {
     // 2. Perform dynamic Firestore transaction to update payment state & seats count
     const wsRef = doc(db, 'workshops', reg.workshop_id);
     
+    const host = req.headers.get('host') || 'localhost:3000';
+    const protocol = req.headers.get('x-forwarded-proto') || 'http';
+    const ticketUrl = `${protocol}://${host}/workshops/${registration_id}/ticket?name=${encodeURIComponent(reg.client_name || '')}&email=${encodeURIComponent(reg.client_email || '')}&phone=${encodeURIComponent(reg.client_phone || '')}&workshop=${encodeURIComponent(reg.workshop_title || '')}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticketUrl)}`;
+
     await runTransaction(db, async (transaction) => {
       const wsDoc = await transaction.get(wsRef);
       if (!wsDoc.exists()) {
@@ -44,7 +57,7 @@ export async function POST(req: Request) {
         payment_status: 'paid',
         status: 'confirmed',
         payment_id: razorpay_payment_id || 'mock_pay_123',
-        qr_code: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${registration_id}`,
+        qr_code: qrCodeUrl,
       });
     });
 
@@ -61,7 +74,7 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({ ok: true, ticket_qr: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${registration_id}` });
+    return NextResponse.json({ ok: true, ticket_qr: qrCodeUrl });
   } catch (error: any) {
     console.error('Verify payment error:', error);
     return NextResponse.json({ error: error.message || 'Verification failure.' }, { status: 500 });

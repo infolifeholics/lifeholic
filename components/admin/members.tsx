@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Loader2, Phone, Mail, MessageSquare, ExternalLink, Calendar, Package, ArrowLeft, User, Activity, Trash2 } from 'lucide-react';
+import { Search, Loader2, Phone, Mail, MessageSquare, ExternalLink, Calendar, Package, ArrowLeft, User, Activity, Trash2, Key } from 'lucide-react';
 import { formatPrice, formatInTz } from '@/lib/format';
 import { toast } from 'sonner';
 
@@ -51,6 +52,8 @@ export function AdminMembers() {
   const [selectedMemberBookings, setSelectedMemberBookings] = useState<Booking[]>([]);
   const [selectedMemberPackage, setSelectedMemberPackage] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [sendingPass, setSendingPass] = useState(false);
+  const [sentPass, setSentPass] = useState(false);
 
   useEffect(() => {
     fetchMembers();
@@ -70,6 +73,7 @@ export function AdminMembers() {
 
   const loadMemberDetails = async (member: Member) => {
     setSelectedMember(member);
+    setSentPass(false);
     setLoadingDetails(true);
     try {
       // Fetch Orders for user
@@ -171,6 +175,32 @@ export function AdminMembers() {
                   <a href={`mailto:${selectedMember.email}`}>
                     <Mail className="h-4 w-4" /> Email Member
                   </a>
+                </Button>
+              )}
+              {selectedMember.email && (
+                <Button
+                  onClick={async () => {
+                    setSendingPass(true);
+                    try {
+                      await sendPasswordResetEmail(auth, selectedMember.email!);
+                      setSentPass(true);
+                      toast.success('Password reset email sent.');
+                    } catch (err: any) {
+                      toast.error(err.message || 'Failed to send reset email.');
+                    } finally {
+                      setSendingPass(false);
+                    }
+                  }}
+                  disabled={sendingPass || sentPass}
+                  variant="outline"
+                  className="rounded-full w-full gap-2 border-amber-200/50 hover:bg-amber-500/5"
+                >
+                  {sendingPass ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Key className="h-4 w-4 text-amber-500" />
+                  )}
+                  <span>{sentPass ? 'Sent to mail' : sendingPass ? 'Sending...' : 'Email Pass'}</span>
                 </Button>
               )}
             </div>

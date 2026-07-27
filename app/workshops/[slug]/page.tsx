@@ -39,6 +39,7 @@ export default function WorkshopDetailsPage() {
   
   const [paying, setPaying] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [approvedFeedbacks, setApprovedFeedbacks] = useState<WorkshopFeedback[]>([]);
   const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
   const [relatedWs, setRelatedWs] = useState<Workshop[]>([]);
@@ -114,7 +115,13 @@ export default function WorkshopDetailsPage() {
           where('status', '==', 'confirmed')
         );
         getDocs(regQuery).then((snap) => {
-          setIsRegistered(!snap.empty);
+          if (!snap.empty) {
+            setIsRegistered(true);
+            setRegistrationId(snap.docs[0].id);
+          } else {
+            setIsRegistered(false);
+            setRegistrationId(null);
+          }
         });
       }
     }
@@ -137,8 +144,8 @@ export default function WorkshopDetailsPage() {
     );
   }
 
-  const left = Math.max(0, ws.seats_total - ws.seats_booked);
-  const isCompleted = ws.status === 'completed';
+  const left = Math.max(0, (ws.seats_total || 0) - (ws.seats_booked || 0));
+  const isCompleted = ws.status === 'completed' || ws.status === 'cancelled';
 
   const handleRegisterNowClick = () => {
     if (!user) {
@@ -482,7 +489,16 @@ export default function WorkshopDetailsPage() {
                     <span className="font-semibold text-foreground">{left} seats left</span>
                   </div>
 
-                  {!registering ? (
+                  {isRegistered && registrationId ? (
+                    <div className="bg-gold/10 border border-gold/30 rounded-2xl p-4 text-center space-y-3">
+                      <p className="text-xs font-semibold text-foreground">You are registered for this workshop!</p>
+                      <Link href={`/workshops/${registrationId}/ticket`} className="block">
+                        <Button className="w-full rounded-full bg-gold text-gold-foreground hover:bg-gold-hover text-xs font-bold uppercase tracking-wider">
+                          View My Ticket
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : !registering ? (
                     <Button 
                       onClick={handleRegisterNowClick}
                       disabled={left === 0}

@@ -23,47 +23,58 @@ export function HomeWorkshops({ items }: { items: Workshop[] }) {
             const pct = Math.round((w.seats_booked / w.seats_total) * 100);
             return (
               <StaggerItem key={w.id}>
-                <article className="group relative h-full overflow-hidden rounded-3xl glass-card glow-border reflection-sweep shadow-soft hover:-translate-y-1.5 hover:shadow-glow backdrop-blur-md border border-white/5">
-                  <div className="relative aspect-[16/10] overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={w.image ?? ''}
-                      alt={w.title}
-                      className="h-full w-full object-cover transition-transform duration-1000 ease-soft group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-primary/50 to-transparent" />
-                    <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full glass-strong px-3 py-1.5 text-xs font-medium text-foreground">
-                      <CalendarDays className="h-3.5 w-3.5" />
-                      {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </div>
-                  </div>
-                  <div className="p-6">
-                    <h3 className="font-display text-xl font-medium text-foreground">{w.title}</h3>
-                    <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{w.description}</p>
-                    <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {w.location}
-                      </span>
-                    </div>
-                    <div className="mt-5">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-accent to-gold"
-                          style={{ width: `${pct}%` }}
+                <Link href={`/workshops/${w.slug}`} className="block h-full group">
+                  <article className="relative h-full overflow-hidden rounded-3xl glass-card glow-border reflection-sweep shadow-soft hover:-translate-y-1.5 hover:shadow-glow backdrop-blur-md border border-white/5 flex flex-col justify-between">
+                    <div>
+                      <div className="relative aspect-[16/10] overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={w.image ?? ''}
+                          alt={w.title}
+                          className="h-full w-full object-cover transition-transform duration-1000 ease-soft group-hover:scale-105"
                         />
+                        <div className="absolute inset-0 bg-gradient-to-t from-primary/50 to-transparent" />
+                        <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full glass-strong px-3 py-1.5 text-xs font-medium text-foreground">
+                          <CalendarDays className="h-3.5 w-3.5" />
+                          {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
                       </div>
-                      <div className="mt-2 flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">{left} seats left</span>
-                        <span className="font-medium text-foreground">from {formatPrice(w.price_inr, 'INR')}</span>
+                      <div className="p-6">
+                        <h3 className="font-display text-xl font-medium text-foreground transition-colors group-hover:text-gold">{w.title}</h3>
+                        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{w.description}</p>
+                        <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            {w.start_time}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {w.venue_name || w.location || 'Online'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </article>
+                    <div className="p-6 pt-0">
+                      <div className="mt-2">
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-accent to-gold"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">{left} seats left</span>
+                          <span className="font-medium text-foreground">from {formatPrice(w.price_inr, 'INR')}</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-white/5 flex justify-end">
+                        <span className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors">
+                          Details &amp; Book
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                </Link>
               </StaggerItem>
             );
           })}
