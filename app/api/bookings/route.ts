@@ -179,6 +179,40 @@ export async function POST(req: Request) {
       if (!userClashSnap.empty) {
         return NextResponse.json({ error: 'You have already booked this session slot.' }, { status: 400 });
       }
+
+      // Check Somatic Package booking validation rules
+      if (isSomatic) {
+        try {
+          const packageDoc = await getDoc(doc(db, 'somatic_packages', user_id));
+          if (packageDoc.exists()) {
+            const pkg = packageDoc.data();
+            const nowTime = Date.now();
+            const expiryTime = new Date(pkg.expiry_date).getTime();
+
+            if (nowTime > expiryTime || pkg.status === 'expired') {
+              return NextResponse.json({ error: 'Your Somatic Program package has expired after 31 days.' }, { status: 400 });
+            }
+
+            if (pkg.remaining_sessions <= 0 || pkg.status === 'completed') {
+              return NextResponse.json({ error: 'All 4 sessions for this package have already been completed or booked.' }, { status: 400 });
+            }
+
+            // Get last session status check
+            if (pkg.booking_ids && pkg.booking_ids.length > 0) {
+              const lastBookingId = pkg.booking_ids[pkg.booking_ids.length - 1];
+              const lastBookingSnap = await getDoc(doc(db, 'bookings', lastBookingId));
+              if (lastBookingSnap.exists()) {
+                const lastB = lastBookingSnap.data();
+                if (lastB.status !== 'completed' && lastB.status !== 'cancelled' && lastB.status !== 'rejected') {
+                  return NextResponse.json({ error: 'Your current session must be marked as Completed before booking the next slot.' }, { status: 400 });
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error validating somatic program rules:', e);
+        }
+      }
     }
 
     // 3. Retrieve references for slot configuration and holidays to verify inside transaction
@@ -282,6 +316,18 @@ export async function POST(req: Request) {
           }
         }
 
+        // Check somatic package number tracking if user is booking a subsequent session
+        let sessionNumber = 1;
+        if (isSomatic && user_id) {
+          const packageRef = doc(db, 'somatic_packages', user_id);
+          const packageSnap = await transaction.get(packageRef);
+          if (packageSnap.exists()) {
+            const pkgData = packageSnap.data();
+            const currentBookingCount = (pkgData.booking_ids || []).length;
+            sessionNumber = currentBookingCount + 1;
+          }
+        }
+
         const insert: any = {
           service_id: isSomatic ? `somatic_${somatic_plan_name.toLowerCase().replace(/\s+/g, '_')}` : service_id,
           service_title: service.title || 'Therapy Session',
@@ -307,6 +353,7 @@ export async function POST(req: Request) {
           summary: summary || null,
           meeting_link: meetingLink,
           order_id: pgOrderId || null,
+          session_number: isSomatic ? sessionNumber : null,
           status_timeline: [
             {
               status: initialStatus,
@@ -338,6 +385,21 @@ export async function POST(req: Request) {
           start_time: start.toISOString(),
           created_at: new Date().toISOString()
         });
+
+        // Write update to somatic package booking list inside the same transaction
+        if (isSomatic && user_id) {
+          const packageRef = doc(db, 'somatic_packages', user_id);
+          const packageSnap = await transaction.get(packageRef);
+          if (packageSnap.exists()) {
+            const pkgData = packageSnap.data();
+            const currentBookingIds = pkgData.booking_ids || [];
+            transaction.update(packageRef, {
+              booking_ids: [...currentBookingIds, newBookingId],
+              remaining_sessions: Math.max(0, 4 - sessionNumber),
+              updated_at: new Date().toISOString()
+            });
+          }
+        }
 
         insertedBookingData = insert;
       });

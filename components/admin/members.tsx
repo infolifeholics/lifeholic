@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Loader2, Phone, Mail, MessageSquare, ExternalLink, Calendar, Package, ArrowLeft, User } from 'lucide-react';
+import { Search, Loader2, Phone, Mail, MessageSquare, ExternalLink, Calendar, Package, ArrowLeft, User, Activity, Trash2 } from 'lucide-react';
 import { formatPrice, formatInTz } from '@/lib/format';
 import { toast } from 'sonner';
 
@@ -37,6 +37,9 @@ type Booking = {
   status: string;
   mode: string;
   service_title?: string;
+  session_number?: number | null;
+  is_somatic_plan?: boolean | null;
+  admin_notes?: string | null;
 };
 
 export function AdminMembers() {
@@ -46,6 +49,7 @@ export function AdminMembers() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedMemberOrders, setSelectedMemberOrders] = useState<Order[]>([]);
   const [selectedMemberBookings, setSelectedMemberBookings] = useState<Booking[]>([]);
+  const [selectedMemberPackage, setSelectedMemberPackage] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
@@ -76,7 +80,21 @@ export function AdminMembers() {
       // Fetch Bookings for user
       const qBookings = query(collection(db, 'bookings'), where('user_id', '==', member.id));
       const snapBookings = await getDocs(qBookings);
-      setSelectedMemberBookings(snapBookings.docs.map((d) => ({ id: d.id, ...d.data() }) as Booking));
+      // Sort bookings chronologically (oldest first) to assign correct history sequence indices
+      const sortedBookings = snapBookings.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as Booking)
+        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+      
+      setSelectedMemberBookings(sortedBookings);
+
+      // Fetch active Somatic Package
+      const pkgRef = doc(db, 'somatic_packages', member.id);
+      const pkgSnap = await getDoc(pkgRef);
+      if (pkgSnap.exists()) {
+        setSelectedMemberPackage(pkgSnap.data());
+      } else {
+        setSelectedMemberPackage(null);
+      }
     } catch (err) {
       toast.error('Could not load member details.');
     } finally {
@@ -191,6 +209,35 @@ export function AdminMembers() {
                   )}
                 </div>
 
+                {/* Somatic Package Info */}
+                {selectedMemberPackage && (
+                  <div className="rounded-3xl border border-gold/30 bg-gradient-to-r from-card to-secondary/30 p-6 shadow-glow">
+                    <h3 className="font-display text-lg font-medium text-foreground mb-3 flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-gold" /> Active Somatic Package Info
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Purchase Date</p>
+                        <p className="font-semibold text-foreground">{new Date(selectedMemberPackage.purchase_date).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Expiry Date (31 days)</p>
+                        <p className="font-semibold text-foreground">{new Date(selectedMemberPackage.expiry_date).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Sessions Status</p>
+                        <p className="font-semibold text-foreground">
+                          {selectedMemberPackage.completed_sessions} Completed · {selectedMemberPackage.remaining_sessions} Remaining
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Package Status</p>
+                        <p className="font-semibold text-gold uppercase tracking-wider">{selectedMemberPackage.status}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Bookings/Sessions List */}
                 <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
                   <h3 className="font-display text-lg font-medium text-foreground mb-4 flex items-center gap-2">
@@ -199,16 +246,84 @@ export function AdminMembers() {
                   {selectedMemberBookings.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4">No sessions booked by this member.</p>
                   ) : (
-                    <div className="space-y-3">
-                      {selectedMemberBookings.map((b) => (
-                        <div key={b.id} className="p-4 border border-border/40 rounded-xl bg-background/50 flex justify-between items-center text-sm">
-                          <div>
-                            <p className="font-medium text-foreground">{b.service_title || `${b.mode} Session`}</p>
-                            <p className="text-xs text-muted-foreground">{formatInTz(b.start_time, 'Asia/Kolkata', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                    <div className="space-y-4">
+                      {selectedMemberBookings.map((b, index) => {
+                        const sessionCountText = `${index + 1}${
+                          index === 0 ? 'st' : index === 1 ? 'nd' : index === 2 ? 'rd' : 'th'
+                        } Session`;
+
+                        return (
+                          <div key={b.id} className="p-5 border border-border/40 rounded-2xl bg-background/50 space-y-4">
+                            <div className="flex justify-between items-start text-sm gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-gold/10 text-gold border border-gold/20">
+                                    {sessionCountText}
+                                  </span>
+                                  <p className="font-medium text-foreground">{b.service_title || `${b.mode} Session`}</p>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1.5">{formatInTz(b.start_time, 'Asia/Kolkata', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                              </div>
+                              <span className="text-xs font-semibold px-2.5 py-1 bg-secondary border border-border/40 rounded-full capitalize shrink-0">{b.status}</span>
+                            </div>
+
+                            {/* Dynamic Debounced Notes Section */}
+                            <div className="pt-3 border-t border-border/20 space-y-2 text-left">
+                              <label className="text-[10px] font-bold text-gold uppercase tracking-wider block">Session Notes (Auto-saves while typing)</label>
+                              <textarea
+                                defaultValue={b.admin_notes || ''}
+                                onChange={async (e) => {
+                                  const val = e.target.value;
+                                  try {
+                                    // Save dynamically to firebase bookings collection notes
+                                    const { doc, setDoc } = await import('firebase/firestore');
+                                    await setDoc(doc(db, 'bookings', b.id), {
+                                      admin_notes: val,
+                                      updated_at: new Date().toISOString()
+                                    }, { merge: true });
+                                    
+                                    // Update locally
+                                    setSelectedMemberBookings(prev => 
+                                      prev.map(item => item.id === b.id ? { ...item, admin_notes: val } : item)
+                                    );
+                                  } catch (err) {
+                                    console.error('Notes auto-save failed:', err);
+                                  }
+                                }}
+                                placeholder="Write notes during or after the session..."
+                                className="w-full text-xs bg-secondary/30 border border-border/40 rounded-xl p-3 focus:outline-none focus:border-gold/50 text-foreground"
+                                rows={3}
+                              />
+                              <div className="flex justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={async () => {
+                                    if (!confirm('Clear notes for this session?')) return;
+                                    try {
+                                      const { doc, setDoc } = await import('firebase/firestore');
+                                      await setDoc(doc(db, 'bookings', b.id), {
+                                        admin_notes: null,
+                                        updated_at: new Date().toISOString()
+                                      }, { merge: true });
+                                      
+                                      setSelectedMemberBookings(prev => 
+                                        prev.map(item => item.id === b.id ? { ...item, admin_notes: null } : item)
+                                      );
+                                      toast.success('Notes deleted successfully.');
+                                    } catch (err) {
+                                      toast.error('Could not clear notes.');
+                                    }
+                                  }}
+                                  className="h-7 text-[10px] rounded-full text-destructive hover:bg-destructive/10 gap-1.5"
+                                >
+                                  <Trash2 className="h-3 w-3" /> Clear Notes
+                                </Button>
+                              </div>
+                            </div>
                           </div>
-                          <span className="text-xs font-semibold px-2 py-1 bg-secondary rounded-full capitalize">{b.status}</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

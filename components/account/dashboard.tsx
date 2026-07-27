@@ -178,8 +178,28 @@ export function AccountDashboard() {
     } catch (e) { }
   }, []);
 
+  const [activeSomaticPackage, setActiveSomaticPackage] = useState<any>(null);
+
   useEffect(() => {
     if (!user) return;
+
+    // Fetch user somatic packages
+    const packageDocRef = doc(db, 'somatic_packages', user.id);
+    const unsubPackage = onSnapshot(packageDocRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        // Check if expired
+        const nowTime = Date.now();
+        const expiryTime = new Date(data.expiry_date).getTime();
+        if (nowTime > expiryTime && data.status === 'active') {
+          // Auto-mark as expired
+          setDoc(packageDocRef, { status: 'expired' }, { merge: true }).catch(console.error);
+        }
+        setActiveSomaticPackage({ id: snap.id, ...data });
+      } else {
+        setActiveSomaticPackage(null);
+      }
+    });
 
     const qOrders = query(
       collection(db, 'orders'),
@@ -266,6 +286,7 @@ export function AccountDashboard() {
       unsubscribeVisits();
       unsubscribeNotifs();
       unsubscribeWS();
+      unsubPackage();
     };
   }, [user]);
 
@@ -617,38 +638,101 @@ export function AccountDashboard() {
           </div>
         </div>
 
-        {/* 4. SESSION SUMMARY CARD */}
-        {/* <div
-          onClick={() => handleTabChange('upcoming')}
-          className="rounded-3xl border border-border/60 bg-gradient-to-r from-card to-secondary/30 p-5 shadow-soft mb-8 cursor-pointer hover:border-gold/40 hover:shadow-glow transition-all"
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-display font-medium text-lg text-foreground flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-gold" /> Sessions Summary
-            </h3>
-            <span className="text-xs text-gold flex items-center gap-1 hover:underline">
-              View booking history <ArrowRight className="h-3 w-3" />
-            </span>
+        {/* 4. SOMATIC PROGRAM TRACKER CARD */}
+        {activeSomaticPackage && (
+          <div className="rounded-3xl border border-gold/30 bg-gradient-to-r from-card to-secondary/30 p-6 shadow-glow mb-8 text-left">
+            <div className="flex justify-between items-center mb-4 border-b border-border/20 pb-3">
+              <div>
+                <h3 className="font-display font-medium text-lg text-foreground flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-gold" /> 4-Week Somatic Transformation Program
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Validity: {new Date(activeSomaticPackage.purchase_date).toLocaleDateString()} – {new Date(activeSomaticPackage.expiry_date).toLocaleDateString()}{' '}
+                  ({activeSomaticPackage.status === 'expired' ? <span className="text-destructive font-bold">Expired</span> : <span className="text-gold font-bold">Active</span>})
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-muted-foreground">Sessions Booked: {activeSomaticPackage.booking_ids?.length || 1}/4</span>
+              </div>
+            </div>
+
+            {/* Stages Step Tracker */}
+            <div className="grid gap-3 sm:grid-cols-4 mt-6">
+              {[1, 2, 3, 4].map((stepNum) => {
+                // Determine stage state based on package status & session bookings
+                const linkedBookingId = activeSomaticPackage.booking_ids?.[stepNum - 1];
+                let stepStatus: 'completed' | 'booked' | 'available' | 'locked' = 'locked';
+                let bookingDateStr = '';
+
+                if (linkedBookingId) {
+                  const bDetails = bookings.find(b => b.id === linkedBookingId);
+                  if (bDetails) {
+                    if (bDetails.status === 'completed') {
+                      stepStatus = 'completed';
+                    } else if (bDetails.status === 'cancelled' || bDetails.status === 'rejected') {
+                      stepStatus = 'available'; // can be rebooked
+                    } else {
+                      stepStatus = 'booked';
+                      bookingDateStr = new Date(bDetails.start_time).toLocaleDateString();
+                    }
+                  } else {
+                    stepStatus = 'booked';
+                  }
+                } else {
+                  // If it's not booked yet, check if the previous one is completed
+                  if (stepNum === 1) {
+                    stepStatus = 'available';
+                  } else {
+                    const prevBookingId = activeSomaticPackage.booking_ids?.[stepNum - 2];
+                    if (prevBookingId) {
+                      const prevB = bookings.find(b => b.id === prevBookingId);
+                      if (prevB && prevB.status === 'completed') {
+                        stepStatus = 'available';
+                      } else {
+                        stepStatus = 'locked';
+                      }
+                    } else {
+                      stepStatus = 'locked';
+                    }
+                  }
+                }
+
+                // If package is expired and not completed, force locked/expired status
+                if (activeSomaticPackage.status === 'expired' && stepStatus !== 'completed') {
+                  stepStatus = 'locked';
+                }
+
+                return (
+                  <div key={stepNum} className={cn(
+                    "p-4 rounded-2xl border text-center transition-all",
+                    stepStatus === 'completed' && "bg-emerald-500/5 border-emerald-500/20 text-emerald-400",
+                    stepStatus === 'booked' && "bg-amber-500/5 border-gold/30 text-gold",
+                    stepStatus === 'available' && "bg-card border-border/60 text-foreground hover:border-gold/30 cursor-pointer",
+                    stepStatus === 'locked' && "bg-secondary/40 border-border/20 text-muted-foreground opacity-60"
+                  )}>
+                    <div className="flex justify-center mb-2">
+                      {stepStatus === 'completed' && <CheckCircle2 className="h-5 w-5 text-emerald-400" />}
+                      {stepStatus === 'booked' && <CalendarDays className="h-5 w-5 text-gold" />}
+                      {stepStatus === 'available' && <Clock className="h-5 w-5 text-foreground" />}
+                      {stepStatus === 'locked' && <Lock className="h-5 w-5 text-muted-foreground" />}
+                    </div>
+                    <span className="block text-xs font-bold uppercase tracking-wider">Session {stepNum}</span>
+                    <span className="block text-[10px] mt-1 capitalize">
+                      {stepStatus === 'completed' && '✅ Completed'}
+                      {stepStatus === 'booked' && `📅 Booked (${bookingDateStr})`}
+                      {stepStatus === 'available' && (
+                        <Link href="/booking/somatic?plan=premium" className="hover:underline text-gold font-semibold">
+                          ⏳ Book Now
+                        </Link>
+                      )}
+                      {stepStatus === 'locked' && '🔒 Locked'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="p-3 bg-card/60 rounded-2xl border border-border/40">
-              <span className="block text-lg font-bold text-foreground">{bookings.length}</span>
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">Total</span>
-            </div>
-            <div className="p-3 bg-emerald-500/5 rounded-2xl border border-emerald-500/20">
-              <span className="block text-lg font-bold text-emerald-400">{upcomingBookings.length}</span>
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">Upcoming</span>
-            </div>
-            <div className="p-3 bg-primary/5 rounded-2xl border border-primary/20">
-              <span className="block text-lg font-bold text-gold">{completedBookings.length}</span>
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">Completed</span>
-            </div>
-            <div className="p-3 bg-destructive/5 rounded-2xl border border-destructive/20">
-              <span className="block text-lg font-bold text-destructive">{cancelledBookings.length}</span>
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">Cancelled</span>
-            </div>
-          </div>
-        </div> */}
+        )}
 
         {/* 5. NAVIGATION TABS (INSTAGRAM INSPIRED) */}
         <div>

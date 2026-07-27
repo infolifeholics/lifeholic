@@ -83,6 +83,37 @@ export async function POST(req: Request) {
 
     await setDoc(bookingRef, updatedBooking, { merge: true });
 
+    // Handle 4-Week Deep Transformation Program Initialization
+    if (b.is_somatic_plan && b.user_id) {
+      try {
+        const purchaseDate = new Date();
+        const expiryDate = new Date();
+        expiryDate.setDate(purchaseDate.getDate() + 31); // 31 days validity
+        
+        // We set document ID as the user_id (one active somatic program at a time)
+        const packageDocRef = doc(db, 'somatic_packages', b.user_id);
+        await setDoc(packageDocRef, {
+          user_id: b.user_id,
+          client_name: b.client_name,
+          client_email: b.client_email,
+          purchase_date: purchaseDate.toISOString(),
+          expiry_date: expiryDate.toISOString(),
+          status: 'active',
+          total_sessions: 4,
+          completed_sessions: 0,
+          remaining_sessions: 4,
+          booking_ids: [booking_id] // First session ID linked
+        }, { merge: true });
+        
+        // Mark current session as session 1
+        await setDoc(bookingRef, {
+          session_number: 1
+        }, { merge: true });
+      } catch (err) {
+        console.error('[VerifyPayment] Error initializing somatic package:', err);
+      }
+    }
+
     // Trigger Notification
     try {
       await triggerBookingNotification(booking_id, { ...b, ...updatedBooking }, 'confirmed');

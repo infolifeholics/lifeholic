@@ -44,6 +44,7 @@ type BookingRow = {
   client_country?: string | null;
   healer_id?: string | null;
   healer_name?: string | null;
+  user_id?: string | null;
 };
 
 export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (section: any) => void } = {}) {
@@ -256,6 +257,37 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
         status_timeline: updatedTimeline,
         updated_at: new Date().toISOString() 
       }, { merge: true });
+
+      // If somatic session is marked as completed, update packages counters
+      if (b.is_somatic_plan && b.user_id) {
+        try {
+          const { getDoc } = await import('firebase/firestore');
+          const packageRef = doc(db, 'somatic_packages', b.user_id);
+          const pkgSnap = await getDoc(packageRef);
+          if (pkgSnap.exists()) {
+            const pkgData = pkgSnap.data();
+            const totalBooked = (pkgData.booking_ids || []).length;
+            
+            let completedCount = pkgData.completed_sessions || 0;
+            if (status === 'completed') {
+              completedCount = Math.min(4, completedCount + 1);
+            } else if (b.status === 'completed' && status !== 'completed') {
+              completedCount = Math.max(0, completedCount - 1);
+            }
+            
+            const pkgStatus = completedCount >= 4 ? 'completed' : pkgData.status;
+
+            await setDoc(packageRef, {
+              completed_sessions: completedCount,
+              remaining_sessions: Math.max(0, 4 - totalBooked),
+              status: pkgStatus,
+              updated_at: new Date().toISOString()
+            }, { merge: true });
+          }
+        } catch (err) {
+          console.error('[Dashboard] Failed to sync somatic package state:', err);
+        }
+      }
 
       if (status === 'cancelled' || status === 'rejected') {
         const { deleteDoc } = await import('firebase/firestore');

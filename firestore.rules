@@ -114,5 +114,13 @@ service cloud.firestore {
     match /session_locks/{document} {
       allow read, write: if true;
     }
+    match /somatic_packages/{document} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /session_notes/{document} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }
