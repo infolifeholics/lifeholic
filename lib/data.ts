@@ -30,8 +30,12 @@ async function getCollectionData<T>(colName: string): Promise<T[]> {
       return freshSnap.docs.map((d) => d.data()) as T[];
     }
     return snap.docs.map((d) => d.data()) as T[];
-  } catch (e) {
-    console.error(`Error loading or seeding collection ${colName}:`, e);
+  } catch (e: any) {
+    if (e.code === 'permission-denied') {
+      console.info(`[Info] Database writes are securely restricted for collection "${colName}". Using local defaults.`);
+    } else {
+      console.error(`Error loading or seeding collection ${colName}:`, e);
+    }
     return defaults as T[];
   }
 }
