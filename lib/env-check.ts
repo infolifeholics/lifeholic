@@ -8,6 +8,11 @@ const REQUIRED_ENV_VARS = [
 ];
 
 export function validateEnv() {
+  // Skip validation on the client side (browser) since server-only secrets are not exposed
+  if (typeof window !== 'undefined') {
+    return;
+  }
+
   // Skip during build/export phase to avoid build failures on Vercel build servers
   if (
     process.env.NEXT_PHASE === 'phase-production-build' ||
