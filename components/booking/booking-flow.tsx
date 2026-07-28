@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, Clock, Globe, Loader2, MapPin, Video } from 'lucide-react';
@@ -50,6 +50,13 @@ export function BookingFlow({ services }: { services: Service[] }) {
   const { user } = useAuth();
 
   const [step, setStep] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [step]);
   const [serviceSlug, setServiceSlug] = useState<string>(
     search.get('service') || services[0]?.slug || ''
   );
@@ -288,7 +295,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
   const effectiveMode = (availableModes.includes(mode) ? mode : availableModes[0] || 'online') as 'online' | 'offline';
 
   return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+    <div ref={containerRef} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
       {/* Stepper */}
       <ol className="mx-auto mt-8 flex max-w-2xl items-center justify-between">
         {STEPS.map((label, i) => (
