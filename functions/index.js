@@ -1,4 +1,5 @@
 const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { onCall } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const nodemailer = require("nodemailer");
 const admin = require("firebase-admin");
@@ -427,4 +428,167 @@ exports.sendSessionReminders = onSchedule("every 15 minutes", async (event) => {
     logger.error("Error in sendSessionReminders cron execution:", err);
   }
 });
+
+async function getEmailConfig() {
+  try {
+    const settingsSnap = await db.collection("settings").doc("notifications").get();
+    if (settingsSnap.exists) {
+      const data = settingsSnap.data();
+      if (data.smtp_host && data.smtp_user) {
+        return {
+          smtp_host: data.smtp_host,
+          smtp_port: parseInt(data.smtp_port || "465"),
+          smtp_user: data.smtp_user,
+          smtp_password: data.smtp_password,
+          smtp_from: data.smtp_from || `"${data.sender_name || 'TheLifeHolics'}" <${data.smtp_user}>`,
+        };
+      }
+    }
+
+    const globalSnap = await db.collection("settings").doc("global").get();
+    if (globalSnap.exists) {
+      const data = globalSnap.data();
+      if (data.smtp_host && data.smtp_user) {
+        return {
+          smtp_host: data.smtp_host,
+          smtp_port: parseInt(data.smtp_port || "465"),
+          smtp_user: data.smtp_user,
+          smtp_password: data.smtp_password,
+          smtp_from: data.smtp_from || `"${data.business_name || 'TheLifeHolics'}" <${data.smtp_user}>`,
+        };
+      }
+    }
+  } catch (e) {
+    logger.error("Error reading SMTP settings from firestore:", e);
+  }
+
+  return {
+    smtp_host: process.env.SMTP_HOST || "smtp.gmail.com",
+    smtp_port: parseInt(process.env.SMTP_PORT || "465"),
+    smtp_user: process.env.SMTP_USER || "",
+    smtp_password: process.env.SMTP_PASSWORD || "",
+    smtp_from: process.env.SMTP_FROM || '"TheLifeHolics" <info.lifeholics@gmail.com>',
+  };
+}
+
+async function sendOtpEmail(to, otp) {
+  const config = await getEmailConfig();
+  if (!config.smtp_host || !config.smtp_user || !config.smtp_password) {
+    logger.warn("SMTP settings not configured. Skipping OTP email.");
+    throw new Error("SMTP credentials missing");
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: config.smtp_host,
+    port: config.smtp_port,
+    secure: config.smtp_port === 465,
+    auth: {
+      user: config.smtp_user,
+      pass: config.smtp_password,
+    },
+  });
+
+  const subject = "Your Password Reset OTP - TheLifeHolics";
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+      <h2 style="color: #c5a880; text-align: center;">Password Reset Request</h2>
+      <p>Hello,</p>
+      <p>We received a request to reset your password. Use the following One-Time Password (OTP) to complete the reset. This OTP is valid for 10 minutes.</p>
+      <div style="background: #fdfaf6; border: 1px dashed #c5a880; border-radius: 8px; padding: 15px; font-size: 24px; font-weight: bold; text-align: center; letter-spacing: 5px; color: #c5a880; margin: 20px 0;">
+        ${otp}
+      </div>
+      <p style="font-size: 12px; color: #777;">If you did not request a password reset, you can safely ignore this email.</p>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: config.smtp_from,
+    to,
+    subject,
+    html,
+  });
+}
+
+exports.requestPasswordResetOtp = onCall({ cors: true }, async (request) => {
+  try {
+    const { email } = request.data;
+    if (!email) {
+      throw new Error("Email is required");
+    }
+
+    // Check if user exists in Firebase Auth
+    let user;
+    try {
+      user = await admin.auth().getUserByEmail(email);
+    } catch (e) {
+      // Return success even if user not found to prevent user enumeration
+      logger.info(`Password reset requested for non-existent email: ${email}`);
+      return { success: true, message: "OTP sent if account exists" };
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Save to Firestore
+    await db.collection("password_reset_otps").doc(email).set({
+      email,
+      otp,
+      expiresAt,
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Send email
+    await sendOtpEmail(email, otp);
+
+    logger.info(`OTP successfully sent to ${email}`);
+    return { success: true, message: "OTP sent successfully" };
+  } catch (err) {
+    logger.error("Error in requestPasswordResetOtp:", err);
+    throw new Error(err.message || "Failed to request OTP");
+  }
+});
+
+exports.confirmPasswordResetOtp = onCall({ cors: true }, async (request) => {
+  try {
+    const { email, otp, newPassword } = request.data;
+    if (!email || !otp || !newPassword) {
+      throw new Error("Email, OTP, and newPassword are required");
+    }
+
+    if (newPassword.length < 6) {
+      throw new Error("Password must be at least 6 characters long");
+    }
+
+    const otpDoc = await db.collection("password_reset_otps").doc(email).get();
+    if (!otpDoc.exists) {
+      throw new Error("No OTP request found. Please request a new OTP.");
+    }
+
+    const data = otpDoc.data();
+    if (data.otp !== otp) {
+      throw new Error("Invalid OTP. Please try again.");
+    }
+
+    if (Date.now() > data.expiresAt) {
+      throw new Error("OTP has expired. Please request a new one.");
+    }
+
+    // Get user from Auth
+    const user = await admin.auth().getUserByEmail(email);
+
+    // Update password
+    await admin.auth().updateUser(user.uid, { password: newPassword });
+
+    // Delete OTP
+    await db.collection("password_reset_otps").doc(email).delete();
+
+    logger.info(`Password successfully reset for user ${email}`);
+    return { success: true, message: "Password updated successfully" };
+  } catch (err) {
+    logger.error("Error in confirmPasswordResetOtp:", err);
+    throw new Error(err.message || "Failed to confirm password reset");
+  }
+});
+
 

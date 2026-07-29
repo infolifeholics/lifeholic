@@ -18,10 +18,13 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/account';
 
-  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>(initialMode);
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot' | 'forgot_otp'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -32,25 +35,61 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
         const { error } = await signIn(email, password);
         if (error) {
           toast.error(error);
+          alert(`Login Error: ${error}`);
           return;
         }
         toast.success('Welcome back.');
+        alert('Success: Welcome back! Logging in.');
         router.push(redirect);
       } else if (mode === 'signup') {
         const { error } = await signUp(email, password, fullName);
         if (error) {
           toast.error(error);
+          alert(`Signup Error: ${error}`);
           return;
         }
         toast.success('Account created. Welcome to TheLifeHolics.');
+        alert('Success: Account created successfully!');
         router.push(redirect);
-      } else {
-        await sendPasswordResetEmail(auth, email);
-        toast.success('Password reset link sent to your email.');
+      } else if (mode === 'forgot') {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to send OTP.');
+        toast.success('OTP sent to your email. Please check your inbox.');
+        alert('Success: OTP sent to your email. Please check your inbox.');
+        setMode('forgot_otp');
+      } else if (mode === 'forgot_otp') {
+        if (newPassword !== confirmPassword) {
+          toast.error('Passwords do not match.');
+          alert('Error: Passwords do not match.');
+          return;
+        }
+        if (newPassword.length < 6) {
+          toast.error('Password must be at least 6 characters long.');
+          alert('Error: Password must be at least 6 characters long.');
+          return;
+        }
+        const res = await fetch('/api/auth/reset-password-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, otp, newPassword }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to reset password.');
+        toast.success('Password updated successfully! You can now log in.');
+        alert('Success: Password updated successfully! You can now log in.');
         setMode('login');
+        setOtp('');
+        setNewPassword('');
+        setConfirmPassword('');
       }
     } catch (err: any) {
       toast.error(err.message || 'An error occurred.');
+      alert(`Error: ${err.message || 'An error occurred.'}`);
     } finally {
       setLoading(false);
     }
@@ -84,11 +123,29 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
             <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5" required />
           </div>
         )}
-        <div>
-          <Label htmlFor="email">Email address</Label>
-          <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" required />
-        </div>
-        {mode !== 'forgot' && (
+        {mode !== 'forgot_otp' && (
+          <div>
+            <Label htmlFor="email">Email address</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" required disabled={mode === 'forgot_otp'} />
+          </div>
+        )}
+        {mode === 'forgot_otp' && (
+          <>
+            <div>
+              <Label htmlFor="otp">Enter 6-digit OTP</Label>
+              <Input id="otp" type="text" placeholder="123456" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value)} className="mt-1.5 text-center tracking-widest text-lg font-bold" required />
+            </div>
+            <div>
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input id="newPassword" type="password" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="mt-1.5" required minLength={6} />
+            </div>
+            <div>
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input id="confirmPassword" type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="mt-1.5" required minLength={6} />
+            </div>
+          </>
+        )}
+        {mode !== 'forgot' && mode !== 'forgot_otp' && (
           <div>
             <div className="flex justify-between items-center">
               <Label htmlFor="password">Password</Label>
@@ -112,13 +169,15 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
             'Sign in'
           ) : mode === 'signup' ? (
             'Create account'
+          ) : mode === 'forgot' ? (
+            'Send OTP Code'
           ) : (
-            'Send Reset Link'
+            'Reset Password'
           )}
         </Button>
       </form>
 
-      {mode !== 'forgot' && (
+      {mode !== 'forgot' && mode !== 'forgot_otp' && (
         <>
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -161,7 +220,7 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
         ) : mode === 'signup' ? (
           <>Already have an account? <button type="button" onClick={() => setMode('login')} className="font-medium text-foreground hover:underline">Sign in</button></>
         ) : (
-          <button type="button" onClick={() => setMode('login')} className="font-medium text-foreground hover:underline">Back to sign in</button>
+          <button type="button" onClick={() => { setMode('login'); setOtp(''); setNewPassword(''); setConfirmPassword(''); }} className="font-medium text-foreground hover:underline">Back to sign in</button>
         )}
       </p>
     </div>

@@ -20,12 +20,15 @@ type AuthModalProps = {
 export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const { signIn, signInWithGoogle } = useAuth();
   
-  const [authMode, setAuthMode] = useState<'login' | 'otp' | 'forgot'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'otp' | 'forgot' | 'forgot_otp'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
@@ -37,12 +40,15 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       const { error } = await signIn(email, password);
       if (error) {
         toast.error(error);
+        alert(`Login Error: ${error}`);
         return;
       }
       toast.success('Welcome back.');
+      alert('Success: Welcome back! Logging in.');
       onSuccess();
-    } catch (err) {
+    } catch (err: any) {
       toast.error('Sign in failed. Please try again.');
+      alert(`Login Error: ${err?.message || 'Sign in failed. Please try again.'}`);
     } finally {
       setLoading(false);
     }
@@ -120,12 +126,56 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     }
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
-      toast.success('Password reset link sent to your email.');
-      setAuthMode('login');
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send OTP.');
+      toast.success('OTP sent to your email. Please check your inbox.');
+      alert('Success: OTP sent to your email. Please check your inbox.');
+      setAuthMode('forgot_otp');
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Failed to send password reset email.');
+      toast.error(err.message || 'Failed to send OTP.');
+      alert(`Error: ${err.message || 'Failed to send OTP.'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmPasswordResetOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match.');
+      alert('Error: Passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long.');
+      alert('Error: Password must be at least 6 characters long.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-password-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: resetOtp, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to reset password.');
+      toast.success('Password updated successfully! You can now log in.');
+      alert('Success: Password updated successfully! You can now log in.');
+      setAuthMode('login');
+      setResetOtp('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to reset password.');
+      alert(`Error: ${err.message || 'Failed to reset password.'}`);
     } finally {
       setLoading(false);
     }
@@ -224,7 +274,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
             </div>
 
             <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send Reset Link'}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send OTP Code'}
             </Button>
 
             <button
@@ -233,6 +283,70 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
               className="w-full text-center text-xs text-muted-foreground hover:underline"
             >
               Back to Login
+            </button>
+          </form>
+        ) : authMode === 'forgot_otp' ? (
+          <form onSubmit={handleConfirmPasswordResetOtp} className="mt-6 space-y-4">
+            <div>
+              <Label htmlFor="forgot-otp">Enter 6-digit OTP</Label>
+              <div className="relative mt-1">
+                <Input
+                  id="forgot-otp"
+                  type="text"
+                  value={resetOtp}
+                  onChange={(e) => setResetOtp(e.target.value)}
+                  className="rounded-xl text-center tracking-widest text-lg font-bold"
+                  placeholder="123456"
+                  maxLength={6}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="new-password">New Password</Label>
+              <div className="relative mt-1">
+                <Lock className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="pl-10 rounded-xl"
+                  placeholder="••••••••"
+                  minLength={6}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+              <div className="relative mt-1">
+                <Lock className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                <Input
+                  id="confirm-new-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-10 rounded-xl"
+                  placeholder="••••••••"
+                  minLength={6}
+                  required
+                />
+              </div>
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reset Password'}
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => { setAuthMode('forgot'); setResetOtp(''); setNewPassword(''); setConfirmPassword(''); }}
+              className="w-full text-center text-xs text-muted-foreground hover:underline"
+            >
+              Back to Request OTP
             </button>
           </form>
         ) : (
