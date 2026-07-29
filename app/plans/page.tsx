@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { SiteHeader } from '@/components/site/site-header';
 import { SiteFooter } from '@/components/site/site-footer';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { currencyForTimezone, detectTimezone, formatPrice } from '@/lib/format';
 
 type SurveyData = {
@@ -16,6 +16,205 @@ type SurveyData = {
   subcategory: string;
   problems: string[];
   selectedOptions: Record<string, string[]>;
+};
+
+const SUBCATEGORY_META: Record<string, {
+  patterns: string;
+  recommended: ('essential' | 'premium' | 'elite')[];
+  recommendedLabel: string;
+  plansText: Record<'essential' | 'premium' | 'elite', {
+    title: string;
+    description: string;
+    benefits: string[];
+  }>;
+}> = {
+  'Family': {
+    patterns: 'Based on what you have selected, your challenge may be influenced by one or more of these deeper emotional or spiritual patterns: inner child wounds, ancestral patterns, karmic lessons, past-life influences, unhealthy attachments, forgiveness, self-love or self-worth challenges, boundary issues, suppressed emotions, heart or root chakra imbalances, parent-child patterns, shadow work, nervous system regulation, or stagnant energy.',
+    recommended: ['essential', 'premium'],
+    recommendedLabel: 'Plan B · Premium',
+    plansText: {
+      essential: {
+        title: 'Personal Healing & Clarity Session',
+        description: '30 Minutes | ₹4,444',
+        benefits: [
+          "In this session, we’ll help you understand the deeper reason behind your current challenge and begin the healing process using the approach that’s most aligned with your needs."
+        ]
+      },
+      premium: {
+        title: '4-Week Deep Transformation Program',
+        description: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
+        benefits: [
+          "If you’re looking for deeper and long-term support, this program is for you. Over four weeks, we’ll work together to heal deeper patterns, support multiple areas of your life if needed, and help you build a stronger connection with yourself while creating lasting emotional and energetic stability."
+        ]
+      },
+      elite: {
+        title: 'Ancestral Healing Session',
+        description: '90 Minutes | ₹21,000',
+        benefits: []
+      }
+    }
+  },
+  'Friends': {
+    patterns: 'Based on what you have selected, your challenge may be influenced by one or more of these deeper emotional or spiritual patterns: self-worth wounds, fear of rejection or abandonment, people-pleasing patterns, karmic connections, past-life influences, unhealthy attachments, forgiveness, trust issues, boundary challenges, emotional suppression, heart or throat chakra imbalances, shadow work, nervous system regulation, or stagnant energy.',
+    recommended: ['essential', 'premium'],
+    recommendedLabel: 'Plan B · Premium',
+    plansText: {
+      essential: {
+        title: 'Personal Healing & Clarity Session',
+        description: '30 Minutes | ₹4,444',
+        benefits: [
+          "In this session, we’ll help you understand the deeper reason behind your current challenge and begin the healing process using the approach that’s most aligned with your needs."
+        ]
+      },
+      premium: {
+        title: '4-Week Deep Transformation Program',
+        description: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
+        benefits: [
+          "If you’re looking for deeper and long-term support, this program is for you. Over four weeks, we’ll work together to heal deeper patterns, support multiple areas of your life if needed, and help you build a stronger connection with yourself while creating lasting emotional and energetic stability."
+        ]
+      },
+      elite: {
+        title: 'Ancestral Healing Session',
+        description: '90 Minutes | ₹21,000',
+        benefits: []
+      }
+    }
+  },
+  'Partner / Marriage': {
+    patterns: 'Based on what you have selected, your challenge may be influenced by one or more of these deeper emotional or spiritual patterns: inner child wounds, karmic relationship patterns, past-life influences, unhealthy attachments, forgiveness, self-love and self-worth challenges, attachment patterns, boundary issues, suppressed emotions, heart, sacral, solar plexus or throat chakra imbalances, shadow work, masculine and feminine energy imbalance, nervous system regulation, or stagnant energy.',
+    recommended: ['essential', 'premium'],
+    recommendedLabel: 'Plan B · Premium',
+    plansText: {
+      essential: {
+        title: 'Personal Healing & Clarity Session',
+        description: '30 Minutes | ₹4,444',
+        benefits: [
+          "In this session, we’ll help you understand the deeper reason behind your current challenge and begin the healing process using the approach that’s most aligned with your needs."
+        ]
+      },
+      premium: {
+        title: '4-Week Deep Transformation Program',
+        description: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
+        benefits: [
+          "If you’re looking for deeper and long-term support, this program is for you. Over four weeks, we’ll work together to heal deeper patterns, support multiple areas of your life if needed, and help you build a stronger connection with yourself while creating lasting emotional and energetic stability."
+        ]
+      },
+      elite: {
+        title: 'Ancestral Healing Session',
+        description: '90 Minutes | ₹21,000',
+        benefits: []
+      }
+    }
+  },
+  'Sudden Financial Setbacks': {
+    patterns: 'Based on what you have selected, your financial challenge may be influenced by one or more deeper emotional, energetic, or spiritual patterns. These may include limiting beliefs around money, self-worth challenges, karmic lessons, past-life influences, fear or scarcity mindset, root chakra imbalance, emotional blocks, energetic stagnation, or the need for energy cleansing and protection. In some cases, external negative energetic influences may also contribute to feeling financially stuck. During your session, we’ll explore whether this is relevant to your situation.',
+    recommended: ['essential', 'premium'],
+    recommendedLabel: 'Plan B · Premium',
+    plansText: {
+      essential: {
+        title: 'Personal Healing & Clarity Session',
+        description: '30 Minutes | ₹4,444',
+        benefits: [
+          "In this session, we’ll help you understand the deeper reason behind your financial challenge and begin the healing process using the approach that’s most aligned with your needs.",
+          "If energetic blocks or external energetic influences are identified, we’ll work on clearing them wherever possible. You’ll also receive personalized guidance and practical next steps to support your healing.",
+          "Every healing journey is unique. While many people experience clarity in one session, some situations require deeper work. If additional support is needed, your healer will guide you accordingly."
+        ]
+      },
+      premium: {
+        title: '4-Week Deep Transformation Program',
+        description: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
+        benefits: [
+          "If you’re looking for deeper and ongoing support, this program is designed for you. Over four weeks, we’ll work together to heal deeper patterns, review your progress, clear new blocks as they arise, and support lasting emotional, energetic, and financial transformation.",
+          "The program also offers greater value, with a lower cost per session than booking individual sessions."
+        ]
+      },
+      elite: {
+        title: 'Ancestral Healing Session',
+        description: '90 Minutes | ₹21,000',
+        benefits: []
+      }
+    }
+  },
+  'Ancestral Money Patterns': {
+    patterns: 'Based on what you have selected, your financial challenge may be influenced by ancestral patterns passed down through generations. These may include inherited money beliefs, family conditioning around scarcity, ancestral financial struggles, karmic lessons, limiting subconscious beliefs, root chakra imbalances, fear of receiving abundance, or energetic blocks related to prosperity.',
+    recommended: ['elite', 'essential'],
+    recommendedLabel: 'Ancestral Healing Session',
+    plansText: {
+      elite: {
+        title: 'Ancestral Healing Session',
+        description: '90 Minutes | ₹21,000',
+        benefits: [
+          "This session is designed to work specifically with ancestral money patterns. During the session, we’ll identify inherited energetic patterns that may be contributing to your current financial challenges and work towards releasing and healing them. The intention is to help you free yourself from patterns that no longer serve you and create space for healthier financial flow."
+        ]
+      },
+      essential: {
+        title: 'Personal Healing & Clarity Session',
+        description: '30 Minutes | ₹4,444',
+        benefits: [
+          "In case you are not sure, You can also start with this clarity session."
+        ]
+      },
+      premium: {
+        title: '4-Week Deep Transformation Program',
+        description: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
+        benefits: []
+      }
+    }
+  },
+  'Mental & Emotional Health': {
+    patterns: 'Based on what you have selected, your challenge may be influenced by one or more deeper emotional, energetic, or spiritual patterns. These may include inner child wounds, limiting beliefs, self-worth challenges, suppressed emotions, karmic lessons, past-life influences, ancestral patterns, chakra imbalances, nervous system dysregulation, emotional exhaustion, shadow work, or the need for energy cleansing and protection. In some cases, external energetic influences may also contribute to how you’re feeling. During your session, we’ll understand what is most relevant to your situation.',
+    recommended: ['essential', 'premium'],
+    recommendedLabel: 'Plan B · Premium',
+    plansText: {
+      essential: {
+        title: 'Personal Healing & Clarity Session',
+        description: '30 Minutes | ₹4,444',
+        benefits: [
+          "In this session, we’ll help you understand the deeper reason behind your current challenge and identify the healing approach that’s most suitable for you. This may include chakra balancing, inner child healing, emotional release, energy cleansing, protection, clearing stagnant energy, or other healing techniques based on your individual needs.",
+          "Every healing journey is unique. While many people experience clarity and healing in one session, some situations require deeper work. If additional support is needed, your healer will guide you accordingly."
+        ]
+      },
+      premium: {
+        title: '4-Week Deep Transformation Program',
+        description: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
+        benefits: [
+          "If you’re looking for deeper and long-term support, this program is designed for you. Over four weeks, we’ll work together to heal deeper patterns, clear multiple layers, support your emotional well-being, review your progress, and help you build a stronger connection with yourself while creating lasting emotional and energetic stability."
+        ]
+      },
+      elite: {
+        title: 'Ancestral Healing Session',
+        description: '90 Minutes | ₹21,000',
+        benefits: []
+      }
+    }
+  },
+  'Physical Health': {
+    patterns: 'Based on what you have selected, your challenge may be influenced by one or more deeper emotional, energetic, or spiritual patterns. These may include emotional stress stored in the body, inner child wounds, karmic lessons, past-life influences, ancestral patterns, chakra imbalances, energetic blockages, nervous system dysregulation, emotional trauma, or the need for energy cleansing and protection. In some cases, external energetic influences may also contribute to physical discomfort. During your session, we’ll understand what is most relevant to your situation.',
+    recommended: ['essential', 'premium'],
+    recommendedLabel: 'Plan B · Premium',
+    plansText: {
+      essential: {
+        title: 'Personal Healing & Clarity Session',
+        description: '30 Minutes | ₹4,444',
+        benefits: [
+          "In this session, we’ll help you understand the deeper reason behind your current challenge and identify the healing approach that’s most suitable for you. This may include chakra balancing, emotional release, inner child healing, energy cleansing, protection, clearing stagnant energy, or other healing techniques based on your individual needs.",
+          "Every healing journey is unique. While many people experience clarity and healing in one session, some situations require deeper work. If additional support is needed, your healer will guide you accordingly."
+        ]
+      },
+      premium: {
+        title: '4-Week Deep Transformation Program',
+        description: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
+        benefits: [
+          "If you’re looking for deeper and long-term support, this program is designed for you. Over four weeks, we’ll work together to heal deeper patterns, clear multiple layers, support your overall well-being, review your progress, and help you create lasting emotional, energetic, and personal transformation."
+        ]
+      },
+      elite: {
+        title: 'Ancestral Healing Session',
+        description: '90 Minutes | ₹21,000',
+        benefits: []
+      }
+    }
+  }
 };
 
 export default function SomaticPlansPage() {
@@ -49,60 +248,43 @@ export default function SomaticPlansPage() {
           const data = snap.data();
           setPlanServices({
             essential: {
-              title: data.essential_title || 'Plan A · Essential',
+              title: data.essential_title || 'Personal Healing & Clarity Session',
               price_inr: data.essential_price_inr || 4444,
-              short: data.essential_short || 'Great for tight budgets with solid healing basics.',
+              short: data.essential_short || '30 Minutes | ₹4,444',
               benefits: data.essential_benefits || []
             },
             premium: {
-              title: data.premium_title || 'Plan B · Premium',
+              title: data.premium_title || '4-Week Deep Transformation Program',
               price_inr: data.premium_price_inr || 11000,
-              short: data.premium_short || 'Our most popular plan with comprehensive somatic care.',
+              short: data.premium_short || '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
               benefits: data.premium_benefits || []
             },
             elite: {
-              title: data.elite_title || 'Plan C · Elite',
+              title: data.elite_title || 'Ancestral Healing Session',
               price_inr: data.elite_price_inr || 21000,
-              short: data.elite_short || 'Top-tier deep customization for ancestral healing.',
+              short: data.elite_short || '90 Minutes | ₹21,000',
               benefits: data.elite_benefits || []
             }
           });
         } else {
           setPlanServices({
             essential: {
-              title: 'Plan A · Essential',
+              title: 'Personal Healing & Clarity Session',
               price_inr: 4444,
-              short: 'Great for tight budgets with solid healing basics.',
-              benefits: [
-                '1 targeted somatic clarity session (30m)',
-                'Customized diagnostic profiling',
-                'Actionable home practices guide',
-                'Email-only support channel'
-              ]
+              short: '30 Minutes | ₹4,444',
+              benefits: []
             },
             premium: {
-              title: 'Plan B · Premium',
+              title: '4-Week Deep Transformation Program',
               price_inr: 11000,
-              short: 'Our most popular plan with comprehensive somatic care.',
-              benefits: [
-                '4 private somatic therapy sessions (60m)',
-                'Custom daily somatic practices outline',
-                'Direct WhatsApp guidance support',
-                'Weekly progress check-in chats',
-                'Free access to mindfulness archives'
-              ]
+              short: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
+              benefits: []
             },
             elite: {
-              title: 'Plan C · Elite',
+              title: 'Ancestral Healing Session',
               price_inr: 21000,
-              short: 'Top-tier deep customization for ancestral healing.',
-              benefits: [
-                '8 deep ancestral lineage release sessions',
-                'Customized lineage release mapping chart',
-                '24/7 dedicated text/call support line',
-                'Bi-weekly virtual progress reviews',
-                'Guaranteed instant priority calendar booking'
-              ]
+              short: '90 Minutes | ₹21,000',
+              benefits: []
             }
           });
         }
@@ -116,31 +298,11 @@ export default function SomaticPlansPage() {
     fetchPlanServices();
   }, []);
 
-  const getDynamicInsight = (cat: string) => {
-    switch (cat?.toLowerCase()) {
-      case 'relationships':
-        return 'Your somatic profile suggests that relationship difficulties are manifesting as physical tightness in the chest and throat, indicating unexpressed boundaries or words. We recommend a plan focusing on throat chakra opening and heart-centered safety.';
-      case 'health':
-        return 'Your somatic profile indicates high nervous system arousal (fight-or-flight), commonly manifesting as stomach issues, tension headaches, or shallow breathing. Focus is placed on calming the vagus nerve and restoring restorative sleep patterns.';
-      case 'finances':
-      case 'finances & career':
-        return 'Somatic mapping shows career and money stress is accumulating as lower back tightness or shoulder burdens. This represents an unconscious weight of survival anxiety. Our healing targets safety foundations and release of ancestral scarcity patterns.';
-      case 'mind':
-      case 'mind & focus':
-        return 'Mental fatigue, racing thoughts, and brain fog are showing up as head pressure and neck tension. The focus will be on grounding techniques, centering exercises, and somatic breathwork to clear mental clutter.';
-      case 'ancestral':
-      case 'ancestral & lineage':
-        return 'Deeply ingrained patterns of intergenerational grief or trauma are presenting as chronic fatigue or joint pain. Healing aims to trace and release inherited somatic burdens that do not belong to you.';
-      default:
-        return 'Your responses indicate a call for deep inner alignment and nervous system regulation. We recommend beginning with our tailored somatic pathway to address core blockages.';
-    }
-  };
-
   const handleSelectPlan = (planKey: 'essential' | 'premium' | 'elite', defaultPriceInr: number) => {
     const s = planServices ? planServices[planKey] : null;
     const finalPriceInr = s?.price_inr || defaultPriceInr;
     const finalPrice = currency === 'USD' ? Math.round(finalPriceInr / 85) : finalPriceInr;
-    const finalTitle = s?.title || (planKey === 'essential' ? 'Plan A · Essential' : planKey === 'elite' ? 'Plan C · Elite' : 'Plan B · Premium');
+    const finalTitle = s?.title || (planKey === 'essential' ? 'Personal Healing & Clarity Session' : planKey === 'elite' ? 'Ancestral Healing Session' : '4-Week Deep Transformation Program');
     const finalId = s?.id || `somatic_${planKey}`;
 
     if (survey) {
@@ -163,7 +325,20 @@ export default function SomaticPlansPage() {
     );
   }
 
-  // Fallback prices & details if not yet fetched/edited
+  // Helper to map and retrieve subcategory details
+  const getSubcategoryMeta = () => {
+    if (!survey || !survey.subcategory) return SUBCATEGORY_META['Family'];
+    const matchedKey = Object.keys(SUBCATEGORY_META).find(
+      (key) => key.toLowerCase() === survey.subcategory.toLowerCase() ||
+        survey.subcategory.toLowerCase().includes(key.toLowerCase()) ||
+        key.toLowerCase().includes(survey.subcategory.toLowerCase())
+    );
+    return matchedKey ? SUBCATEGORY_META[matchedKey] : SUBCATEGORY_META['Family'];
+  };
+
+  const meta = getSubcategoryMeta();
+  const isB2 = survey?.subcategory?.toLowerCase().includes('ancestral') || false;
+
   const rawPrices = {
     essential: planServices?.essential?.price_inr || 4444,
     premium: planServices?.premium?.price_inr || 11000,
@@ -185,10 +360,78 @@ export default function SomaticPlansPage() {
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes shine-sweep {
+          0% { left: -100%; }
+          100% { left: 200%; }
+        }
+        @keyframes float-slow {
+          0% { transform: translate(0px, 0px) scale(1); opacity: 0.55; }
+          33% { transform: translate(45px, -65px) scale(1.15); opacity: 0.75; }
+          66% { transform: translate(-35px, 35px) scale(0.9) ; opacity: 0.6; }
+          100% { transform: translate(0px, 0px) scale(1); opacity: 0.55; }
+        }
+        @keyframes float-reverse {
+          0% { transform: translate(0px, 0px) scale(1.1); opacity: 0.7; }
+          50% { transform: translate(-55px, 55px) scale(0.85); opacity: 0.5; }
+          100% { transform: translate(0px, 0px) scale(1.1); opacity: 0.7; }
+        }
+        @keyframes float-mid {
+          0% { transform: translate(0px, 0px) scale(1); opacity: 0.4; }
+          50% { transform: translate(35px, 35px) scale(1.2); opacity: 0.6; }
+          100% { transform: translate(0px, 0px) scale(1); opacity: 0.4; }
+        }
+        .misty-orb-1 {
+          animation: float-slow 24s infinite ease-in-out;
+        }
+        .misty-orb-2 {
+          animation: float-reverse 28s infinite ease-in-out;
+        }
+        .misty-orb-3 {
+          animation: float-mid 22s infinite ease-in-out;
+        }
+        .shimmer-btn {
+          position: relative;
+          overflow: hidden;
+        }
+        .shimmer-btn::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          height: 100%;
+          width: 50%;
+          background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.6), transparent);
+          transform: skewX(-25deg);
+          animation: shine-sweep 3.5s infinite ease-in-out;
+          pointer-events: none;
+        }
+        .shimmer-btn-blue {
+          position: relative;
+          overflow: hidden;
+        }
+        .shimmer-btn-blue::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          height: 100%;
+          width: 50%;
+          background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.45), transparent);
+          transform: skewX(-25deg);
+          animation: shine-sweep 3.5s infinite ease-in-out;
+          pointer-events: none;
+        }
+      `}} />
       <SiteHeader />
-      <main className="min-h-screen pt-28 pb-20 sm:pt-36 bg-background relative overflow-hidden">
-        {/* Subtle blur highlights */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gold/10 rounded-full blur-[120px] pointer-events-none z-0" />
+      <main className="min-h-screen pt-28 pb-20 sm:pt-36 bg-gradient-to-b from-[#F7F6F0] via-[#ECEAE1] to-[#E5E2D6] relative overflow-hidden transition-all duration-500">
+        {/* Peaceful cloudy/misty orbs for meditation vibe */}
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] aspect-square rounded-full bg-gradient-to-br from-[#A7C0B0]/40 to-[#C0B9E5]/30 blur-[130px] pointer-events-none z-0 misty-orb-1" />
+        <div className="absolute bottom-[5%] right-[-15%] w-[55%] aspect-square rounded-full bg-gradient-to-br from-[#E4D1B9]/50 to-[#C9DFD0]/40 blur-[140px] pointer-events-none z-0 misty-orb-2" />
+        <div className="absolute top-[30%] left-[25%] w-[40%] aspect-square rounded-full bg-[#EAE3CB]/45 blur-[120px] pointer-events-none z-0 misty-orb-3" />
+
+        {/* Slow drifting cloud fog layer overlay */}
+        <div className="absolute inset-0 pointer-events-none opacity-30 mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/fog.png')] bg-repeat" style={{ animation: 'shine-sweep 80s linear infinite' }} />
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Back button */}
@@ -220,9 +463,9 @@ export default function SomaticPlansPage() {
                 )}
               </div>
               <div className="rounded-2xl bg-gold/5 border border-gold/10 px-5 py-4 max-w-md">
-                <span className="text-xs font-semibold text-gold uppercase tracking-wider block">Recommended Plan</span>
+                <span className="text-xs font-semibold text-gold uppercase tracking-wider block">Recommended Session / Program</span>
                 <p className="text-sm text-foreground font-medium mt-1">
-                  We recommend <strong className="text-gold">Plan B · Premium</strong> for your healing goals.
+                  We recommend <strong className="text-gold">{meta.recommendedLabel}</strong> for your healing goals.
                 </p>
               </div>
             </div>
@@ -243,10 +486,10 @@ export default function SomaticPlansPage() {
             <div className="mt-6 pt-6 border-t border-border/30">
               <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
                 <ShieldCheck className="h-4 w-4 text-gold" />
-                Somatic Analysis Insight:
+                Somatic &amp; Energetic Insight:
               </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground italic">
-                {survey ? getDynamicInsight(survey.category) : 'Generating somatic nervous system mapping description...'}
+              <p className="text-sm leading-relaxed text-muted-foreground italic font-medium">
+                {meta.patterns}
               </p>
             </div>
           </div>
@@ -271,291 +514,193 @@ export default function SomaticPlansPage() {
             </div>
           </div>
 
-          {/* Three Premium Plans Grid */}
-          <div className="grid gap-8 lg:grid-cols-3 items-stretch">
+          {/* Two Dynamic Recommended Plans Grid */}
+          <div className={`grid gap-8 items-stretch justify-center max-w-4xl mx-auto grid-cols-1 md:grid-cols-2`}>
+            {meta.recommended.map((planKey) => {
+              const defaultPrice = planKey === 'essential' ? 4444 : planKey === 'premium' ? 11000 : 21000;
+              const priceVal = formatPlanPrice(prices[planKey]);
+              const cardTitle = planServices?.[planKey]?.title || meta.plansText[planKey].title;
+              const cardShort = planServices?.[planKey]?.short || meta.plansText[planKey].description;
+              const benefitsList = meta.plansText[planKey].benefits;
 
-            {/* Plan A: Essential */}
-            <div className="rounded-3xl border border-border/60 bg-card/40 p-6 md:p-8 flex flex-col justify-between shadow-soft hover:shadow-hover transition-all duration-300">
-              <div>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-display text-2xl font-semibold text-foreground">
-                      {planServices?.essential?.title || 'Plan A · Essential'}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {planServices?.essential?.short || 'Great for tight budgets with solid healing basics.'}
-                    </p>
-                  </div>
-                </div>
+              const isRecommended = planKey === 'premium' || (isB2 && planKey === 'elite');
 
-                <div className="flex items-center gap-1.5 mt-4">
-                  <div className="flex text-amber-400">
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current opacity-30" />
-                  </div>
-                  <span className="text-xs font-semibold text-foreground">4.2</span>
-                  <span className="text-xs text-muted-foreground">(18 reviews)</span>
-                </div>
-
-                <div className="mt-6">
-                  <span className="font-display text-4xl font-semibold text-gold">
-                    {formatPrice(formatPlanPrice(prices.essential), currency)}
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : '30 days'}</span>
-                </div>
-
-                <ul className="mt-8 space-y-3 text-sm text-muted-foreground border-t border-border/20 pt-6">
-                  {(planServices?.essential?.benefits || [
-                    '1 targeted somatic clarity session (30m)',
-                    'Customized diagnostic profiling',
-                    'Actionable home practices guide',
-                    'Email-only support channel'
-                  ]).map((b: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <Check className="h-4 w-4 text-gold shrink-0 mt-0.5" />
-                      <span>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-8">
-                <Button onClick={() => handleSelectPlan('essential', 4444)} className="
-group
-relative
-overflow-hidden
-w-full
-rounded-full
-bg-sky-600
-hover:bg-sky-700
-text-white
-py-6
-font-semibold
-shadow-soft
-transition-all
-duration-500
-hover:scale-[1.03]
-hover:shadow-[0_15px_35px_rgba(14,165,233,0.45)]
-before:absolute
-before:top-0
-before:-left-full
-before:h-full
-before:w-1/2
-before:bg-gradient-to-r
-before:from-transparent
-before:via-white/70
-before:to-transparent
-before:skew-x-[-25deg]
-hover:before:left-[150%]
-before:transition-all
-before:duration-1000
-">
-                  <span className="relative z-10 flex items-center justify-center">
-                    <Sparkles className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-180" />
-                    Choose Plan
-                  </span>
-                </Button>
-              </div>
-            </div>
-
-            {/* Plan B: Premium (Recommended) */}
-            <div className="rounded-3xl border-2 border-gold bg-card p-6 md:p-8 flex flex-col justify-between shadow-glow relative transform lg:-translate-y-2 transition-all duration-300">
-              <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gold text-gold-foreground text-[10px] font-bold uppercase tracking-wider px-4 py-1 rounded-full shadow-soft">
-                Recommended
-              </span>
-
-              <div>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-display text-2xl font-semibold text-foreground">
-                      {planServices?.premium?.title || 'Plan B · Premium'}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {planServices?.premium?.short || 'Our most popular plan with comprehensive somatic care.'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 mt-4">
-                  <div className="flex text-amber-400">
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                  </div>
-                  <span className="text-xs font-semibold text-foreground">4.8</span>
-                  <span className="text-xs text-muted-foreground">(42 reviews)</span>
-                </div>
-
-                <div className="mt-6">
-                  <span className="font-display text-4xl font-semibold text-gold">
-                    {formatPrice(formatPlanPrice(prices.premium), currency)}
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : '30 days'}</span>
-                </div>
-
-                <ul className="mt-8 space-y-3 text-sm text-muted-foreground border-t border-border/20 pt-6">
-                  {(planServices?.premium?.benefits || [
-                    '4 private somatic therapy sessions (60m)',
-                    'Custom daily somatic practices outline',
-                    'Direct WhatsApp guidance support',
-                    'Weekly progress check-in chats',
-                    'Free access to mindfulness archives'
-                  ]).map((b: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <Check className="h-4 w-4 text-gold shrink-0 mt-0.5" />
-                      <span className={i === 0 ? "text-foreground font-medium" : ""}>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-8">
-                <Button
-                  onClick={() => handleSelectPlan('premium', 11000)}
-                  className="
-    group
-    relative
-    overflow-hidden
-    w-full
-    rounded-full
-    bg-gradient-to-r
-    from-[#C99700]
-    via-[#FFD95A]
-    to-[#B8860B]
-    hover:from-[#FFD700]
-    hover:via-[#FFF4B0]
-    hover:to-[#D4AF37]
-    text-black
-    py-6
-    font-bold
-    shadow-[0_10px_30px_rgba(255,215,0,0.35)]
-    hover:shadow-[0_15px_45px_rgba(255,215,0,0.6)]
-    transition-all
-    duration-500
-    hover:scale-[1.03]
-    before:absolute
-    before:top-0
-    before:-left-full
-    before:h-full
-    before:w-1/2
-    before:bg-gradient-to-r
-    before:from-transparent
-    before:via-white/70
-    before:to-transparent
-    before:skew-x-[-25deg]
-    hover:before:left-[150%]
-    before:transition-all
-    before:duration-1000
-  "
+              return (
+                <div
+                  key={planKey}
+                  className={`rounded-3xl p-6 md:p-8 flex flex-col justify-between transition-all duration-300 relative ${isRecommended
+                      ? 'border-2 border-gold bg-card shadow-glow transform md:-translate-y-2'
+                      : 'border border-border/60 bg-card/40 shadow-soft hover:shadow-hover'
+                    }`}
                 >
-                  <Sparkles className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-180" />
-                  <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition duration-500 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.35),transparent_70%)]" />
-                  Choose Recommended Plan
-                </Button>
-              </div>
-            </div>
+                  {isRecommended && (
+                    <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gold text-gold-foreground text-[10px] font-bold uppercase tracking-wider px-4 py-1 rounded-full shadow-soft">
+                      Recommended
+                    </span>
+                  )}
 
-            {/* Plan C: Elite */}
-            <div className="rounded-3xl border border-border/60 bg-card/40 p-6 md:p-8 flex flex-col justify-between shadow-soft hover:shadow-hover transition-all duration-300">
-              <div>
-                <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-display text-2xl font-semibold text-foreground">
-                      {planServices?.elite?.title || 'Plan C · Elite'}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {planServices?.elite?.short || 'Top-tier deep customization for ancestral healing.'}
-                    </p>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-display text-2xl font-semibold text-foreground">
+                          {cardTitle}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1 font-medium">
+                          {cardShort}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 mt-4">
+                      <div className="flex text-amber-400">
+                        <Star className="h-3.5 w-3.5 fill-current" />
+                        <Star className="h-3.5 w-3.5 fill-current" />
+                        <Star className="h-3.5 w-3.5 fill-current" />
+                        <Star className="h-3.5 w-3.5 fill-current" />
+                        <Star className={`h-3.5 w-3.5 fill-current ${planKey === 'essential' ? 'opacity-30' : ''}`} />
+                      </div>
+                      <span className="text-xs font-semibold text-foreground">{planKey === 'essential' ? '4.8' : '4.9'}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({planKey === 'essential' ? '42' : planKey === 'premium' ? '48' : '29'} reviews)
+                      </span>
+                    </div>
+
+                    <div className="mt-6">
+                      <span className="font-display text-4xl font-semibold text-gold">
+                        {formatPrice(priceVal, currency)}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : 'session/program'}</span>
+                    </div>
+
+                    <ul className="mt-8 space-y-4 text-sm text-muted-foreground border-t border-border/20 pt-6">
+                      {benefitsList.map((benefit: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2.5">
+                          <Check className="h-4 w-4 text-gold shrink-0 mt-0.5" />
+                          <span className="leading-relaxed">{benefit}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="mt-8">
+                    {planKey === 'premium' ? (
+                      <Button
+                        onClick={() => handleSelectPlan('premium', 11000)}
+                        className="
+                          group
+                          relative
+                          overflow-hidden
+                          w-full
+                          rounded-full
+                          bg-gradient-to-r
+                          from-[#C99700]
+                          via-[#FFD95A]
+                          to-[#B8860B]
+                          hover:from-[#FFD700]
+                          hover:via-[#FFF4B0]
+                          hover:to-[#D4AF37]
+                          text-black
+                          py-6
+                          font-bold
+                          shadow-[0_10px_30px_rgba(255,215,0,0.35)]
+                          hover:shadow-[0_15px_45px_rgba(255,215,0,0.6)]
+                          transition-all
+                          duration-300
+                          hover:scale-[1.03]
+                          active:scale-[0.97]
+                          shimmer-btn
+                        "
+                      >
+                        <Sparkles className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-180 animate-pulse" />
+                        Choose Recommended Program
+                      </Button>
+                    ) : planKey === 'elite' ? (
+                      <Button
+                        onClick={() => handleSelectPlan('elite', 21000)}
+                        className="
+                          group
+                          relative
+                          overflow-hidden
+                          w-full
+                          rounded-full
+                          bg-gradient-to-r
+                          from-violet-700
+                          via-fuchsia-700
+                          to-purple-800
+                          hover:from-violet-800
+                          hover:via-fuchsia-800
+                          hover:to-purple-900
+                          text-white
+                          py-6
+                          font-semibold
+                          shadow-xl
+                          transition-all
+                          duration-300
+                          hover:scale-[1.03]
+                          hover:shadow-[0_15px_45px_rgba(168,85,247,0.55)]
+                          active:scale-[0.97]
+                          shimmer-btn
+                        "
+                      >
+                        <span className="relative z-10 flex items-center justify-center">
+                          <Sparkles className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-180" />
+                          Choose Recommended Session
+                        </span>
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => handleSelectPlan('essential', 4444)}
+                        className="
+                          group
+                          relative
+                          overflow-hidden
+                          w-full
+                          rounded-full
+                          bg-sky-600
+                          hover:bg-sky-700
+                          text-white
+                          py-6
+                          font-semibold
+                          shadow-soft
+                          transition-all
+                          duration-300
+                          hover:scale-[1.03]
+                          hover:shadow-[0_15px_35px_rgba(14,165,233,0.45)]
+                          active:scale-[0.97]
+                          shimmer-btn-blue
+                        "
+                      >
+                        <span className="relative z-10 flex items-center justify-center">
+                          <Sparkles className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-180" />
+                          Choose Session
+                        </span>
+                      </Button>
+                    )}
                   </div>
                 </div>
-
-                <div className="flex items-center gap-1.5 mt-4">
-                  <div className="flex text-amber-400">
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                  </div>
-                  <span className="text-xs font-semibold text-foreground">4.9</span>
-                  <span className="text-xs text-muted-foreground">(29 reviews)</span>
-                </div>
-
-                <div className="mt-6">
-                  <span className="font-display text-4xl font-semibold text-gold">
-                    {formatPrice(formatPlanPrice(prices.elite), currency)}
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : '30 days'}</span>
-                </div>
-
-                <ul className="mt-8 space-y-3 text-sm text-muted-foreground border-t border-border/20 pt-6">
-                  {(planServices?.elite?.benefits || [
-                    '8 deep ancestral lineage release sessions',
-                    'Customized lineage release mapping chart',
-                    '24/7 dedicated text/call support line',
-                    'Bi-weekly virtual progress reviews',
-                    'Guaranteed instant priority calendar booking'
-                  ]).map((b: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <Check className="h-4 w-4 text-gold shrink-0 mt-0.5" />
-                      <span>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-8">
-                <Button onClick={() => handleSelectPlan('elite', 21000)} className="
-group
-relative
-overflow-hidden
-w-full
-rounded-full
-bg-gradient-to-r
-from-violet-700
-via-fuchsia-700
-to-purple-800
-hover:from-violet-800
-hover:via-fuchsia-800
-hover:to-purple-900
-text-white
-py-6
-font-semibold
-shadow-xl
-transition-all
-duration-500
-hover:scale-[1.03]
-hover:shadow-[0_15px_45px_rgba(168,85,247,0.55)]
-before:absolute
-before:top-0
-before:-left-full
-before:h-full
-before:w-1/2
-before:bg-gradient-to-r
-before:from-transparent
-before:via-white/70
-before:to-transparent
-before:skew-x-[-25deg]
-hover:before:left-[150%]
-before:transition-all
-before:duration-1000
-" >
-                  <span className="relative z-10 flex items-center justify-center">
-                    <Sparkles className="mr-2 h-5 w-5 transition-transform duration-300 group-hover:rotate-180" />
-                    Choose Plan
-                  </span>
-                </Button>
-              </div>
-            </div>
-
+              );
+            })}
           </div>
+
+          {/* Disclaimer Common Warning/Note */}
+          {!isB2 && (
+            <div className="mt-16 max-w-3xl mx-auto rounded-3xl border border-gold/20 bg-gold/5 p-6 md:p-8 text-center backdrop-blur-md shadow-soft">
+              <h4 className="font-display text-base font-semibold text-gold mb-3">Important Note on Your Journey</h4>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                Every healing journey is unique. While some people experience clarity and healing in one session,
+                others may need additional sessions to work through deeper layers. We kindly request you to stay
+                open to the healing process.
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mt-4 pt-4 border-t border-gold/10">
+                At times, the root cause of a challenge may lie in ancestral patterns passed down through generations.
+                If your healer identifies this during your session, they may recommend an Ancestral Healing session.
+                This session should only be booked when it has been recommended by your healer.
+              </p>
+            </div>
+          )}
         </div>
       </main>
+
     </>
   );
 }

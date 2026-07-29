@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, UploadCloud, Trash2, Video, X } from 'lucide-react';
+import { Loader2, UploadCloud, Trash2, Video, X, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const DEFAULT_LANDING_IMAGES = [
@@ -26,9 +26,11 @@ interface LandingImage {
 export function AdminLandingPage() {
   const [images, setImages] = useState<LandingImage[]>([]);
   const [videoUrl, setVideoUrl] = useState('');
+  const [musicUrl, setMusicUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingMusic, setUploadingMusic] = useState(false);
 
   const fetchLandingData = async () => {
     try {
@@ -54,6 +56,14 @@ export function AdminLandingPage() {
         setVideoUrl(videoDoc.data().url || '');
       } else {
         setVideoUrl('');
+      }
+
+      // 3. Fetch Music Settings
+      const musicDoc = await getDoc(doc(db, 'settings', 'music'));
+      if (musicDoc.exists()) {
+        setMusicUrl(musicDoc.data().url || '');
+      } else {
+        setMusicUrl('');
       }
     } catch (err: any) {
       console.warn('Could not fetch data:', err.message);
@@ -206,6 +216,70 @@ export function AdminLandingPage() {
     }
   };
 
+  const handleMusicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingMusic(true);
+    const toastId = toast.loading('Uploading background music...');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Music upload failed.');
+      const data = await res.json();
+
+      // Delete old music from Cloudinary if exists
+      if (musicUrl && musicUrl.includes('cloudinary.com')) {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: musicUrl }),
+        });
+      }
+
+      await setDoc(doc(db, 'settings', 'music'), {
+        url: data.url,
+        updated_at: new Date().toISOString(),
+      });
+
+      setMusicUrl(data.url);
+      toast.success('Background music uploaded successfully!', { id: toastId });
+    } catch (err: any) {
+      toast.error(err.message || 'Music upload failed.', { id: toastId });
+    } finally {
+      setUploadingMusic(false);
+    }
+  };
+
+  const handleDeleteMusic = async () => {
+    const confirm = window.confirm('Are you sure you want to permanently delete custom background music? It will fallback to default ambient sound.');
+    if (!confirm) return;
+
+    const toastId = toast.loading('Deleting music...');
+    try {
+      if (musicUrl.includes('cloudinary.com')) {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: musicUrl }),
+        });
+      }
+
+      await setDoc(doc(db, 'settings', 'music'), { url: '' });
+      setMusicUrl('');
+      toast.success('Custom music deleted. Restored default ambient sound.', { id: toastId });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete music.', { id: toastId });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center text-muted-foreground">
@@ -279,6 +353,77 @@ export function AdminLandingPage() {
                 <span>
                   <UploadCloud className="h-4 w-4 text-muted-foreground" />
                   Upload Custom Video
+                </span>
+              </Button>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION: Music Configuration */}
+      <div className="rounded-3xl border border-border/60 bg-card/70 p-6 shadow-soft space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Music className="h-6 w-6 text-primary" />
+            <div>
+              <h2 className="font-display text-xl font-medium text-foreground">Landing Background Music</h2>
+              <p className="text-sm text-muted-foreground">Upload a custom music track or restore the default ambient sounds.</p>
+            </div>
+          </div>
+          {musicUrl && (
+            <button
+              onClick={handleDeleteMusic}
+              className="p-1.5 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all animate-fade-in"
+              title="Delete custom music and restore default"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-[2fr_1fr] items-start">
+          <div className="relative p-6 flex flex-col items-center justify-center rounded-2xl border border-border/40 bg-background-2/40 aspect-[3/1] md:aspect-auto">
+            {musicUrl ? (
+              <audio
+                key={musicUrl}
+                controls
+                className="w-full max-w-md my-4"
+                src={musicUrl}
+              />
+            ) : (
+              <div className="text-center p-4 my-2">
+                <p className="text-sm font-semibold text-muted-foreground">Synthesized Ambient Soundtrack Active</p>
+                <p className="text-xs text-muted-foreground/80 mt-1">Gently modulated wind generator + singing bowl chimes.</p>
+              </div>
+            )}
+            {uploadingMusic && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm rounded-2xl">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="mt-2 text-sm font-medium text-foreground">Uploading music...</span>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="p-4 bg-secondary/30 rounded-2xl border border-border/30">
+              <span className="text-xs font-semibold text-muted-foreground block">Active Music Source</span>
+              <p className="text-xs text-foreground font-mono mt-1 break-all bg-card/60 p-2 rounded-lg border border-border/20">
+                {musicUrl || 'Default Synthesized Ambient Sound'}
+              </p>
+            </div>
+
+            <label className="block w-full">
+              <span className="sr-only">Choose music file</span>
+              <input type="file" accept="audio/*" disabled={uploadingMusic} onChange={handleMusicUpload} className="hidden" />
+              <Button
+                asChild
+                variant="outline"
+                className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2"
+                disabled={uploadingMusic}
+              >
+                <span>
+                  <UploadCloud className="h-4 w-4 text-muted-foreground" />
+                  Upload Custom Music
                 </span>
               </Button>
             </label>

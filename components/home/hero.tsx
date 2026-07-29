@@ -35,7 +35,7 @@ const ALL_OPTIONS: Record<string, string[]> = {
     'Feeling emotionally distant from family',
     'Setting healthy boundaries',
     'Carrying guilt, resentment, or past hurt',
-    'Caregiving stress',
+    'Caregiving stress (aging parents or family responsibilities)',
     'Family expectations and pressure',
   ],
   Friends: [
@@ -68,57 +68,67 @@ const ALL_OPTIONS: Record<string, string[]> = {
     'Constant criticism or blame',
   ],
   'Mental & Emotional Health': [
-    'Constant overthinking',
-    'Feeling anxious',
-    'Frequent mood swings',
-    'Feeling emotionally overwhelmed',
-    'Difficulty sleeping',
-    'Feeling low',
-    'Loss of interest',
-    'Feeling disconnected',
-    'Constant fear',
-    'Difficulty concentrating',
-    'Mental exhaustion',
-    'Negative thoughts',
-    'Feeling emotionally stuck',
-    'Struggling to let go',
-    'Emotional burden',
+    'Constant overthinking.',
+    'Feeling anxious or worried most of the time.',
+    'Frequent mood swings.',
+    'Feeling emotionally overwhelmed.',
+    'Difficulty sleeping or restless sleep.',
+    'Feeling low, unmotivated, or emotionally drained.',
+    'Loss of interest in things you once enjoyed.',
+    'Feeling disconnected from yourself or others.',
+    'Constant fear or insecurity.',
+    'Difficulty concentrating or making decisions.',
+    'Feeling mentally exhausted without a clear reason.',
+    'Frequent negative thoughts or self-doubt.',
+    'Feeling emotionally stuck.',
+    'Struggling to let go of past experiences.',
+    'Feeling like you’re carrying an emotional burden all the time.',
   ],
   'Physical Health': [
-    'Frequent body aches',
-    'Low energy',
-    'Recurring health issues',
-    'Slow recovery',
-    'Poor sleep',
-    'Headaches',
-    'Digestive issues',
-    'Hormonal imbalance',
-    'Unexplained discomfort',
-    'Feeling drained',
-    'Neck and shoulder tension',
-    'Weak immunity',
-    'Constant fatigue',
-    'Body not functioning well',
+    'Frequent body aches or pain.',
+    'Low energy or constant fatigue.',
+    'Recurring health issues.',
+    'Slow recovery from illness.',
+    'Poor sleep or waking up feeling tired.',
+    'Frequent headaches or migraines.',
+    'Digestive issues.',
+    'Hormonal imbalances.',
+    'Unexplained physical discomfort despite normal medical reports.',
+    'Feeling heavy or drained throughout the day.',
+    'Frequent tension in the neck, shoulders, or back.',
+    'Weakened immunity or falling sick often.',
+    'Feeling physically exhausted even after adequate rest.',
+    'A general feeling that your body is not functioning at its best.',
   ],
   'Sudden Financial Setbacks': [
-    'Job loss or redundancy',
-    'Unexpected medical bills',
-    'Business failure or loss of clients',
-    'Accumulating high-interest debt',
-    'Failed investments or stock market drop',
-    'Urgent home or vehicle repairs',
-    'Sudden loss of primary income',
-    'Scams or financial fraud',
+    'Your finances suddenly started declining without a clear reason.',
+    'Unexpected expenses keep arising one after another.',
+    'Money comes in but leaves just as quickly.',
+    'Business or career growth has suddenly slowed down.',
+    'Payments are getting delayed or opportunities are falling through.',
+    'You feel financially stuck despite putting in your best efforts.',
+    'New financial problems keep appearing unexpectedly.',
+    'You have recently started feeling blocked around money, even though things were going well before.',
+    'You constantly feel anxious or fearful about your finances.',
+    'Opportunities that once came easily now seem to disappear.',
+    'You feel as if something is stopping your financial growth, even though you’re taking the right actions.',
+    'You feel unusually drained, overwhelmed, or energetically heavy when it comes to money or work.',
   ],
   'Ancestral Money Patterns': [
-    'Generational scarcity mindset',
-    'Guilt around spending or accumulating wealth',
-    'Fear of losing everything suddenly',
-    'Subconscious belief that money is corrupting',
-    'Pattern of over-giving and self-sacrifice',
-    'Financial codependency (supporting family excessively)',
-    'Chronic difficulty asking for fair compensation',
-    'Feeling unworthy of financial ease or success',
+    'Despite working hard, money doesn’t seem to stay.',
+    'Income remains stuck at the same level for years.',
+    'Financial growth feels blocked, even when opportunities arise.',
+    'The same money struggles keep repeating across generations.',
+    'There is a constant fear of not having enough.',
+    'Success feels difficult to sustain.',
+    'Unexpected financial setbacks happen repeatedly.',
+    'A pattern of debt or financial instability keeps returning.',
+    'Feeling guilty or uncomfortable about earning or receiving more.',
+    'Self-sabotaging opportunities for growth without understanding why.',
+    'Feeling that no matter how much effort is made, there is little progress.',
+    'Family beliefs such as “Money is hard to earn,” “Rich people are not good,” or “People like us can’t become wealthy” continue to influence decisions.',
+    'Feeling emotionally burdened whenever money is discussed.',
+    'Difficulty receiving abundance despite sincere effort.',
   ],
 };
 
@@ -265,7 +275,7 @@ export function HomeHero() {
 
   // Search Dropdown States
   const [isOpen, setIsOpen] = useState(false);
-  const [step, setStep] = useState<'categories' | 'subcategories' | 'checklist'>('categories');
+  const [step, setStep] = useState<'categories' | 'subcategories' | 'checklist' | 'not-sure'>('categories');
   const [activeCategory, setActiveCategory] = useState<CategoryKey | null>(null);
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>(() => {
@@ -473,6 +483,8 @@ export function HomeHero() {
       setStep('categories');
       setActiveCategory(null);
       setActiveSub(null);
+    } else if (step === 'not-sure') {
+      setStep('categories');
     }
   };
 
@@ -841,6 +853,72 @@ export function HomeHero() {
                                 </div>
                                 <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                               </button>
+
+                              {/* Not sure where to begin? Link */}
+                              <div className="mt-4 pt-2 text-center border-t border-border/20">
+                                <button
+                                  type="button"
+                                  onClick={() => setStep('not-sure')}
+                                  className="text-xs font-semibold text-gold hover:underline cursor-pointer"
+                                >
+                                  not sure where to begin?
+                                </button>
+                              </div>
+                            </motion.div>
+                          )}
+
+                          {step === 'not-sure' && (
+                            <motion.div
+                              key="not-sure"
+                              initial={{ opacity: 0, x: 10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              transition={{ duration: 0.2 }}
+                              className="space-y-4 text-left p-1"
+                            >
+                              <div className="space-y-3 bg-gold/5 border border-gold/15 p-4 rounded-xl">
+                                <h4 className="font-semibold text-sm text-gold">Not sure which category to choose?</h4>
+                                <p className="text-xs text-foreground/80 leading-relaxed font-medium">
+                                  Pause for a moment and take a deep breath.<br />
+                                  Think about the one problem that has been troubling you the most lately.<br /><br />
+                                  Now see which area it is connected to the most:
+                                </p>
+                              </div>
+
+                              <div className="space-y-2 pt-1">
+                                <button
+                                  onClick={() => {
+                                    setActiveCategory('relationships');
+                                    setStep('subcategories');
+                                  }}
+                                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 transition-all text-left text-xs font-semibold text-foreground group"
+                                >
+                                  <span>Relationships</span>
+                                  <ChevronRight className="h-4 w-4 text-gold transition-transform group-hover:translate-x-0.5" />
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setActiveCategory('health');
+                                    setStep('subcategories');
+                                  }}
+                                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 transition-all text-left text-xs font-semibold text-foreground group"
+                                >
+                                  <span>Health & Well-being</span>
+                                  <ChevronRight className="h-4 w-4 text-gold transition-transform group-hover:translate-x-0.5" />
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setActiveCategory('finances');
+                                    setStep('subcategories');
+                                  }}
+                                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 transition-all text-left text-xs font-semibold text-foreground group"
+                                >
+                                  <span>Finances & Career</span>
+                                  <ChevronRight className="h-4 w-4 text-gold transition-transform group-hover:translate-x-0.5" />
+                                </button>
+                              </div>
                             </motion.div>
                           )}
 

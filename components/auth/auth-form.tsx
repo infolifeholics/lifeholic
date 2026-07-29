@@ -126,7 +126,7 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
         {mode !== 'forgot_otp' && (
           <div>
             <Label htmlFor="email">Email address</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" required disabled={mode === 'forgot_otp'} />
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" required />
           </div>
         )}
         {mode === 'forgot_otp' && (

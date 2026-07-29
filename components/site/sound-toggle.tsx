@@ -6,9 +6,27 @@ import { motion } from 'framer-motion';
 
 export function SoundToggle() {
   const [playing, setPlaying] = useState(false);
+  const [customMusicUrl, setCustomMusicUrl] = useState<string | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const windVolumeRef = useRef<GainNode | null>(null);
   const intervalRef = useRef<any>(null);
+  const customAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const fetchMusic = async () => {
+      try {
+        const { db } = await import('@/lib/firebase');
+        const { doc, getDoc } = await import('firebase/firestore');
+        const snap = await getDoc(doc(db, 'settings', 'music'));
+        if (snap.exists() && snap.data().url) {
+          setCustomMusicUrl(snap.data().url);
+        }
+      } catch (e) {
+        console.warn('Error loading custom background music:', e);
+      }
+    };
+    fetchMusic();
+  }, []);
 
   // Initialize Web Audio nodes
   const initAudio = () => {
@@ -93,6 +111,21 @@ export function SoundToggle() {
   };
 
   const handleToggle = () => {
+    if (customMusicUrl) {
+      if (!customAudioRef.current) {
+        const audio = new Audio(customMusicUrl);
+        audio.loop = true;
+        customAudioRef.current = audio;
+      }
+      if (playing) {
+        customAudioRef.current.pause();
+        setPlaying(false);
+      } else {
+        customAudioRef.current.play().then(() => setPlaying(true)).catch(e => console.warn(e));
+      }
+      return;
+    }
+
     if (!audioCtxRef.current) {
       initAudio();
     }
@@ -111,6 +144,10 @@ export function SoundToggle() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (audioCtxRef.current) audioCtxRef.current.close();
+      if (customAudioRef.current) {
+        customAudioRef.current.pause();
+        customAudioRef.current = null;
+      }
     };
   }, []);
 
