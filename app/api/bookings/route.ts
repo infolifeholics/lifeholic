@@ -23,7 +23,7 @@ const bookingBodySchema = z.object({
   user_id: z.string().optional().nullable(),
   category: z.string().optional().nullable(),
   subcategory: z.string().optional().nullable(),
-  problems: z.string().optional().nullable(),
+  problems: z.union([z.string(), z.array(z.string())]).optional().nullable(),
   summary: z.string().optional().nullable(),
   is_somatic_plan: z.boolean().optional().nullable(),
   somatic_plan_name: z.string().optional().nullable(),
@@ -447,14 +447,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Double booking detected or transaction failed.' }, { status: 500 });
     }
 
-    // Trigger Notification outside transaction (since it relies on network calls)
+    // Trigger Notification outside transaction in the background to return response instantly
     if (insertedBookingData && newBookingId) {
-      try {
-        await writeAuditLog('Booking Created', 'User', { bookingId: newBookingId, clientName: insertedBookingData.client_name, start_time: insertedBookingData.start_time });
-        await triggerBookingNotification(newBookingId, insertedBookingData, 'created');
-      } catch (err) {
-        console.error('[Notification Trigger/Audit Error]:', err);
-      }
+      writeAuditLog('Booking Created', 'User', { 
+        bookingId: newBookingId, 
+        clientName: insertedBookingData.client_name, 
+        start_time: insertedBookingData.start_time 
+      }).catch((err) => console.error('[Background Audit Error]:', err));
+
+      triggerBookingNotification(newBookingId, insertedBookingData, 'created')
+        .catch((err) => console.error('[Background Notification Error]:', err));
     }
 
     return NextResponse.json({ ok: true, id: newBookingId });

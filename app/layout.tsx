@@ -7,6 +7,7 @@ import { SiteHeader } from '@/components/site/site-header';
 import { MobileNav } from '@/components/site/mobile-nav';
 import { SiteFooter } from '@/components/site/site-footer';
 import { OfferPopup } from '@/components/site/offer-promo';
+import { PwaInstall } from '@/components/site/pwa-install';
 import { cn } from '@/lib/utils';
 import { GlobalErrorBoundary } from '@/components/site/error-boundary';
 import { ClientHardening } from '@/components/site/client-hardening';
@@ -68,6 +69,7 @@ export const metadata: Metadata = {
     images: ['/og.svg'],
   },
   alternates: { canonical: 'https://thelifeholics.com' },
+  manifest: '/manifest.json',
   robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
   icons: {
     icon: '/favicon.svg',
@@ -90,6 +92,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main className="relative">{children}</main>
             <SiteFooter />
             <OfferPopup />
+            <PwaInstall />
             <script
               type="application/ld+json"
               dangerouslySetInnerHTML={{

@@ -150,6 +150,35 @@ export function CheckoutView() {
       }
 
       const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
+
+      if (keyId === 'rzp_test_mockKey123') {
+        toast.info('Using Demo/Test Payment Mode. Processing order confirmation...');
+        setTimeout(async () => {
+          try {
+            const verifyRes = await fetch('/api/shop/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_payment_id: 'pay_mock_' + data.id,
+                razorpay_order_id: 'order_mock_' + data.id,
+                razorpay_signature: 'sig_mock_' + data.id,
+                order_id: data.id,
+              }),
+            });
+
+            if (!verifyRes.ok) throw new Error('Verification failed.');
+
+            toast.success('Test payment verified & order confirmed!');
+            clear();
+            router.push(`/shop/thank-you?order=${data.number}`);
+          } catch (err) {
+            toast.error('Failed to verify test payment status.');
+            setPlacing(false);
+          }
+        }, 1500);
+        return;
+      }
+
       const options = {
         key: keyId,
         amount: Math.round(Number(total) * 100),

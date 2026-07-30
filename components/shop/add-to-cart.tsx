@@ -26,7 +26,7 @@ export function AddToCart({
   };
   currency?: 'INR' | 'USD';
 }) {
-  const { add } = useCart();
+  const { items, add } = useCart();
   const { user } = useAuth();
   const router = useRouter();
   const [qty, setQty] = useState(1);
@@ -35,6 +35,7 @@ export function AddToCart({
 
   const price = currency === 'INR' ? product.price_inr : product.price_usd;
   const outOfStock = product.stock !== null && product.stock <= 0;
+  const isInCart = items.some((item) => item.id === product.id);
 
   const handleAdd = () => {
     if (!user) {
@@ -42,6 +43,11 @@ export function AddToCart({
         description: 'You will be redirected to the sign in page.',
       });
       router.push(`/auth/login?redirect=/shop/${product.slug}`);
+      return;
+    }
+
+    if (isInCart) {
+      router.push('/shop/cart');
       return;
     }
 
@@ -68,7 +74,7 @@ export function AddToCart({
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-      {product.type === 'physical' && (
+      {product.type === 'physical' && !isInCart && (
         <div className="inline-flex items-center rounded-full border border-border bg-card">
           <button
             onClick={() => setQty((q) => Math.max(1, q - 1))}
@@ -95,12 +101,14 @@ export function AddToCart({
         size="lg"
         className={cn(
           'flex-1 rounded-full transition-all duration-300',
-          success && 'bg-emerald-600 hover:bg-emerald-600 text-white scale-[1.02] shadow-emerald-500/20',
+          (success || isInCart) && 'bg-emerald-600 hover:bg-emerald-700 text-white scale-[1.02] shadow-emerald-500/20',
           outOfStock && 'cursor-not-allowed opacity-60'
         )}
       >
         {adding ? (
           <span className="flex items-center gap-1.5"><Loader2 className="h-4 w-4 animate-spin" /> Adding...</span>
+        ) : isInCart ? (
+          <span className="flex items-center gap-1.5 justify-center">Already added</span>
         ) : success ? (
           <span className="flex items-center gap-1.5 justify-center"><Check className="h-5 w-5 animate-scaleUp" /> Added successfully!</span>
         ) : outOfStock ? (

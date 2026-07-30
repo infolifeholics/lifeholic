@@ -51,6 +51,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
 
   const [step, setStep] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const continueBtnRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -339,7 +340,12 @@ export function BookingFlow({ services }: { services: Service[] }) {
                   {services.map((s) => (
                     <button
                       key={s.id}
-                      onClick={() => setServiceSlug(s.slug)}
+                      onClick={() => {
+                        setServiceSlug(s.slug);
+                        setTimeout(() => {
+                          continueBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }, 100);
+                      }}
                       className={cn(
                         'flex items-center gap-4 rounded-2xl border p-4 text-left transition-all',
                         serviceSlug === s.slug
@@ -517,7 +523,12 @@ export function BookingFlow({ services }: { services: Service[] }) {
                               return (
                                 <button
                                   key={s.start}
-                                  onClick={() => setSelectedSlot(s)}
+                                  onClick={() => {
+                                    setSelectedSlot(s);
+                                    setTimeout(() => {
+                                      continueBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                    }, 100);
+                                  }}
                                   className={cn(
                                     'rounded-xl border px-2 py-2.5 text-sm transition-all',
                                     active
@@ -641,7 +652,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
           </AnimatePresence>
 
           {/* Nav */}
-          <div className="mt-8 flex items-center justify-between">
+          <div ref={continueBtnRef} className="mt-8 flex items-center justify-between">
             <Button variant="ghost" onClick={back} disabled={step === 0 || submitting} className="rounded-full">
               <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Button>

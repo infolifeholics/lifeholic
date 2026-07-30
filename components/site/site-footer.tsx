@@ -80,7 +80,7 @@ export function SiteFooter() {
             </p>
             <div className="mt-6 flex items-center gap-2">
               {[
-                { Icon: Instagram, href: 'https://instagram.com', label: 'Instagram' },
+                { Icon: Instagram, href: process.env.NEXT_PUBLIC_CONTACT_INSTAGRAM || 'https://instagram.com/thelifeholics', label: 'Instagram' },
                 { Icon: MessageCircle, href: `https://wa.me/${process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || '919999999999'}`, label: 'WhatsApp' },
                 { Icon: Mail, href: `mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'hello@thelifeholics.com'}`, label: 'Email' },
                 { Icon: Phone, href: `tel:${process.env.NEXT_PUBLIC_CONTACT_PHONE || '+919999999999'}`, label: 'Phone' },

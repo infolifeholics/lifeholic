@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Plus, Minus } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,12 +11,52 @@ import { ProductWishlistButton } from '@/components/shop/product-wishlist-button
 import { formatPrice } from '@/lib/format';
 import { getProductRoute } from '@/lib/routes';
 import { cn } from '@/lib/utils';
+import { useCart } from '@/components/providers/cart-provider';
+import { useAuth } from '@/components/providers/auth-provider';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export function ShopGrid({ products }: { products: Product[] }) {
+  const { items, add, setQuantity, remove } = useCart();
+  const { user } = useAuth();
+  const router = useRouter();
+
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string>('All');
   const [type, setType] = useState<'All' | 'digital' | 'physical'>('All');
   const [sort, setSort] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
+
+  const handleAddToCart = (product: Product) => {
+    if (!user) {
+      toast.error('Please sign in to add items to your cart.', {
+        description: 'You will be redirected to the sign in page.',
+      });
+      router.push(`/auth/login?redirect=/shop`);
+      return;
+    }
+    add({
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      price: product.price_inr,
+      image: product.image,
+      type: product.type,
+    }, 1);
+    toast.success(`${product.name} added to your bag.`);
+  };
+
+  const handleIncrement = (id: string, currentQty: number) => {
+    setQuantity(id, currentQty + 1);
+  };
+
+  const handleDecrement = (id: string, currentQty: number) => {
+    if (currentQty <= 1) {
+      remove(id);
+      toast.success('Item removed from cart.');
+    } else {
+      setQuantity(id, currentQty - 1);
+    }
+  };
 
   const categories = useMemo(() => {
     const set = new Set(products.map((p) => p.category));
@@ -139,13 +179,74 @@ export function ShopGrid({ products }: { products: Product[] }) {
                     </div>
                     <h3 className="mt-2 font-display text-lg font-medium leading-snug text-foreground">{p.name}</h3>
                     <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{p.tagline}</p>
-                    <div className="mt-4 flex items-center gap-2">
-                      <span className="font-medium text-foreground">{formatPrice(p.price_inr, 'INR')}</span>
-                      {onSale && (
-                        <span className="text-xs text-muted-foreground line-through">
-                          {formatPrice(p.compare_at_inr as number, 'INR')}
-                        </span>
-                      )}
+                    <div className="mt-4 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-medium text-foreground">{formatPrice(p.price_inr, 'INR')}</span>
+                        {onSale && (
+                          <span className="text-xs text-muted-foreground line-through">
+                            {formatPrice(p.compare_at_inr as number, 'INR')}
+                          </span>
+                        )}
+                      </div>
+
+                      {(() => {
+                        const cartItem = items.find((item) => item.id === p.id);
+                        if (cartItem) {
+                          return (
+                            <div 
+                              className="flex items-center gap-1"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                            >
+                              <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                                Added
+                              </span>
+                              <div className="flex items-center rounded-full border border-border bg-card h-8">
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDecrement(p.id, cartItem.quantity);
+                                  }}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-l-full text-foreground hover:bg-secondary"
+                                  aria-label="Decrease quantity"
+                                >
+                                  <Minus className="h-3.5 w-3.5" />
+                                </button>
+                                <span className="w-5 text-center text-xs font-semibold">{cartItem.quantity}</span>
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleIncrement(p.id, cartItem.quantity);
+                                  }}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-r-full text-foreground hover:bg-secondary"
+                                  aria-label="Increase quantity"
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 rounded-full px-3 text-xs"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleAddToCart(p);
+                            }}
+                          >
+                            Add to Cart
+                          </Button>
+                        );
+                      })()}
                     </div>
                   </div>
                 </article>

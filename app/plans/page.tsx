@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Check, Star, ArrowLeft, ShieldCheck, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SiteHeader } from '@/components/site/site-header';
-import { SiteFooter } from '@/components/site/site-footer';
+// import { SiteFooter } from '@/components/site/site-footer';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { currencyForTimezone, detectTimezone, formatPrice } from '@/lib/format';
@@ -360,7 +359,8 @@ export default function SomaticPlansPage() {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes shine-sweep {
           0% { left: -100%; }
           100% { left: 200%; }
@@ -423,7 +423,6 @@ export default function SomaticPlansPage() {
           pointer-events: none;
         }
       `}} />
-      <SiteHeader />
       <main className="min-h-screen pt-28 pb-20 sm:pt-36 bg-gradient-to-b from-[#F7F6F0] via-[#ECEAE1] to-[#E5E2D6] relative overflow-hidden transition-all duration-500">
         {/* Peaceful cloudy/misty orbs for meditation vibe */}
         <div className="absolute top-[-10%] left-[-10%] w-[60%] aspect-square rounded-full bg-gradient-to-br from-[#A7C0B0]/40 to-[#C0B9E5]/30 blur-[130px] pointer-events-none z-0 misty-orb-1" />
@@ -529,8 +528,8 @@ export default function SomaticPlansPage() {
                 <div
                   key={planKey}
                   className={`rounded-3xl p-6 md:p-8 flex flex-col justify-between transition-all duration-300 relative ${isRecommended
-                      ? 'border-2 border-gold bg-card shadow-glow transform md:-translate-y-2'
-                      : 'border border-border/60 bg-card/40 shadow-soft hover:shadow-hover'
+                    ? 'border-2 border-gold bg-card shadow-glow transform md:-translate-y-2'
+                    : 'border border-border/60 bg-card/40 shadow-soft hover:shadow-hover'
                     }`}
                 >
                   {isRecommended && (

@@ -54,6 +54,18 @@ export function SiteHeader() {
     return () => unsubscribe();
   }, [user]);
 
+  // Lock body scroll when notifications dropdown is open
+  useEffect(() => {
+    if (showNotifDropdown) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showNotifDropdown]);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkSingleRead = async (id: string) => {
@@ -230,10 +242,12 @@ export function SiteHeader() {
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          onWheel={(e) => e.stopPropagation()}
+                          onTouchMove={(e) => e.stopPropagation()}
                           className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl border border-white/10 bg-[#161210]/95 backdrop-blur-xl p-4 shadow-glow z-50 text-left"
                         >
                           <div className="flex justify-between items-center pb-2 border-b border-white/10 mb-3">
-                            <span className="font-semibold text-sm text-foreground">Notifications</span>
+                            <span className="font-semibold text-sm text-white">Notifications</span>
                             <button
                               onClick={async () => {
                                 try {
@@ -255,7 +269,7 @@ export function SiteHeader() {
                           </div>
                           <div className="max-h-72 overflow-y-auto space-y-2.5 custom-scrollbar pr-1">
                             {notifications.length === 0 ? (
-                              <p className="text-xs text-muted-foreground text-center py-6">No notifications found.</p>
+                              <p className="text-xs text-white/60 text-center py-6">No notifications found.</p>
                             ) : (
                               notifications.slice(0, 5).map((n) => (
                                 <div
@@ -267,11 +281,11 @@ export function SiteHeader() {
                                   }}
                                   className={cn(
                                     "p-2.5 rounded-xl border text-xs cursor-pointer transition-colors",
-                                    n.read ? "bg-white/5 border-transparent text-muted-foreground" : "bg-gold/10 border-gold/30 text-foreground font-medium"
+                                    n.read ? "bg-white/5 border-transparent text-white/50" : "bg-gold/10 border-gold/30 text-white font-medium"
                                   )}
                                 >
-                                  <p className="font-semibold text-[11px] text-foreground">{n.title}</p>
-                                  <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                                  <p className="font-semibold text-[11px] text-white">{n.title}</p>
+                                  <p className="text-[10px] text-white/70 line-clamp-2 mt-0.5">{n.message}</p>
                                 </div>
                               ))
                             )}

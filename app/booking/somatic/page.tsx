@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, Suspense } from 'react';
+import { useEffect, useState, useMemo, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Check, Clock, Globe, Loader2, Calendar, ArrowLeft, ArrowRight, ShieldAlert } from 'lucide-react';
@@ -14,8 +14,7 @@ import { cn } from '@/lib/utils';
 import { COMMON_TIMEZONES, currencyForTimezone, detectTimezone, formatInTz, formatPrice } from '@/lib/format';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AuthModal } from '@/components/auth/auth-modal';
-import { SiteHeader } from '@/components/site/site-header';
-import { SiteFooter } from '@/components/site/site-footer';
+
 
 type Slot = {
   start: string;
@@ -27,12 +26,19 @@ function SomaticBookingFlowContent() {
   const router = useRouter();
   const search = useSearchParams();
   const { user, profile } = useAuth();
+  const continueBtnRef = useRef<HTMLDivElement>(null);
 
   const [planName, setPlanName] = useState('Premium');
   const [price, setPrice] = useState(10800);
   const [survey, setSurvey] = useState<any>(null);
 
   const [step, setStep] = useState(0); // 0: Date & Time, 1: Details, 2: Confirm
+
+  // Auto scroll to top of viewport when step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
+
   const [tz, setTz] = useState(detectTimezone());
   const [month, setMonth] = useState(() => {
     const d = new Date();
@@ -350,7 +356,12 @@ function SomaticBookingFlowContent() {
                         return (
                           <button
                             key={i}
-                            onClick={() => setSelectedSlot(slot)}
+                            onClick={() => {
+                              setSelectedSlot(slot);
+                              setTimeout(() => {
+                                continueBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                              }, 100);
+                            }}
                             className={cn(
                               "border border-border/60 hover:border-gold p-3 rounded-2xl text-xs font-medium transition-all",
                               isSelected ? "bg-gold text-gold-foreground border-gold shadow-sm" : "bg-background/40 hover:bg-muted text-muted-foreground hover:text-foreground"
@@ -366,7 +377,7 @@ function SomaticBookingFlowContent() {
               )}
 
               {/* Navigation button */}
-              <div className="flex justify-end pt-4 border-t border-border/20">
+              <div ref={continueBtnRef} className="flex justify-end pt-4 border-t border-border/20">
                 <Button
                   disabled={!selectedSlot}
                   onClick={() => setStep(1)}
@@ -567,21 +578,27 @@ function SomaticBookingFlowContent() {
 
       </div>
 
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={() => setShowAuthModal(false)} />
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
+        onSuccess={() => {
+          setShowAuthModal(false);
+          // Wait briefly for auth context state synchronization and submit
+          setTimeout(() => {
+            submit();
+          }, 600);
+        }} 
+      />
     </div>
   );
 }
 
 export default function SomaticBookingPage() {
   return (
-    <>
-      <SiteHeader />
-      <main className="min-h-screen pt-28 pb-20 sm:pt-36 bg-background">
-        <Suspense fallback={<div className="py-20 text-center text-muted-foreground">Loading checkout...</div>}>
-          <SomaticBookingFlowContent />
-        </Suspense>
-      </main>
-      <SiteFooter />
-    </>
+    <main className="min-h-screen pt-28 pb-20 sm:pt-36 bg-background">
+      <Suspense fallback={<div className="py-20 text-center text-muted-foreground">Loading checkout...</div>}>
+        <SomaticBookingFlowContent />
+      </Suspense>
+    </main>
   );
 }

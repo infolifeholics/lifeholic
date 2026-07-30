@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -20,6 +20,16 @@ function PaymentPageContent() {
   const [loading, setLoading] = useState(true);
   const [bookingData, setBookingData] = useState<any>(null);
   const [serviceData, setServiceData] = useState<any>(null);
+  const paymentRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to checkout options once details are loaded
+  useEffect(() => {
+    if (!loading && bookingData) {
+      setTimeout(() => {
+        paymentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 600);
+    }
+  }, [loading, bookingData]);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -152,14 +162,43 @@ function PaymentPageContent() {
 
     const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
 
-    const options = {
+    if (keyId === 'rzp_test_mockKey123') {
+      toast.info('Using Demo/Test Payment Mode. Confirming your session booking...');
+      setPaying(true);
+      setTimeout(async () => {
+        try {
+          const res = await fetch('/api/bookings/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_payment_id: 'pay_mock_' + bookingData.id,
+              razorpay_order_id: 'order_mock_' + bookingData.id,
+              razorpay_signature: 'sig_mock_' + bookingData.id,
+              booking_id: bookingData.id,
+            }),
+          });
+          if (res.ok) {
+            toast.success('Test payment successful! Booking confirmed.');
+            router.push(`/booking/success?service=${serviceData?.slug || ''}&date=${encodeURIComponent(bookingData.start_time)}&tz=${encodeURIComponent(bookingData.client_timezone)}`);
+          } else {
+            toast.error('Test payment verification failed.');
+            setPaying(false);
+          }
+        } catch (err) {
+          toast.error('Test payment failed.');
+          setPaying(false);
+        }
+      }, 1500);
+      return;
+    }
+
+    const options: any = {
       key: keyId,
       amount: total * 100, // in paise
       currency: bookingData.currency || 'INR',
       name: 'TheLifeHolics',
       description: bookingData.service_title,
       image: '/logo.svg',
-      order_id: bookingData.order_id || null,
       handler: async function (response: any) {
         setPaying(true);
         try {
@@ -222,6 +261,9 @@ function PaymentPageContent() {
         }
       }
     };
+    if (bookingData.order_id) {
+      options.order_id = bookingData.order_id;
+    }
 
     const rzp = new (window as any).Razorpay(options);
     rzp.open();
@@ -376,7 +418,7 @@ function PaymentPageContent() {
 
         {/* Right Side: Payment Portal */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-6">
+          <div ref={paymentRef} className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-6">
             <h3 className="font-display text-lg font-medium text-foreground flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-gold" />
               <span>Checkout Options</span>

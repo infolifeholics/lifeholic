@@ -9,6 +9,10 @@ const isDummyConfig =
   !process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
   !process.env.FIREBASE_API_KEY;
 
+// In-memory cache for Firestore queries to speed up page loads and avoid excessive API calls
+const cache: Record<string, { data: any; timestamp: number }> = {};
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes cache lifetime
+
 // Helper to auto-seed a collection from seed-data.json if it is empty
 async function getCollectionData<T>(colName: string): Promise<T[]> {
   const defaults = (seedData as any)[colName] || [];
@@ -17,24 +21,29 @@ async function getCollectionData<T>(colName: string): Promise<T[]> {
     return defaults as T[];
   }
 
+  // Return cached data if valid
+  const cached = cache[colName];
+  const now = Date.now();
+  if (cached && (now - cached.timestamp < CACHE_TTL)) {
+    return cached.data as T[];
+  }
+
   try {
     const colRef = collection(db, colName);
     const snap = await getDocs(colRef);
     if (snap.empty) {
-      console.log(`Firestore collection "${colName}" is empty. Seeding defaults...`);
-      for (const item of defaults) {
-        const docId = item.id || item.slug || Math.random().toString(36).substring(7);
-        await setDoc(doc(db, colName, docId), item);
-      }
-      const freshSnap = await getDocs(colRef);
-      return freshSnap.docs.map((d) => d.data()) as T[];
+      console.log(`Firestore collection "${colName}" is empty. Using local defaults.`);
+      cache[colName] = { data: defaults, timestamp: Date.now() };
+      return defaults as T[];
     }
-    return snap.docs.map((d) => d.data()) as T[];
+    const data = snap.docs.map((d) => d.data()) as T[];
+    cache[colName] = { data, timestamp: Date.now() };
+    return data;
   } catch (e: any) {
     if (e.code === 'permission-denied') {
-      console.info(`[Info] Database writes are securely restricted for collection "${colName}". Using local defaults.`);
+      console.info(`[Info] Database reads/writes are securely restricted for collection "${colName}". Using local defaults.`);
     } else {
-      console.error(`Error loading or seeding collection ${colName}:`, e);
+      console.error(`Error loading collection ${colName}:`, e);
     }
     return defaults as T[];
   }
