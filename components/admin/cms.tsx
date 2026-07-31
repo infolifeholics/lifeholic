@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, Save, FileText, HelpCircle, PhoneCall, Info } from 'lucide-react';
+import { Loader2, Save, FileText, HelpCircle, PhoneCall, Info, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,11 +20,13 @@ type CMSSection = {
   contact_phone?: string;
   contact_email?: string;
   footer_text?: string;
+  about_image?: string;
 };
 
 export function AdminCMS() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [data, setData] = useState<CMSSection>({
     id: 'global',
     quote: 'Your quote here...',
@@ -35,7 +37,67 @@ export function AdminCMS() {
     contact_phone: '+91 98765 43210',
     contact_email: 'info@thelifeholics.com',
     footer_text: '© 2026 TheLifeHolics. All rights reserved.',
+    about_image: '',
   });
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    const toastId = toast.loading('Uploading about image to Cloudinary...');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Upload failed');
+      const result = await res.json();
+      const newUrl = result.url;
+
+      if (!newUrl) throw new Error('No URL returned');
+
+      // Delete old image if it was uploaded to Cloudinary
+      if (data.about_image && data.about_image.includes('cloudinary.com')) {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: data.about_image }),
+        });
+      }
+
+      setData(prev => ({ ...prev, about_image: newUrl }));
+      toast.success('About image uploaded successfully!', { id: toastId });
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to upload image: ' + err.message, { id: toastId });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleResetImage = async () => {
+    if (data.about_image && data.about_image.includes('cloudinary.com')) {
+      const toastId = toast.loading('Deleting custom image from Cloudinary...');
+      try {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: data.about_image }),
+        });
+        toast.success('Image deleted from Cloudinary.', { id: toastId });
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to delete image from Cloudinary.', { id: toastId });
+      }
+    }
+    setData(prev => ({ ...prev, about_image: '' }));
+  };
 
   const fetchCMS = async () => {
     try {
@@ -135,6 +197,76 @@ export function AdminCMS() {
               onChange={(e) => setData({ ...data, about_text: e.target.value })}
               className="mt-1.5 rounded-xl min-h-[100px]"
             />
+          </div>
+          <div className="pt-2 border-t border-border/20 space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-1.5">
+              <ImageIcon className="h-4 w-4 text-gold" /> About Section Founder Image
+            </Label>
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="relative w-24 h-32 rounded-xl overflow-hidden border border-border/60 bg-muted">
+                {data.about_image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={data.about_image}
+                    alt="Founder portrait"
+                    className="w-full h-full object-cover object-top"
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src="/images/founder/photo.jpg"
+                    alt="Default founder portrait"
+                    className="w-full h-full object-cover object-top opacity-60"
+                  />
+                )}
+                {!data.about_image && (
+                  <span className="absolute bottom-1 left-1 bg-background/80 text-[8px] font-bold px-1 py-0.5 rounded border border-border/30">
+                    DEFAULT
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2 flex-1 w-full">
+                <p className="text-xs text-muted-foreground">
+                  Replace the main founder image shown in the About section on the homepage. Defaults to the local asset if no custom image is uploaded.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploadingImage}
+                    className="rounded-full gap-1.5 px-4 text-xs h-9 relative overflow-hidden"
+                  >
+                    {uploadingImage ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5" />
+                    )}
+                    <span>{data.about_image ? 'Replace Image' : 'Upload Image'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </Button>
+
+                  {data.about_image && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={handleResetImage}
+                      className="rounded-full gap-1.5 px-4 text-xs h-9 hover:bg-rose-500/10 hover:text-rose-600 border border-transparent hover:border-rose-500/20"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Reset to Default</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

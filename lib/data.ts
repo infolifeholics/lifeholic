@@ -1,5 +1,5 @@
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
 import seedData from './seed-data.json';
 import type { Service, Product, Testimonial, Workshop, BlogPost, Faq, Availability } from '@/lib/types';
 
@@ -30,7 +30,13 @@ async function getCollectionData<T>(colName: string): Promise<T[]> {
 
   try {
     const colRef = collection(db, colName);
-    const snap = await getDocs(colRef);
+    let snap;
+    if (colName === 'products') {
+      const q = query(colRef, where('is_active', '==', true));
+      snap = await getDocs(q);
+    } else {
+      snap = await getDocs(colRef);
+    }
     if (snap.empty) {
       console.log(`Firestore collection "${colName}" is empty. Using local defaults.`);
       cache[colName] = { data: defaults, timestamp: Date.now() };

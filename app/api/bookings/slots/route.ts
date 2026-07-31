@@ -17,11 +17,15 @@ export async function GET(req: Request) {
     // Ensure session slots are seeded
     await seedDefaultSlotsIfEmpty();
 
-    // 1. Fetch holidays for the selected date
+    // 1. Fetch holidays and filter in memory by range (inclusive)
     const holidaysRef = collection(db, 'holidays');
-    const qHolidays = query(holidaysRef, where('date', '==', dateStr));
-    const holidaysSnap = await getDocs(qHolidays);
-    const holidays = holidaysSnap.docs.map(d => d.data());
+    const holidaysSnap = await getDocs(holidaysRef);
+    const allHolidays = holidaysSnap.docs.map(d => d.data());
+    const holidays = allHolidays.filter((h: any) => {
+      const from = h.from_date || h.date;
+      const to = h.to_date || h.date;
+      return dateStr >= from && dateStr <= to;
+    });
 
     // Check if entire day is marked as a holiday
     const allDayHoliday = holidays.find(h => !h.start_time);

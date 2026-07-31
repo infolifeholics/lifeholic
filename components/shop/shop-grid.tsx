@@ -1,6 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query as firestoreQuery, where } from 'firebase/firestore';
 import Link from 'next/link';
 import { Search, SlidersHorizontal, X, Plus, Minus } from 'lucide-react';
 import type { Product } from '@/lib/types';
@@ -16,15 +18,26 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
-export function ShopGrid({ products }: { products: Product[] }) {
+export function ShopGrid({ products: initialProducts }: { products: Product[] }) {
   const { items, add, setQuantity, remove } = useCart();
   const { user } = useAuth();
   const router = useRouter();
 
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string>('All');
   const [type, setType] = useState<'All' | 'digital' | 'physical'>('All');
   const [sort, setSort] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
+
+  useEffect(() => {
+    const q = firestoreQuery(collection(db, 'products'), where('is_active', '==', true));
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product);
+      list.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
+      setProducts(list);
+    });
+    return () => unsub();
+  }, []);
 
   const handleAddToCart = (product: Product) => {
     if (!user) {

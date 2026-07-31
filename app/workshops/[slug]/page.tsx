@@ -145,7 +145,10 @@ export default function WorkshopDetailsPage() {
   }
 
   const left = Math.max(0, (ws.seats_total || 0) - (ws.seats_booked || 0));
-  const isCompleted = ws.status === 'completed' || ws.status === 'cancelled';
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  const isCompleted = ws.status === 'completed' || ws.status === 'cancelled' || (ws.date && (ws.end_date || ws.date) < todayStr);
+  const isUpcoming = !ws.date || ws.date > todayStr;
+  const isCurrent = ws.date && todayStr >= ws.date && todayStr <= (ws.end_date || ws.date);
 
   const handleRegisterNowClick = () => {
     if (!user) {
@@ -482,7 +485,7 @@ export default function WorkshopDetailsPage() {
                 </div>
               </div>
 
-              {!isCompleted ? (
+              {isCurrent ? (
                 <>
                   <div className="border-t border-border/40 pt-4 flex justify-between items-center text-xs">
                     <span className="text-muted-foreground">Availability</span>
@@ -530,11 +533,23 @@ export default function WorkshopDetailsPage() {
                     </form>
                   )}
                 </>
+              ) : isUpcoming ? (
+                <div className="border-t border-border/40 pt-4 text-center space-y-2">
+                  <span className="inline-block rounded-full bg-gold/10 border border-gold/20 px-3 py-1 text-xs text-gold font-semibold">
+                    Registrations Opening Soon
+                  </span>
+                  <p className="text-[10px] text-muted-foreground">
+                    This workshop is scheduled to start on {ws.date ? new Date(ws.date).toLocaleDateString() : 'TBD'}.
+                  </p>
+                </div>
               ) : (
-                <div className="border-t border-border/40 pt-4 text-center">
-                  <span className="rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground font-semibold">
+                <div className="border-t border-border/40 pt-4 text-center space-y-2">
+                  <span className="inline-block rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground font-semibold">
                     Workshop Completed
                   </span>
+                  <p className="text-[10px] text-muted-foreground">
+                    Registrations are closed for this somatic gathering.
+                  </p>
                 </div>
               )}
             </div>

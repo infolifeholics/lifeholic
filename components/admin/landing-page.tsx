@@ -31,6 +31,8 @@ export function AdminLandingPage() {
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadingMusic, setUploadingMusic] = useState(false);
+  const [feedItems, setFeedItems] = useState<any[]>([]);
+  const [uploadingFeedSlot, setUploadingFeedSlot] = useState<string | null>(null);
 
   const fetchLandingData = async () => {
     try {
@@ -65,6 +67,29 @@ export function AdminLandingPage() {
       } else {
         setMusicUrl('');
       }
+
+      // 4. Fetch Landing Feed Items
+      const feedSnap = await getDocs(collection(db, 'landing_feed'));
+      const feedData = feedSnap.docs.map((d) => d.data());
+      const defaultPosts = [
+        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=500',
+        'https://images.pexels.com/photos/3823039/pexels-photo-3823039.jpeg?auto=compress&cs=tinysrgb&w=500',
+        'https://images.pexels.com/photos/4202325/pexels-photo-4202325.jpeg?auto=compress&cs=tinysrgb&w=500',
+        'https://images.pexels.com/photos/3771115/pexels-photo-3771115.jpeg?auto=compress&cs=tinysrgb&w=500',
+      ];
+      const populatedFeed = Array.from({ length: 4 }, (_, i) => {
+        const id = `slot_${i + 1}`;
+        const found = feedData?.find((d) => d.id === id);
+        return {
+          id,
+          url: (found && found.url) ? found.url : defaultPosts[i],
+          type: found ? found.type : 'image',
+          public_id: found ? found.public_id : '',
+          isCustom: !!(found && found.url),
+          likes: found ? found.likes || 0 : 0
+        };
+      });
+      setFeedItems(populatedFeed);
     } catch (err: any) {
       console.warn('Could not fetch data:', err.message);
     } finally {
@@ -75,6 +100,64 @@ export function AdminLandingPage() {
   useEffect(() => {
     fetchLandingData();
   }, []);
+
+  const handleReplaceFeed = async (slotId: string, file: File) => {
+    if (!file) return;
+
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(ext || '');
+    const isVideo = file.type.startsWith('video/') || ['mp4', 'mov', 'webm'].includes(ext || '');
+
+    if (!isImage && !isVideo) {
+      toast.error('Unsupported file type. Please upload a JPG, PNG, WEBP image or MP4, MOV, WEBM video.');
+      return;
+    }
+
+    setUploadingFeedSlot(slotId);
+    const toastId = toast.loading(`Uploading media for Landing Feed ${slotId}...`);
+
+    try {
+      const isVideoFile = isVideo;
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Upload server error');
+
+      const { url: cloudinaryUrl, public_id: cloudinaryPublicId } = await res.json();
+      if (!cloudinaryUrl) throw new Error('Upload did not return URL');
+
+      // Delete old custom file if it exists
+      const currentItem = feedItems.find(item => item.id === slotId);
+      if (currentItem?.isCustom && currentItem.url.includes('cloudinary.com')) {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: currentItem.url }),
+        });
+      }
+
+      await setDoc(doc(db, 'landing_feed', slotId), {
+        id: slotId,
+        url: cloudinaryUrl,
+        public_id: cloudinaryPublicId || '',
+        type: isVideoFile ? 'video' : 'image',
+        likes: currentItem ? currentItem.likes || 0 : 0,
+        updated_at: new Date().toISOString(),
+      });
+
+      toast.success(`Landing Feed ${slotId} replaced successfully!`, { id: toastId });
+      fetchLandingData();
+    } catch (error: any) {
+      toast.error(`Failed: ${error.message}`, { id: toastId });
+    } finally {
+      setUploadingFeedSlot(null);
+    }
+  };
 
   const handleReplace = async (slotId: number, file: File) => {
     if (!file) return;
@@ -506,6 +589,82 @@ export function AdminLandingPage() {
                     </span>
                   </Button>
                 </label>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SECTION: Landing Feed (Instagram style) */}
+      <div className="rounded-3xl border border-border/60 bg-card/70 p-6 shadow-soft">
+        <h2 className="font-display text-xl font-medium text-foreground">"A Little Quiet On Your Feed" Section Media</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Replace or update the 4 active landing page feed items. Supports both high-resolution Images and Portrait/Landscape Videos.
+        </p>
+
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {feedItems.map((item) => (
+            <div
+              key={item.id}
+              className="relative overflow-hidden rounded-2xl border border-border/80 bg-background-2/40 p-4 transition-all hover:border-border"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Slot {item.id.replace('slot_', '')} {item.isCustom ? <span className="text-[10px] text-primary capitalize ml-1">(custom)</span> : <span className="text-[10px] text-muted-foreground/60 ml-1">(default)</span>}
+                </span>
+                <span className="text-[10px] font-mono bg-secondary/80 px-2 py-0.5 rounded-full border border-border/30 capitalize text-foreground/80">
+                  {item.type}
+                </span>
+              </div>
+
+              <div className="relative aspect-square overflow-hidden rounded-xl border border-border/40 bg-card flex flex-col items-center justify-center">
+                {item.type === 'video' ? (
+                  <video
+                    src={item.url}
+                    className="h-full w-full object-cover"
+                    muted
+                    loop
+                    playsInline
+                    autoPlay
+                  />
+                ) : (
+                  <img
+                    src={item.url}
+                    alt={`Feed ${item.id}`}
+                    className="h-full w-full object-cover"
+                  />
+                )}
+
+                {uploadingFeedSlot === item.id && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <span className="mt-2 text-xs font-medium text-foreground">Uploading...</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+                  disabled={uploadingFeedSlot !== null}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleReplaceFeed(item.id, file);
+                  }}
+                  className="hidden"
+                  id={`replace-feed-input-${item.id}`}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2"
+                  disabled={uploadingFeedSlot !== null}
+                  onClick={() => document.getElementById(`replace-feed-input-${item.id}`)?.click()}
+                >
+                  <UploadCloud className="h-4 w-4 text-muted-foreground" />
+                  Replace Media
+                </Button>
               </div>
             </div>
           ))}

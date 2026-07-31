@@ -35,7 +35,9 @@ import { AdminOffers } from '@/components/admin/offers';
 // Import newly implemented components
 import { AdminHealers } from '@/components/admin/healers';
 import { AdminCoupons } from '@/components/admin/coupons';
+import { AdminProducts } from '@/components/admin/products';
 import { AdminCMS } from '@/components/admin/cms';
+import { AdminAboutCMS } from '@/components/admin/about-cms';
 import { AdminTestimonials } from '@/components/admin/testimonials';
 import { AdminBlog } from '@/components/admin/blog';
 import { AdminRecommendations } from '@/components/admin/recommendations';
@@ -61,10 +63,12 @@ const NAV = [
   { id: 'services', label: 'Services', icon: Settings },
   { id: 'recommendations', label: 'Recommendation Rules', icon: Sparkles },
   { id: 'coupons', label: 'Discount Coupons', icon: Tag },
+  { id: 'products', label: 'Products & Shop', icon: Package },
   { id: 'orders', label: 'Orders', icon: Package },
   { id: 'members', label: 'Members', icon: Users },
   { id: 'messages', label: 'Messages & Contact', icon: Inbox },
   { id: 'cms', label: 'CMS Manager', icon: ImageIcon },
+  { id: 'about_cms', label: 'About Page CMS', icon: FileText },
   { id: 'landing_page', label: 'Landing Page Assets', icon: ImageIcon },
   { id: 'testimonials', label: 'Testimonials', icon: Heart },
   { id: 'blog', label: 'Articles & Blogs', icon: FileText },
@@ -163,10 +167,12 @@ function AdminShell() {
             {section === 'services' && <AdminServices />}
             {section === 'recommendations' && <AdminRecommendations />}
             {section === 'coupons' && <AdminCoupons />}
+            {section === 'products' && <AdminProducts />}
             {section === 'orders' && <AdminOrders />}
             {section === 'members' && <AdminMembers />}
             {section === 'messages' && <AdminMessages />}
             {section === 'cms' && <AdminCMS />}
+            {section === 'about_cms' && <AdminAboutCMS />}
             {section === 'landing_page' && <AdminLandingPage />}
             {section === 'testimonials' && <AdminTestimonials />}
             {section === 'blog' && <AdminBlog />}

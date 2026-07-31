@@ -14,10 +14,12 @@ export async function GET() {
       ...d.data()
     }));
     
-    // Sort by date, then start_time
+    // Sort by from_date, then start_time
     holidays.sort((a: any, b: any) => {
-      if (a.date !== b.date) {
-        return a.date.localeCompare(b.date);
+      const aDate = a.from_date || a.date || '';
+      const bDate = b.from_date || b.date || '';
+      if (aDate !== bDate) {
+        return aDate.localeCompare(bDate);
       }
       return (a.start_time || '').localeCompare(b.start_time || '');
     });
@@ -40,19 +42,27 @@ export async function POST(req: Request) {
     const holidaysRef = collection(db, 'holidays');
     
     if (action === 'add') {
-      const { date, start_time, end_time, note } = holiday;
-      if (!date) {
-        return NextResponse.json({ error: 'Missing date field.' }, { status: 400 });
+      const { from_date, to_date, start_time, end_time, note } = holiday;
+      if (!from_date || !to_date) {
+        return NextResponse.json({ error: 'Missing start or end date.' }, { status: 400 });
+      }
+      if (!note || !note.trim()) {
+        return NextResponse.json({ error: 'Holiday message is required.' }, { status: 400 });
+      }
+      if (to_date < from_date) {
+        return NextResponse.json({ error: 'End date must be on or after start date.' }, { status: 400 });
       }
       const docRef = await addDoc(holidaysRef, {
-        date, // YYYY-MM-DD
+        date: from_date, // YYYY-MM-DD (backward compatibility)
+        from_date,
+        to_date,
         start_time: start_time || null,
         end_time: end_time || null,
-        note: note || 'Holiday',
+        note,
         created_at: new Date().toISOString()
       });
-      await writeAuditLog('Holiday Added', 'Admin', { id: docRef.id, date, note });
-      await notifyAdmins('Holiday Added', 'Admin', `Declared holiday on ${date}: ${note}`);
+      await writeAuditLog('Holiday Added', 'Admin', { id: docRef.id, from_date, to_date, note });
+      await notifyAdmins('Holiday Added', 'Admin', `Declared holiday from ${from_date} to ${to_date}: ${note}`);
       return NextResponse.json({ ok: true, id: docRef.id });
     }
     

@@ -12,6 +12,8 @@ import { auth } from '@/lib/firebase';
 type Holiday = {
   id: string;
   date: string;
+  from_date?: string;
+  to_date?: string;
   start_time: string | null;
   end_time: string | null;
   note: string;
@@ -22,7 +24,8 @@ export function AdminHolidayManagement() {
   const [loading, setLoading] = useState(true);
 
   // Form State
-  const [date, setDate] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [note, setNote] = useState('');
   const [isSlotSpecific, setIsSlotSpecific] = useState(false);
   const [startTime, setStartTime] = useState('10:30');
@@ -50,8 +53,16 @@ export function AdminHolidayManagement() {
   }, []);
 
   const handleAddHoliday = async () => {
-    if (!date) {
-      toast.error('Please select a date.');
+    if (!fromDate || !toDate) {
+      toast.error('Please select both start and end dates.');
+      return;
+    }
+    if (!note.trim()) {
+      toast.error('Holiday message is required.');
+      return;
+    }
+    if (toDate < fromDate) {
+      toast.error('End date cannot be before start date.');
       return;
     }
     setAdding(true);
@@ -66,8 +77,9 @@ export function AdminHolidayManagement() {
         body: JSON.stringify({
           action: 'add',
           holiday: {
-            date,
-            note: note || 'Holiday',
+            from_date: fromDate,
+            to_date: toDate,
+            note: note.trim(),
             start_time: isSlotSpecific ? startTime : null,
             end_time: isSlotSpecific ? endTime : null,
           }
@@ -76,7 +88,8 @@ export function AdminHolidayManagement() {
       const data = await res.json();
       if (res.ok) {
         toast.success('Holiday added successfully.');
-        setDate('');
+        setFromDate('');
+        setToDate('');
         setNote('');
         setIsSlotSpecific(false);
         fetchHolidays();
@@ -129,25 +142,39 @@ export function AdminHolidayManagement() {
           <Plus className="h-4 w-4" /> Add Holiday closure
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="holiday-date" className="text-xs">Date</Label>
+            <Label htmlFor="holiday-from-date" className="text-xs">From Date</Label>
             <Input
-              id="holiday-date"
+              id="holiday-from-date"
               type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              value={fromDate}
+              onChange={(e) => {
+                setFromDate(e.target.value);
+                if (!toDate) setToDate(e.target.value);
+              }}
               className="mt-1 rounded-xl"
             />
           </div>
           <div>
-            <Label htmlFor="holiday-label" className="text-xs">Reason/Label</Label>
+            <Label htmlFor="holiday-to-date" className="text-xs">To Date</Label>
+            <Input
+              id="holiday-to-date"
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="mt-1 rounded-xl"
+            />
+          </div>
+          <div>
+            <Label htmlFor="holiday-label" className="text-xs">Holiday Message / Reason *</Label>
             <Input
               id="holiday-label"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Independence Day / System Maintenance"
+              placeholder="e.g. Our team is on leave due to festival."
               className="mt-1 rounded-xl"
+              required
             />
           </div>
         </div>
@@ -210,37 +237,54 @@ export function AdminHolidayManagement() {
           </div>
         ) : (
           <div className="space-y-2">
-            {holidays.map((h) => (
-              <div
-                key={h.id}
-                className="flex items-center justify-between p-4 rounded-2xl border border-border/60 bg-card hover:border-gold/30 transition-all"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gold shrink-0" />
-                    <span className="font-semibold text-foreground">{h.date}</span>
-                    {h.start_time ? (
-                      <span className="inline-flex items-center gap-1 text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
-                        <Clock className="h-3 w-3" /> {h.start_time} – {h.end_time}
-                      </span>
-                    ) : (
-                      <span className="text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full">
-                        All Day
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{h.note}</p>
-                </div>
+            {holidays.map((h) => {
+              const start = h.from_date || h.date;
+              const end = h.to_date || h.date;
+              const todayStr = new Date().toLocaleDateString('en-CA');
+              const isExpired = end < todayStr;
 
-                <button
-                  onClick={() => handleDeleteHoliday(h.id)}
-                  className="p-2 rounded-xl text-muted-foreground hover:bg-secondary hover:text-rose-400 transition-colors"
-                  title="Remove holiday"
+              return (
+                <div
+                  key={h.id}
+                  className="flex items-center justify-between p-4 rounded-2xl border border-border/60 bg-card hover:border-gold/30 transition-all"
                 >
-                  <Trash2 className="h-4.5 w-4.5" />
-                </button>
-              </div>
-            ))}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Calendar className="h-4 w-4 text-gold shrink-0" />
+                      <span className="font-semibold text-foreground">
+                        {start === end ? start : `${start} to ${end}`}
+                      </span>
+                      {h.start_time ? (
+                        <span className="inline-flex items-center gap-1 text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                          <Clock className="h-3 w-3" /> {h.start_time} – {h.end_time}
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full">
+                          All Day
+                        </span>
+                      )}
+                      <span className={cn(
+                        "text-[10px] px-2.5 py-0.5 rounded-full font-medium border",
+                        isExpired 
+                          ? "bg-secondary/40 text-muted-foreground border-border" 
+                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                      )}>
+                        {isExpired ? "Expired" : "Active"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{h.note}</p>
+                  </div>
+
+                  <button
+                    onClick={() => handleDeleteHoliday(h.id)}
+                    className="p-2 rounded-xl text-muted-foreground hover:bg-secondary hover:text-rose-400 transition-colors"
+                    title="Remove holiday"
+                  >
+                    <Trash2 className="h-4.5 w-4.5" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

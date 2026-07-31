@@ -32,7 +32,9 @@ export type Product = {
   type: 'digital' | 'physical';
   category: string;
   image: string;
+  image_public_id?: string;
   gallery: string[];
+  gallery_public_ids?: string[];
   highlights: string[];
   stock: number | null;
   is_active: boolean;
@@ -40,6 +42,9 @@ export type Product = {
   reviews_count: number;
   sales_count: number;
   created_at: string;
+  updated_at?: string;
+  featured?: boolean;
+  best_seller?: boolean;
 };
 
 export type Testimonial = {
@@ -89,6 +94,7 @@ export type Workshop = {
   language: string;
   duration: string;
   date: string;
+  end_date?: string;
   start_time: string;
   end_time: string;
   timezone: string;

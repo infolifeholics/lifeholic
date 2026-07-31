@@ -12,7 +12,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     match /products/{document} {
-      allow read: if true;
+      allow read: if resource == null || resource.data.is_active == true || isAdmin();
       allow write: if isAdmin();
     }
     match /testimonials/{document} {
@@ -28,6 +28,10 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     match /landing_images/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /landing_feed/{document} {
       allow read: if true;
       allow write: if isAdmin();
     }

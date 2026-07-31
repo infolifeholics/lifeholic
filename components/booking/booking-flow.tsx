@@ -82,6 +82,16 @@ export function BookingFlow({ services }: { services: Service[] }) {
   const [suggestions, setSuggestions] = useState<Array<{ start_time: string; end_time: string }>>([]);
   const [holidayNote, setHolidayNote] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [allHolidaysList, setAllHolidaysList] = useState<any[]>([]);
+
+  const currentHoliday = useMemo(() => {
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    return allHolidaysList.find(h => {
+      const from = h.from_date || h.date;
+      const to = h.to_date || h.date;
+      return todayStr >= from && todayStr <= to && !h.start_time;
+    });
+  }, [allHolidaysList]);
 
   const [questionnaire, setQuestionnaire] = useState<{
     category: string;
@@ -134,8 +144,30 @@ export function BookingFlow({ services }: { services: Service[] }) {
     setSelectedSlot(null);
   }, [serviceSlug, mode]);
 
+  // Load holidays collection once on mount
+  useEffect(() => {
+    let active = true;
+    let unsubHolidays: () => void = () => {};
+    
+    const initHolidaysListener = async () => {
+      const { collection, query, onSnapshot } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase');
+      const q = query(collection(db, 'holidays'));
+      unsubHolidays = onSnapshot(q, (snap) => {
+        if (!active) return;
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setAllHolidaysList(list);
+      });
+    };
+    initHolidaysListener().catch(console.error);
+    return () => {
+      active = false;
+      unsubHolidays();
+    };
+  }, []);
+
   // Fetch slots when date changes
-  // Fetch slots in real-time when date, service, or Firestore booking/slots/holiday state changes
+  // Fetch slots in real-time when date, service, or Firestore booking/slots state changes
   useEffect(() => {
     if (!selectedDate || !service) return;
     setLoadingSlots(true);
@@ -164,7 +196,6 @@ export function BookingFlow({ services }: { services: Service[] }) {
     };
 
     let unsubBookings: () => void = () => {};
-    let unsubHolidays: () => void = () => {};
     let unsubSlots: () => void = () => {};
 
     // Load firebase dynamic listeners dynamically to support SSR
@@ -173,7 +204,6 @@ export function BookingFlow({ services }: { services: Service[] }) {
       const { db } = await import('@/lib/firebase');
 
       const qBookings = query(collection(db, 'bookings'), where('status', 'in', ['pending', 'confirmed']));
-      const qHolidays = query(collection(db, 'holidays'), where('date', '==', selectedDate));
       const qSlots = query(collection(db, 'session_slots'));
 
       // Call initially
@@ -181,7 +211,6 @@ export function BookingFlow({ services }: { services: Service[] }) {
 
       // Listeners
       unsubBookings = onSnapshot(qBookings, () => fetchSlotsData());
-      unsubHolidays = onSnapshot(qHolidays, () => fetchSlotsData());
       unsubSlots = onSnapshot(qSlots, () => fetchSlotsData());
     };
 
@@ -194,10 +223,9 @@ export function BookingFlow({ services }: { services: Service[] }) {
     return () => {
       active = false;
       unsubBookings();
-      unsubHolidays();
       unsubSlots();
     };
-  }, [selectedDate, service, tz, refreshTrigger]);
+  }, [selectedDate, service, tz, refreshTrigger, allHolidaysList]);
 
   const days = useMemo(() => {
     const first = new Date(month);
@@ -213,6 +241,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
   today.setHours(0, 0, 0, 0);
 
   const canNext = (() => {
+    if (currentHoliday) return false;
     if (step === 0) return Boolean(service);
     if (step === 1) return Boolean(selectedSlot);
     if (step === 2) return details.name.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email);
@@ -297,6 +326,17 @@ export function BookingFlow({ services }: { services: Service[] }) {
 
   return (
     <div ref={containerRef} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+      {currentHoliday && (
+        <div className="mb-6 p-5 rounded-3xl border border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-sm space-y-2 text-left animate-fade-in mt-6">
+          <p className="font-bold font-display text-lg">Booking is temporarily closed</p>
+          <p className="mt-1">
+            Clinic bookings are temporarily closed from <span className="font-semibold text-foreground">{currentHoliday.from_date || currentHoliday.date}</span> to <span className="font-semibold text-foreground">{currentHoliday.to_date || currentHoliday.date}</span>.
+          </p>
+          <p className="text-xs italic bg-rose-500/5 p-3 rounded-xl border border-rose-500/10 mt-2 text-muted-foreground">
+            Reason: {currentHoliday.note}
+          </p>
+        </div>
+      )}
       {/* Stepper */}
       <ol className="mx-auto mt-8 flex max-w-2xl items-center justify-between">
         {STEPS.map((label, i) => (
@@ -342,15 +382,13 @@ export function BookingFlow({ services }: { services: Service[] }) {
                       key={s.id}
                       onClick={() => {
                         setServiceSlug(s.slug);
-                        setTimeout(() => {
-                          continueBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                        }, 100);
+                        setStep(1);
                       }}
                       className={cn(
-                        'flex items-center gap-4 rounded-2xl border p-4 text-left transition-all',
+                        'flex items-center gap-4 rounded-2xl border p-4 text-left cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:border-gold/60 hover:shadow-md active:scale-[0.99]',
                         serviceSlug === s.slug
                           ? 'border-primary bg-primary/5 shadow-soft'
-                          : 'border-border bg-card hover:border-gold/40'
+                          : 'border-border bg-card'
                       )}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -422,8 +460,13 @@ export function BookingFlow({ services }: { services: Service[] }) {
                 <div className="mt-1 grid grid-cols-7 gap-1">
                   {days.map((d, i) => {
                     if (!d) return <span key={i} />;
-                    const past = d < today;
                     const value = ymd(d);
+                    const isHolidayDate = allHolidaysList.some(h => {
+                      const from = h.from_date || h.date;
+                      const to = h.to_date || h.date;
+                      return value >= from && value <= to && !h.start_time;
+                    });
+                    const past = d < today || isHolidayDate;
                     const selected = selectedDate === value;
                     return (
                       <button
@@ -656,21 +699,23 @@ export function BookingFlow({ services }: { services: Service[] }) {
             <Button variant="ghost" onClick={back} disabled={step === 0 || submitting} className="rounded-full">
               <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Button>
-            <Button onClick={next} disabled={!canNext || submitting} className="rounded-full">
-              {submitting ? (
-                <>
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Confirming…
-                </>
-              ) : step === 3 ? (
-                <>
-                  Confirm &amp; Pay <ArrowRight className="ml-1 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Continue <ArrowRight className="ml-1 h-4 w-4" />
-                </>
-              )}
-            </Button>
+            {step > 0 && (
+              <Button onClick={next} disabled={!canNext || submitting} className="rounded-full">
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Confirming…
+                  </>
+                ) : step === 3 ? (
+                  <>
+                    Confirm &amp; Pay <ArrowRight className="ml-1 h-4 w-4" />
+                  </>
+                ) : (
+                  <>
+                    Continue <ArrowRight className="ml-1 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
           <AuthModal

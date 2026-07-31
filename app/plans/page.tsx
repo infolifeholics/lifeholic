@@ -216,9 +216,57 @@ const SUBCATEGORY_META: Record<string, {
   }
 };
 
+const TAG_COLORS = [
+  { bg: 'from-rose-500/10 via-pink-500/5 to-transparent', border: 'border-rose-400/30 hover:border-rose-400', text: 'text-rose-600 dark:text-rose-400', dot: 'text-rose-500', glow: 'hover:shadow-[0_4px_20px_rgba(244,63,94,0.15)]' },
+  { bg: 'from-amber-500/10 via-orange-500/5 to-transparent', border: 'border-amber-400/30 hover:border-amber-400', text: 'text-amber-600 dark:text-amber-400', dot: 'text-amber-500', glow: 'hover:shadow-[0_4px_20px_rgba(245,158,11,0.15)]' },
+  { bg: 'from-emerald-500/10 via-teal-500/5 to-transparent', border: 'border-emerald-400/30 hover:border-emerald-400', text: 'text-emerald-600 dark:text-emerald-400', dot: 'text-emerald-500', glow: 'hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)]' },
+  { bg: 'from-sky-500/10 via-blue-500/5 to-transparent', border: 'border-sky-400/30 hover:border-sky-400', text: 'text-sky-600 dark:text-sky-400', dot: 'text-sky-500', glow: 'hover:shadow-[0_4px_20px_rgba(14,165,233,0.15)]' },
+  { bg: 'from-indigo-500/10 via-violet-500/5 to-transparent', border: 'border-indigo-400/30 hover:border-indigo-400', text: 'text-indigo-600 dark:text-indigo-400', dot: 'text-indigo-500', glow: 'hover:shadow-[0_4px_20px_rgba(99,102,241,0.15)]' },
+  { bg: 'from-purple-500/10 via-fuchsia-500/5 to-transparent', border: 'border-purple-400/30 hover:border-purple-400', text: 'text-purple-600 dark:text-purple-400', dot: 'text-purple-500', glow: 'hover:shadow-[0_4px_20px_rgba(168,85,247,0.15)]' },
+];
+
+const HIGHLIGHT_TERMS = [
+  'inner child wounds', 'ancestral patterns', 'karmic lessons', 'past-life influences',
+  'unhealthy attachments', 'forgiveness', 'self-love or self-worth challenges',
+  'self-worth wounds', 'fear of rejection or abandonment', 'people-pleasing patterns',
+  'karmic connections', 'trust issues', 'boundary challenges', 'boundary issues',
+  'suppressed emotions', 'emotional suppression', 'heart or root chakra imbalances',
+  'heart, sacral, solar plexus or throat chakra imbalances', 'parent-child patterns',
+  'shadow work', 'nervous system regulation', 'stagnant energy', 'limiting beliefs around money',
+  'fear or scarcity mindset', 'root chakra imbalance', 'energy cleansing and protection',
+  'inherited money beliefs', 'family conditioning around scarcity', 'ancestral financial struggles',
+  'fear of receiving abundance', 'emotional stress stored in the body', 'physical discomfort',
+  'emotional exhaustion', 'masculine and feminine energy imbalance', 'limiting beliefs'
+];
+
 export default function SomaticPlansPage() {
   const router = useRouter();
   const [survey, setSurvey] = useState<SurveyData | null>(null);
+
+  const highlightText = (text: string) => {
+    if (!text) return text;
+    // Escaping special characters in search terms
+    const escapedTerms = HIGHLIGHT_TERMS.map(t => t.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|');
+    const regex = new RegExp(`(${escapedTerms})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, index) => {
+      const isMatch = HIGHLIGHT_TERMS.some(
+        term => term.toLowerCase() === part.toLowerCase()
+      );
+      if (isMatch) {
+        return (
+          <span 
+            key={index} 
+            className="bg-gold/20 dark:bg-gold/15 text-amber-800 dark:text-gold px-1.5 py-0.5 rounded-md border border-gold/30 font-semibold inline-block mx-0.5"
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
   const [billingCycle, setBillingCycle] = useState<'day' | 'total'>('total');
   const [tz, setTz] = useState(detectTimezone());
   const currency = currencyForTimezone(tz);
@@ -440,55 +488,90 @@ export default function SomaticPlansPage() {
           </Link>
 
           {/* Header Card */}
-          <div className="rounded-3xl border border-border/60 bg-card/60 p-6 md:p-8 shadow-soft mb-10 backdrop-blur-md">
+          <div className="rounded-3xl border border-white/20 bg-gradient-to-tr from-card/90 via-card/60 to-gold/5 p-6 md:p-8 shadow-glow mb-10 backdrop-blur-xl relative overflow-hidden">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/10 text-gold text-xs font-semibold uppercase tracking-wider mb-3">
-                  <Sparkles className="h-3 w-3" />
-                  Your Somatic Profile
-                </span>
-                <h1 className="font-display text-3xl font-medium text-foreground">Based on your survey</h1>
+                <div className="flex flex-wrap items-center gap-3 mb-3">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/15 text-gold text-xs font-semibold uppercase tracking-wider">
+                    <Sparkles className="h-3 w-3" />
+                    Your Somatic Profile
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-widest border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                    </span>
+                    Live Report
+                  </span>
+                </div>
+                <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground bg-gradient-to-r from-foreground via-foreground/90 to-gold/80 bg-clip-text text-transparent">
+                  Somatic Intelligence Report
+                </h1>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Based on your deep survey response · Compiled in real-time
+                </p>
                 {survey && (
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    <span className="bg-primary/20 text-foreground text-xs px-3 py-1.5 rounded-full font-semibold border border-primary/20">
+                  <div className="flex flex-wrap gap-2.5 mt-4">
+                    <span className="bg-rose-500/10 text-rose-500 text-xs px-3.5 py-1.5 rounded-full font-semibold border border-rose-500/20 shadow-[0_2px_8px_rgba(244,63,94,0.08)] uppercase tracking-wider">
                       Category: {survey.category}
                     </span>
                     {survey.subcategory && (
-                      <span className="bg-secondary text-muted-foreground text-xs px-3 py-1.5 rounded-full border border-border/40">
+                      <span className="bg-gold/10 text-gold text-xs px-3.5 py-1.5 rounded-full border border-gold/25 shadow-[0_2px_8px_rgba(218,165,32,0.08)] uppercase tracking-wider font-semibold">
                         Subcategory: {survey.subcategory}
                       </span>
                     )}
                   </div>
                 )}
               </div>
-              <div className="rounded-2xl bg-gold/5 border border-gold/10 px-5 py-4 max-w-md">
-                <span className="text-xs font-semibold text-gold uppercase tracking-wider block">Recommended Session / Program</span>
-                <p className="text-sm text-foreground font-medium mt-1">
-                  We recommend <strong className="text-gold">{meta.recommendedLabel}</strong> for your healing goals.
+              <div className="rounded-2xl bg-gradient-to-tr from-gold/20 via-gold/5 to-transparent border border-gold/30 px-6 py-5 max-w-md shadow-soft backdrop-blur-md relative overflow-hidden group/rec w-full md:w-auto transition-all duration-500 hover:border-gold hover:shadow-[0_8px_35px_rgba(218,165,32,0.3)] hover:scale-[1.03]">
+                {/* Background aura orb that expands on hover */}
+                <div className="absolute -top-6 -right-6 w-32 h-32 bg-gold/20 rounded-full blur-2xl transition-all duration-500 group-hover/rec:scale-150 group-hover/rec:bg-gold/30" />
+                
+                {/* Subtle light beam sweep effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/rec:translate-x-full transition-transform duration-1000 ease-out" />
+
+                <span className="text-xs font-bold text-gold uppercase tracking-widest block flex items-center gap-1.5 transition-colors duration-300 group-hover/rec:text-amber-400">
+                  <Sparkles className="h-4 w-4 animate-pulse transition-transform duration-500 group-hover/rec:rotate-180" />
+                  Recommended Plan
+                </span>
+                
+                <p className="text-sm text-foreground font-semibold mt-2.5 leading-relaxed relative z-10">
+                  We recommend <span className="text-gold text-base underline decoration-gold/40 decoration-2 underline-offset-4 font-bold bg-gold/10 px-2 py-0.5 rounded transition-all duration-300 group-hover/rec:bg-gold/20">{meta.recommendedLabel}</span> for your personal healing goals.
                 </p>
               </div>
             </div>
 
             {survey && survey.problems && survey.problems.length > 0 && (
-              <div className="mt-6 pt-6 border-t border-border/30">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Identified Concerns &amp; Focus Areas:</h3>
-                <div className="flex flex-wrap gap-2">
-                  {survey.problems.map((prob, i) => (
-                    <span key={i} className="bg-background/80 border border-border/80 text-muted-foreground text-xs px-3 py-1 rounded-full">
-                      {prob}
-                    </span>
-                  ))}
+              <div className="mt-8 pt-6 border-t border-border/30">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-foreground mb-4 flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-gold animate-pulse" />
+                  Identified Concerns &amp; Focus Areas:
+                </h3>
+                <div className="flex flex-wrap gap-2.5">
+                  {survey.problems.map((prob, i) => {
+                    const scheme = TAG_COLORS[i % TAG_COLORS.length];
+                    return (
+                      <span
+                        key={i}
+                        className={`inline-flex items-center gap-2 bg-gradient-to-r ${scheme.bg} border ${scheme.border} ${scheme.text} text-xs font-semibold px-4.5 py-2.5 rounded-xl transition-all duration-300 ${scheme.glow} hover:-translate-y-0.5 cursor-default select-none`}
+                      >
+                        <span className={scheme.dot}>✦</span>
+                        {prob}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            <div className="mt-6 pt-6 border-t border-border/30">
-              <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-gold" />
+            <div className="mt-8 pt-6 border-t border-border/30 bg-gradient-to-b from-gold/5 via-gold/0 to-transparent p-5 rounded-2xl border border-gold/20 shadow-inner">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-foreground mb-3 flex items-center gap-1.5">
+                <ShieldCheck className="h-4.5 w-4.5 text-gold" />
                 Somatic &amp; Energetic Insight:
               </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground italic font-medium">
-                {meta.patterns}
+              <p className="text-sm leading-relaxed text-muted-foreground italic font-medium pl-6 relative">
+                <span className="absolute left-0 top-0 text-2xl text-gold/30 font-serif leading-none">“</span>
+                {highlightText(meta.patterns)}
               </p>
             </div>
           </div>
@@ -683,18 +766,26 @@ export default function SomaticPlansPage() {
 
           {/* Disclaimer Common Warning/Note */}
           {!isB2 && (
-            <div className="mt-16 max-w-3xl mx-auto rounded-3xl border border-gold/20 bg-gold/5 p-6 md:p-8 text-center backdrop-blur-md shadow-soft">
-              <h4 className="font-display text-base font-semibold text-gold mb-3">Important Note on Your Journey</h4>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Every healing journey is unique. While some people experience clarity and healing in one session,
-                others may need additional sessions to work through deeper layers. We kindly request you to stay
-                open to the healing process.
-              </p>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mt-4 pt-4 border-t border-gold/10">
-                At times, the root cause of a challenge may lie in ancestral patterns passed down through generations.
-                If your healer identifies this during your session, they may recommend an Ancestral Healing session.
-                This session should only be booked when it has been recommended by your healer.
-              </p>
+            <div className="mt-16 max-w-3xl mx-auto rounded-[2rem] border-2 border-gold/30 bg-gradient-to-br from-gold/10 via-card/50 to-transparent p-6 md:p-8 backdrop-blur-xl shadow-glow relative overflow-hidden group/note">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gold/10 rounded-full blur-2xl -mr-6 -mt-6 transition-all duration-500 group-hover/note:bg-gold/15" />
+              
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Sparkles className="h-4 w-4 text-gold animate-pulse" />
+                <h4 className="font-display text-lg font-bold tracking-wider text-gold uppercase">
+                  Important Note on Your Journey
+                </h4>
+                <Sparkles className="h-4 w-4 text-gold animate-pulse" />
+              </div>
+
+              <div className="space-y-4 text-left text-sm text-foreground/80 leading-relaxed font-medium">
+                <p className="pl-4 border-l-2 border-gold/40">
+                  <strong className="text-gold font-bold">Every healing journey is unique.</strong> While some people experience clarity and healing in one session, others may need additional sessions to work through deeper layers. We kindly request you to <strong className="text-foreground underline decoration-gold/40 decoration-2 underline-offset-4 font-semibold">stay open to the healing process.</strong>
+                </p>
+                
+                <p className="pl-4 border-l-2 border-gold/40 pt-2">
+                  At times, the root cause of a challenge may lie in <strong className="text-gold font-bold">ancestral patterns passed down through generations.</strong> If your healer identifies this during your session, they may recommend an Ancestral Healing session. This session should <strong className="text-rose-400 dark:text-rose-300 font-bold uppercase tracking-wider bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">only be booked when it has been recommended</strong> by your healer.
+                </p>
+              </div>
             </div>
           )}
         </div>

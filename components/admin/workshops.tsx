@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import seedData from '@/lib/seed-data.json';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, addDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -22,7 +23,35 @@ export function AdminWorkshops() {
   const [registrations, setRegistrations] = useState<WorkshopRegistration[]>([]);
   const [feedbacks, setFeedbacks] = useState<WorkshopFeedback[]>([]);
   const [loading, setLoading] = useState(true);
+  const [migrating, setMigrating] = useState(false);
   const [viewingRegs, setViewingRegs] = useState<string | null>(null);
+
+  const handleMigrateWorkshops = async () => {
+    if (migrating) return;
+    setMigrating(true);
+    const toastId = toast.loading('Migrating seed workshops to Firestore...');
+    try {
+      const defaults = (seedData as any).workshops || [];
+      let migratedCount = 0;
+      for (const item of defaults) {
+        const exists = workshops.some((w) => w.id === item.id || w.slug === item.slug);
+        if (!exists) {
+          await setDoc(doc(db, 'workshops', item.id), {
+            ...item,
+            end_date: item.end_date || item.date || new Date().toISOString().split('T')[0],
+            created_at: item.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+          migratedCount++;
+        }
+      }
+      toast.success(`Successfully migrated ${migratedCount} workshops!`, { id: toastId });
+    } catch (err: any) {
+      toast.error('Migration failed: ' + err.message, { id: toastId });
+    } finally {
+      setMigrating(false);
+    }
+  };
   
   // Attendee view filters
   const [attendeeFilter, setAttendeeFilter] = useState<'all' | 'present' | 'absent' | 'late' | 'excused'>('all');
@@ -83,6 +112,7 @@ export function AdminWorkshops() {
       language: 'English',
       duration: '2 Hours',
       date: new Date().toISOString().split('T')[0],
+      end_date: new Date().toISOString().split('T')[0],
       start_time: '10:00',
       end_time: '12:00',
       timezone: 'Asia/Kolkata',
@@ -557,9 +587,17 @@ export function AdminWorkshops() {
           <p className="text-xs text-muted-foreground">Manage schedules, pricing, venues, speaker profiles, and agenda items.</p>
         </div>
         {!editingWs && !viewingRegs && (
-          <Button onClick={handleCreateNew} className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground gap-1">
-            <Plus className="h-4 w-4" /> Create Workshop
-          </Button>
+          <div className="flex gap-2">
+            {workshops.length === 0 && (
+              <Button onClick={handleMigrateWorkshops} disabled={migrating} variant="outline" className="rounded-full gap-1 border-gold/30 text-gold hover:bg-gold/10">
+                {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Migrate Seed Workshops
+              </Button>
+            )}
+            <Button onClick={handleCreateNew} className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground gap-1">
+              <Plus className="h-4 w-4" /> Create Workshop
+            </Button>
+          </div>
         )}
       </div>
 
@@ -840,13 +878,22 @@ export function AdminWorkshops() {
           {/* Logistics & Venue */}
           <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
             <h4 className="font-semibold text-xs text-gold uppercase tracking-wider">Logistics &amp; Venue</h4>
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-5">
               <div>
-                <Label>Date</Label>
+                <Label>Start Date</Label>
                 <Input
                   type="date"
                   value={editingWs.date || ''}
-                  onChange={(e) => setEditingWs({ ...editingWs, date: e.target.value })}
+                  onChange={(e) => setEditingWs({ ...editingWs, date: e.target.value, end_date: editingWs.end_date || e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>End Date</Label>
+                <Input
+                  type="date"
+                  value={editingWs.end_date || ''}
+                  onChange={(e) => setEditingWs({ ...editingWs, end_date: e.target.value })}
                   className="mt-1"
                 />
               </div>

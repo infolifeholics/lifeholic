@@ -1,11 +1,39 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { Reveal, RevealText } from '@/components/site/reveal';
 import { FounderImage } from '@/components/site/founder-image';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
-const FOUNDER_IMAGE = '/images/founder/photo.jpg';
+const DEFAULT_FOUNDER_IMAGE = '/images/founder/photo.jpg';
 
 export function HomeAboutPreview() {
+  const [founderImage, setFounderImage] = useState(DEFAULT_FOUNDER_IMAGE);
+  const [aboutText, setAboutText] = useState('');
+
+  useEffect(() => {
+    const fetchAboutData = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'cms', 'global'));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.about_image) {
+            setFounderImage(data.about_image);
+          }
+          if (data.about_text) {
+            setAboutText(data.about_text);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching about CMS data:', err);
+      }
+    };
+    fetchAboutData();
+  }, []);
+
   return (
     <section className="relative py-28 sm:py-36">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -17,7 +45,7 @@ export function HomeAboutPreview() {
               {/* Main founder portrait — tall card */}
               <div className="col-span-1 aspect-[3/4] overflow-hidden rounded-3xl border border-border/60 shadow-float">
                 <FounderImage
-                  src={FOUNDER_IMAGE}
+                  src={founderImage}
                   alt="TheLifeHolics founder"
                   className="h-full w-full object-cover object-top"
                 />
@@ -67,10 +95,7 @@ export function HomeAboutPreview() {
             />
             <Reveal delay={0.2}>
               <p className="mt-6 text-pretty text-lg leading-relaxed text-muted-foreground">
-                I am a spiritual psychologist and therapist. My work holds the whole of you —
-                mind, body, emotion and the quiet voice beneath them all. For nearly a decade I
-                have sat with people through grief, anxiety, relationship pain and the tender
-                search for meaning — and watched them come back to themselves.
+                {aboutText || "I am a spiritual psychologist and therapist. My work holds the whole of you — mind, body, emotion and the quiet voice beneath them all. For nearly a decade I have sat with people through grief, anxiety, relationship pain and the tender search for meaning — and watched them come back to themselves."}
               </p>
             </Reveal>
             <Reveal delay={0.3}>

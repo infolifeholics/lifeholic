@@ -32,16 +32,23 @@ export default function WorkshopsPage() {
   }, []);
 
   const parsedWorkshops = useMemo(() => {
-    const now = Date.now();
+    const todayStr = new Date().toLocaleDateString('en-CA');
     return workshops.map(w => {
-      const wDate = new Date(`${w.date}T${w.start_time || '00:00'}`).getTime();
-      const wEndDate = new Date(`${w.date}T${w.end_time || '23:59'}`).getTime();
-      
       let calculatedStatus: 'upcoming' | 'current' | 'completed' = 'upcoming';
-      if (now > wEndDate) {
-        calculatedStatus = 'completed';
-      } else if (now >= wDate && now <= wEndDate) {
-        calculatedStatus = 'current';
+      
+      if (!w.date) {
+        calculatedStatus = 'upcoming';
+      } else {
+        const start = w.date;
+        const end = w.end_date || w.date;
+        
+        if (todayStr < start) {
+          calculatedStatus = 'upcoming';
+        } else if (todayStr >= start && todayStr <= end) {
+          calculatedStatus = 'current';
+        } else {
+          calculatedStatus = 'completed';
+        }
       }
       
       return {

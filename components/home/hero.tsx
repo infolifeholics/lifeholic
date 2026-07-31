@@ -211,6 +211,9 @@ export function HomeHero() {
   const { user } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingServiceSlug, setPendingServiceSlug] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisStep, setAnalysisStep] = useState<'analyzing' | 'thankyou' | 'none'>('none');
+  const [analysisProgress, setAnalysisProgress] = useState(0);
 
   const handleSubmitAnalysis = () => {
     const problemsList: string[] = [];
@@ -227,7 +230,43 @@ export function HomeHero() {
 
     localStorage.setItem('somatic_plans_selection', JSON.stringify(surveyData));
     setIsOpen(false);
-    router.push('/plans');
+    
+    // Dynamic duration based on selection count: 1 selection -> 4.5s, 2 -> 6.5s, 3 -> 8.0s, 4+ -> 10.0s max
+    const selectedCount = problemsList.length || 1;
+    const totalDuration = Math.min(4500 + (selectedCount - 1) * 1800, 10000);
+    const progressDuration = totalDuration - 1800; // Leave 1.8s for the thank you step
+    
+    setIsAnalyzing(true);
+    setAnalysisStep('analyzing');
+    setAnalysisProgress(0);
+    
+    const intervalTime = 60;
+    const stepsCount = progressDuration / intervalTime;
+    const incrementVal = 100 / stepsCount;
+    
+    const timer = setInterval(() => {
+      setAnalysisProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(timer);
+          return 100;
+        }
+        const next = prev + incrementVal;
+        return next >= 100 ? 100 : next;
+      });
+    }, intervalTime);
+    
+    setTimeout(() => {
+      clearInterval(timer);
+      setAnalysisProgress(100);
+      setAnalysisStep('thankyou');
+      
+      setTimeout(() => {
+        setIsAnalyzing(false);
+        setAnalysisStep('none');
+        setAnalysisProgress(0);
+        router.push('/plans');
+      }, 1800);
+    }, progressDuration);
   };
 
   const [images, setImages] = useState<string[]>([]);
@@ -737,6 +776,24 @@ export function HomeHero() {
                   <ChevronRight className={cn("h-5 w-5 text-white/70 transition-transform duration-300", isOpen ? "rotate-90 text-gold" : "")} />
                 </div>
 
+                {/* Not sure where to begin? Button placed directly below search bar */}
+                <div className="mt-4 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(true);
+                      setStep('not-sure');
+                    }}
+                    className="group inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-5 py-2.5 text-xs font-semibold text-gold shadow-sm transition-all duration-200 hover:bg-gold hover:text-gold-foreground hover:shadow-md cursor-pointer"
+                  >
+                    <span>✨</span>
+                    Not sure where to begin?
+                    <span className="transition-transform duration-200 group-hover:translate-x-1">
+                      →
+                    </span>
+                  </button>
+                </div>
+
                 {/* Custom Animated Multi-Step Dropdown */}
                 <AnimatePresence>
                   {isOpen && (
@@ -853,17 +910,6 @@ export function HomeHero() {
                                 </div>
                                 <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                               </button>
-
-                              {/* Not sure where to begin? Link */}
-                              <div className="mt-4 pt-2 text-center border-t border-border/20">
-                                <button
-                                  type="button"
-                                  onClick={() => setStep('not-sure')}
-                                  className="text-xs font-semibold text-gold hover:underline cursor-pointer"
-                                >
-                                  not sure where to begin?
-                                </button>
-                              </div>
                             </motion.div>
                           )}
 
@@ -1005,11 +1051,14 @@ export function HomeHero() {
                       </div>
 
                       {/* Footer */}
-                      <div className="flex items-center justify-between border-t border-border/60 px-5 py-4 bg-muted/40 shrink-0">
-                        <span className="text-xs text-muted-foreground">
-                          {totalSelectedCount > 0 ? `${totalSelectedCount} items selected total` : 'Choose areas to get guidance'}
-                        </span>
-                        {step === 'checklist' ? (
+                      {step === 'checklist' && (
+                        <div className="sticky bottom-0 z-10 flex items-center justify-between border-t border-border/60 px-5 py-4 bg-white shrink-0">
+                          <span className="text-xs text-muted-foreground">
+                            {totalSelectedCount > 0
+                              ? `${totalSelectedCount} items selected total`
+                              : ""}
+                          </span>
+
                           <button
                             onClick={handleSubmitAnalysis}
                             disabled={totalSelectedCount === 0}
@@ -1017,15 +1066,8 @@ export function HomeHero() {
                           >
                             Submit &amp; Analysis
                           </button>
-                        ) : (
-                          <button
-                            onClick={() => setIsOpen(false)}
-                            className="rounded-lg bg-gold px-4 py-2 text-xs font-semibold text-gold-foreground shadow-sm hover:bg-gold-hover transition-colors"
-                          >
-                            Done
-                          </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1165,6 +1207,175 @@ export function HomeHero() {
           </div>
         </div>
       )}
+
+      {/* Gemini AI Analysis Loader Overlay */}
+      <AnimatePresence>
+        {isAnalyzing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-background/85 backdrop-blur-2xl overflow-hidden"
+          >
+            {/* Full-screen pulsing radar scan rings */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+              <motion.div
+                initial={{ scale: 0.2, opacity: 0.8 }}
+                animate={{ scale: 2.2, opacity: 0 }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: "easeOut" }}
+                className="absolute w-96 h-96 rounded-full border-2 border-gold/20"
+              />
+              <motion.div
+                initial={{ scale: 0.2, opacity: 0.8 }}
+                animate={{ scale: 2.2, opacity: 0 }}
+                transition={{ duration: 3.5, delay: 1.75, repeat: Infinity, ease: "easeOut" }}
+                className="absolute w-96 h-96 rounded-full border-2 border-purple-500/20"
+              />
+            </div>
+
+            {/* Drifting AI sparks in background */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              {[...Array(8)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{
+                    x: typeof window !== 'undefined' ? Math.random() * window.innerWidth : 200,
+                    y: typeof window !== 'undefined' ? Math.random() * window.innerHeight : 200,
+                    scale: 0.3 + Math.random() * 0.7,
+                    opacity: 0.1
+                  }}
+                  animate={{
+                    y: [null, '-=60px', '+=20px'],
+                    opacity: [0.1, 0.75, 0.1],
+                  }}
+                  transition={{
+                    duration: 2.5 + Math.random() * 2.5,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  className="absolute text-gold/45"
+                >
+                  <Sparkles className="h-5 w-5 animate-pulse" />
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="relative flex flex-col items-center text-center max-w-md px-6 z-10">
+              {/* Outer Pulse rings */}
+              <div className="relative w-64 h-64 flex items-center justify-center mb-8">
+                {/* Aura gradient glow */}
+                <motion.div
+                  animate={{
+                    scale: [1, 1.15, 0.9, 1.1, 1],
+                    rotate: [0, 90, 180, 270, 360],
+                    borderRadius: ["40% 60% 70% 30% / 40% 50% 60% 50%", "70% 30% 52% 48% / 60% 40% 60% 40%", "40% 60% 70% 30% / 40% 50% 60% 50%"]
+                  }}
+                  transition={{
+                    duration: 6,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="absolute w-52 h-52 bg-gradient-to-tr from-indigo-500/30 via-fuchsia-500/25 to-amber-500/20 blur-3xl"
+                />
+
+                {/* Gemini-like glowing sphere */}
+                <motion.div
+                  animate={{
+                    scale: [1, 1.08, 0.95, 1.05, 1],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="w-40 h-40 rounded-full bg-gradient-to-br from-indigo-600 via-purple-600 to-gold shadow-[0_0_55px_rgba(218,165,32,0.35)] flex items-center justify-center border border-white/20 p-8 relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.2)_0%,transparent_70%)] animate-pulse" />
+                  
+                  {/* Center Spark Icon & Progress */}
+                  <AnimatePresence mode="wait">
+                    {analysisStep === 'analyzing' ? (
+                      <motion.div
+                        key="progress"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.3 }}
+                        className="flex flex-col items-center justify-center text-center"
+                      >
+                        <Sparkles className="h-7 w-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.7)] animate-pulse mb-1.5" />
+                        <span className="text-2xl font-bold text-white tracking-widest font-sans select-none tabular-nums">
+                          {Math.floor(analysisProgress)}%
+                        </span>
+                        <span className="text-[9px] text-white/80 uppercase tracking-widest font-semibold mt-0.5 select-none">
+                          Analyzing
+                        </span>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="check"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1.2, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                        className="h-16 w-16 bg-white rounded-full flex items-center justify-center shadow-lg"
+                      >
+                        <Check className="h-9 w-9 text-purple-600 stroke-[3]" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+
+                {/* Concentric rotating dash ring */}
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                  className="absolute w-48 h-48 rounded-full border border-dashed border-gold/45"
+                />
+              </div>
+
+              {/* Status Text Area */}
+              <div className="h-24 flex flex-col items-center justify-start">
+                <AnimatePresence mode="wait">
+                  {analysisStep === 'analyzing' ? (
+                    <motion.div
+                      key="analyzing-text"
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      transition={{ duration: 0.5 }}
+                      className="space-y-2"
+                    >
+                      <h3 className="font-display text-2xl font-semibold text-foreground tracking-tight text-gradient-gold">
+                        Analyzing your choices...
+                      </h3>
+                      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                        Our somatic engine is tailoring the optimal healing path for your profile
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="thankyou-text"
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      transition={{ duration: 0.5 }}
+                      className="space-y-2"
+                    >
+                      <h3 className="font-display text-2xl font-semibold text-foreground tracking-tight text-gradient-gold">
+                        Thank you for your patience!
+                      </h3>
+                      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                        Your personalized healing plans are ready. Redirecting...
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AuthModal
         isOpen={showAuthModal}
