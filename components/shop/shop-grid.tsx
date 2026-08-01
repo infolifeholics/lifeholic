@@ -207,14 +207,14 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                     </div>
 
                     <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/40 pt-3">
-                      <div className="inline-flex items-center justify-center h-8 rounded-full px-4 text-xs font-semibold border border-gold/40 text-gold bg-transparent transition-all group-hover:bg-gold group-hover:text-gold-foreground">
+                      <button className="inline-flex items-center justify-center h-8 rounded-full px-4 text-xs font-semibold bg-gold text-black border border-gold transition-all hover:bg-gold/90">
                         Details
-                      </div>
+                      </button>
                       {(() => {
                         const cartItem = items.find((item) => item.id === p.id);
                         if (cartItem) {
                           return (
-                            <div 
+                            <div
                               className="flex items-center gap-1"
                               onClick={(e) => {
                                 e.preventDefault();
