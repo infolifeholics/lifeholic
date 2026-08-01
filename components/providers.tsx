@@ -2,6 +2,7 @@
 
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { SmoothScroll } from '@/components/site/smooth-scroll';
 import { PageTransition } from '@/components/site/page-transition';
 import { PageLoader } from '@/components/site/page-loader';
@@ -47,6 +48,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
               </PageTransition>
             </SmoothScroll>
             <Toaster />
+            <SonnerToaster />
           </WishlistProvider>
         </CartProvider>
       </AuthProvider>

@@ -17,6 +17,7 @@ import { useCart } from '@/components/providers/cart-provider';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { showAppleCartNotification } from '@/components/shop/cart-notification';
 
 export function ShopGrid({ products: initialProducts }: { products: Product[] }) {
   const { items, add, setQuantity, remove } = useCart();
@@ -55,7 +56,7 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
       image: product.image,
       type: product.type,
     }, 1);
-    toast.success(`${product.name} added to your bag.`);
+    showAppleCartNotification(product.name, product.image, 1);
   };
 
   const handleIncrement = (id: string, currentQty: number) => {
@@ -166,26 +167,28 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
             return (
               <Link key={p.id} href={getProductRoute(p.slug)} className="group block h-full">
                 <article className="group relative h-full overflow-hidden rounded-3xl border border-border/60 bg-card/60 shadow-soft transition-all duration-500 ease-soft hover:-translate-y-1.5 hover:shadow-float">
-                  <div className="relative aspect-square overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={p.image}
-                      alt={p.name}
-                      className="h-full w-full object-cover transition-transform duration-1000 ease-soft group-hover:scale-105"
-                    />
-                    <div className="absolute right-3 top-3">
-                      <ProductWishlistButton productId={p.id} />
-                    </div>
-                    {onSale && (
-                      <span className="absolute left-3 top-3 rounded-full bg-gold px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gold-foreground">
-                        Sale
+                  <div className="p-3">
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border/40 bg-secondary/10">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={p.image}
+                        alt={p.name}
+                        className="h-full w-full object-cover transition-transform duration-1000 ease-soft group-hover:scale-105"
+                      />
+                      <div className="absolute right-3 top-3">
+                        <ProductWishlistButton productId={p.id} />
+                      </div>
+                      {onSale && (
+                        <span className="absolute left-3 top-3 rounded-full bg-gold px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gold-foreground">
+                          Sale
+                        </span>
+                      )}
+                      <span className="absolute bottom-3 left-3 rounded-full glass px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-foreground">
+                        {p.type === 'digital' ? 'Digital' : 'Physical'}
                       </span>
-                    )}
-                    <span className="absolute bottom-3 left-3 rounded-full glass px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-foreground">
-                      {p.type === 'digital' ? 'Digital' : 'Physical'}
-                    </span>
+                    </div>
                   </div>
-                  <div className="p-5">
+                  <div className="p-5 pt-2">
                     <div className="flex items-center justify-between gap-2">
                       <StarRating rating={p.rating} size={12} />
                       <span className="text-xs text-muted-foreground">{p.reviews_count}</span>
@@ -201,7 +204,12 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                           </span>
                         )}
                       </div>
+                    </div>
 
+                    <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/40 pt-3">
+                      <div className="inline-flex items-center justify-center h-8 rounded-full px-4 text-xs font-semibold border border-gold/40 text-gold bg-transparent transition-all group-hover:bg-gold group-hover:text-gold-foreground">
+                        Details
+                      </div>
                       {(() => {
                         const cartItem = items.find((item) => item.id === p.id);
                         if (cartItem) {
@@ -213,9 +221,6 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                                 e.stopPropagation();
                               }}
                             >
-                              <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                                Added
-                              </span>
                               <div className="flex items-center rounded-full border border-border bg-card h-8">
                                 <button
                                   onClick={(e) => {
@@ -226,7 +231,7 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                                   className="inline-flex h-8 w-8 items-center justify-center rounded-l-full text-foreground hover:bg-secondary"
                                   aria-label="Decrease quantity"
                                 >
-                                  <Minus className="h-3.5 w-3.5" />
+                                  <Minus className="h-3 w-3" />
                                 </button>
                                 <span className="w-5 text-center text-xs font-semibold">{cartItem.quantity}</span>
                                 <button
@@ -238,7 +243,7 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                                   className="inline-flex h-8 w-8 items-center justify-center rounded-r-full text-foreground hover:bg-secondary"
                                   aria-label="Increase quantity"
                                 >
-                                  <Plus className="h-3.5 w-3.5" />
+                                  <Plus className="h-3 w-3" />
                                 </button>
                               </div>
                             </div>

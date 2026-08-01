@@ -11,7 +11,7 @@ const isDummyConfig =
 
 // In-memory cache for Firestore queries to speed up page loads and avoid excessive API calls
 const cache: Record<string, { data: any; timestamp: number }> = {};
-const CACHE_TTL = 10 * 1000; // 15 minutes cache lifetime
+const CACHE_TTL = 10 * 1000; // 10 sec cache lifetime
 
 // Helper to auto-seed a collection from seed-data.json if it is empty
 async function getCollectionData<T>(colName: string): Promise<T[]> {

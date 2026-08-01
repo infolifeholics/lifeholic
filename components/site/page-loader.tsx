@@ -7,6 +7,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 export function PageLoader() {
   const [visible, setVisible] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setVisible(false), 2200);
@@ -87,8 +88,20 @@ export function PageLoader() {
               transition={{ duration: 0.8, delay: 0.5, ease: EASE }}
               className="flex items-baseline gap-0 font-display text-2xl tracking-wide"
             >
-              <span className="font-medium text-foreground">TheLife</span>
-              <span className="text-gradient-gold font-medium">Holics</span>
+              {imageError ? (
+                <>
+                  <span className="font-medium text-foreground">TheLife</span>
+                  <span className="text-gradient-gold font-medium">Holics</span>
+                </>
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src="/logo-wordmark.png"
+                  alt="TheLifeHolics"
+                  onError={() => setImageError(true)}
+                  className="h-6 w-auto object-contain brightness-95 contrast-105"
+                />
+              )}
             </motion.div>
 
             {/* Tagline */}

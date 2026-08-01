@@ -7,6 +7,8 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/format';
 
+import { toast } from 'sonner';
+
 export function CartView() {
   const { items, setQuantity, remove, subtotal, clear, count } = useCart();
   const { user } = useAuth();
@@ -49,7 +51,10 @@ export function CartView() {
                     <p className="text-xs text-muted-foreground capitalize">{i.type}</p>
                   </div>
                   <button
-                    onClick={() => remove(i.id)}
+                    onClick={() => {
+                      remove(i.id);
+                      toast.success(`${i.name} removed from cart`);
+                    }}
                     aria-label="Remove"
                     className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                   >
@@ -59,11 +64,30 @@ export function CartView() {
                 <div className="mt-auto flex items-center justify-between">
                   {i.type === 'physical' ? (
                     <div className="inline-flex items-center rounded-full border border-border bg-card">
-                      <button onClick={() => setQuantity(i.id, i.quantity - 1)} className="inline-flex h-9 w-9 items-center justify-center rounded-l-full hover:bg-secondary" aria-label="Decrease">
+                      <button
+                        onClick={() => {
+                          if (i.quantity <= 1) {
+                            remove(i.id);
+                            toast.success(`${i.name} removed from cart`);
+                          } else {
+                            setQuantity(i.id, i.quantity - 1);
+                            toast.success(`${i.name} quantity updated`);
+                          }
+                        }}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-l-full hover:bg-secondary"
+                        aria-label="Decrease"
+                      >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
-                      <span className="w-8 text-center text-sm">{i.quantity}</span>
-                      <button onClick={() => setQuantity(i.id, i.quantity + 1)} className="inline-flex h-9 w-9 items-center justify-center rounded-r-full hover:bg-secondary" aria-label="Increase">
+                      <span className="w-8 text-center text-sm font-semibold">{i.quantity}</span>
+                      <button
+                        onClick={() => {
+                          setQuantity(i.id, i.quantity + 1);
+                          toast.success(`${i.name} quantity updated`);
+                        }}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-r-full hover:bg-secondary"
+                        aria-label="Increase"
+                      >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
