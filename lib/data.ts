@@ -11,12 +11,12 @@ const isDummyConfig =
 
 // In-memory cache for Firestore queries to speed up page loads and avoid excessive API calls
 const cache: Record<string, { data: any; timestamp: number }> = {};
-const CACHE_TTL = 15 * 60 * 1000; // 15 minutes cache lifetime
+const CACHE_TTL = 10 * 1000; // 15 minutes cache lifetime
 
 // Helper to auto-seed a collection from seed-data.json if it is empty
 async function getCollectionData<T>(colName: string): Promise<T[]> {
   const defaults = (seedData as any)[colName] || [];
-  
+
   if (isDummyConfig) {
     return defaults as T[];
   }
@@ -42,7 +42,8 @@ async function getCollectionData<T>(colName: string): Promise<T[]> {
       cache[colName] = { data: defaults, timestamp: Date.now() };
       return defaults as T[];
     }
-    const data = snap.docs.map((d) => d.data()) as T[];
+    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as T[];
+
     cache[colName] = { data, timestamp: Date.now() };
     return data;
   } catch (e: any) {
