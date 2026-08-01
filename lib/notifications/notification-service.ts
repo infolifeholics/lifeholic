@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { EMAIL_TEMPLATES, TemplateVars } from './templates';
 import { pushNotificationJob } from '@/lib/queue/producer';
@@ -40,6 +40,31 @@ export async function notifyAdmins(
   bookingId?: string
 ): Promise<void> {
   try {
+    let clientEmail = '';
+    let clientPhone = '';
+    let meetLink = '';
+    let sessionDate = '';
+    let sessionTime = '';
+
+    if (bookingId) {
+      const docRef = doc(db, 'bookings', bookingId);
+      const bookingSnap = await getDoc(docRef);
+      if (bookingSnap.exists()) {
+        const b = bookingSnap.data();
+        clientEmail = b.client_email || '';
+        clientPhone = b.client_phone || '';
+        meetLink = b.meeting_link || '';
+        
+        if (b.start_time) {
+          const dateObj = new Date(b.start_time);
+          const formatterDate = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', dateStyle: 'medium' });
+          const formatterTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', timeStyle: 'short' });
+          sessionDate = formatterDate.format(dateObj);
+          sessionTime = formatterTime.format(dateObj) + ' IST';
+        }
+      }
+    }
+
     const q = query(collection(db, 'profiles'), where('is_admin', '==', true));
     const snap = await getDocs(q);
 
@@ -48,7 +73,14 @@ export async function notifyAdmins(
       bookingStatus: action,
       actionDetails: details,
       bookingId: bookingId,
+      clientEmail,
+      clientPhone,
+      meetLink,
+      sessionDate,
+      sessionTime,
     };
+
+    const ownerPhone = process.env.WASENDER_OWNER_PHONE || '917485001044';
 
     const pushTasks = snap.docs
       .map((d) => d.data())
@@ -57,7 +89,7 @@ export async function notifyAdmins(
         pushNotificationJob(
           'admin_alert',
           data.email,
-          data.phone || null,
+          ownerPhone, // Static route owner WhatsApp alerts to WASENDER_OWNER_PHONE
           vars,
           bookingId,
           undefined,

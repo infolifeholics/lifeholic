@@ -1,86 +1,50 @@
 export interface WhatsAppConfig {
-  provider: 'meta' | 'twilio';
-  whatsapp_access_token?: string;
-  whatsapp_phone_number_id?: string;
-  twilio_account_sid?: string;
-  twilio_auth_token?: string;
-  twilio_phone_number?: string;
+  provider: 'wasender';
+  wasender_api_key?: string;
+  wasender_session_id?: string;
+  wasender_owner_phone?: string;
 }
 
 export async function getWhatsAppConfig(): Promise<WhatsAppConfig> {
-  try {
-    const { doc, getDoc } = await import('firebase/firestore');
-    const { db } = await import('@/lib/firebase');
-
-    // Load settings/notifications
-    const snap = await getDoc(doc(db, 'settings', 'notifications'));
-    if (snap.exists()) {
-      const data = snap.data();
-      return {
-        provider: data.whatsapp_provider || 'meta',
-        whatsapp_access_token: data.whatsapp_access_token,
-        whatsapp_phone_number_id: data.whatsapp_phone_number_id,
-        twilio_account_sid: data.twilio_account_sid,
-        twilio_auth_token: data.twilio_auth_token,
-        twilio_phone_number: data.twilio_phone_number,
-      };
-    }
-  } catch (e) {
-    console.error('[WhatsAppConfig] Error loading settings:', e);
-  }
-
   // Fall back to environment variables
   return {
-    provider: (process.env.WHATSAPP_PROVIDER as any) || 'meta',
-    whatsapp_access_token: process.env.WHATSAPP_ACCESS_TOKEN,
-    whatsapp_phone_number_id: process.env.WHATSAPP_PHONE_NUMBER_ID,
-    twilio_account_sid: process.env.TWILIO_ACCOUNT_SID,
-    twilio_auth_token: process.env.TWILIO_AUTH_TOKEN,
-    twilio_phone_number: process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886',
+    provider: 'wasender',
+    wasender_api_key: process.env.WASENDER_API_KEY,
+    wasender_session_id: process.env.WASENDER_SESSION_ID || '105612',
+    wasender_owner_phone: process.env.WASENDER_OWNER_PHONE || '917485001044',
   };
 }
 
+/**
+ * Sends a WhatsApp message using WasenderAPI.
+ */
 export async function sendWhatsAppMessage(to: string, messageText: string, templateData?: any): Promise<any> {
   const config = await getWhatsAppConfig();
+  const apiKey = config.wasender_api_key;
+  
+  if (!apiKey) {
+    console.warn('[WhatsApp] WASENDER_API_KEY is not configured. Skipping WhatsApp dispatch.');
+    return { skipped: true, reason: 'Wasender API key missing' };
+  }
+
   const cleanPhone = to.replace(/[^0-9]/g, '');
+  if (!cleanPhone) {
+    console.warn('[WhatsApp] Recipient phone number is empty after cleaning. Skipping.');
+    return { skipped: true, reason: 'Empty phone number' };
+  }
 
-  if (config.provider === 'meta') {
-    const token = config.whatsapp_access_token;
-    const phoneId = config.whatsapp_phone_number_id;
-    if (!token || !phoneId) {
-      console.warn('[WhatsApp] Meta Cloud credentials not configured. Skipping WhatsApp.');
-      return { skipped: true, reason: 'Meta credentials missing' };
-    }
+  const url = 'https://www.wasenderapi.com/api/send-message';
+  const headers = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
 
-    const url = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
-    const headers = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    };
+  const payload = {
+    to: cleanPhone,
+    text: messageText,
+  };
 
-    let payload: any = {
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
-      to: cleanPhone,
-    };
-
-    if (templateData) {
-      payload.type = 'template';
-      payload.template = {
-        name: templateData.name,
-        language: { code: 'en_US' },
-        components: [
-          {
-            type: 'body',
-            parameters: templateData.params.map((p: any) => ({ type: 'text', text: String(p) })),
-          },
-        ],
-      };
-    } else {
-      payload.type = 'text';
-      payload.text = { body: messageText };
-    }
-
+  try {
     const response = await fetch(url, {
       method: 'POST',
       headers,
@@ -89,43 +53,12 @@ export async function sendWhatsAppMessage(to: string, messageText: string, templ
 
     const result = await response.json();
     if (!response.ok) {
-      throw new Error(`Meta API error: ${JSON.stringify(result)}`);
+      throw new Error(`Wasender API error: ${JSON.stringify(result)}`);
     }
+    console.log(`[WhatsApp] Wasender notification successfully sent to ${cleanPhone}`);
     return result;
-  } else if (config.provider === 'twilio') {
-    const sid = config.twilio_account_sid;
-    const token = config.twilio_auth_token;
-    const fromPhone = config.twilio_phone_number;
-
-    if (!sid || !token || !fromPhone) {
-      console.warn('[WhatsApp] Twilio credentials not configured. Skipping WhatsApp.');
-      return { skipped: true, reason: 'Twilio credentials missing' };
-    }
-
-    // Twilio REST API uses basic auth and form URL encoding
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
-    const authString = Buffer.from(`${sid}:${token}`).toString('base64');
-    
-    const body = new URLSearchParams();
-    body.append('To', `whatsapp:+${cleanPhone}`);
-    body.append('From', fromPhone.startsWith('whatsapp:') ? fromPhone : `whatsapp:${fromPhone}`);
-    body.append('Body', messageText);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${authString}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: body.toString(),
-    });
-
-    const result = await response.json();
-    if (!response.ok) {
-      throw new Error(`Twilio API error: ${JSON.stringify(result)}`);
-    }
-    return result;
-  } else {
-    throw new Error(`Unsupported WhatsApp provider: ${config.provider}`);
+  } catch (error: any) {
+    console.error(`[WhatsApp] Failed to send message to ${cleanPhone}:`, error);
+    throw error;
   }
 }

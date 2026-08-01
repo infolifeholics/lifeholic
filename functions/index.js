@@ -19,48 +19,34 @@ const mailTransport = nodemailer.createTransport({
 });
 
 /**
- * Sends a WhatsApp message using Meta's WhatsApp Cloud API.
+ * Sends a WhatsApp message using WasenderAPI.
  */
 async function sendWhatsAppNotification(to, bodyText, templateData = null) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const apiKey = process.env.WASENDER_API_KEY;
 
-  if (!token || !phoneId) {
-    logger.warn("WhatsApp API credentials missing. Skipping notification.");
+  if (!apiKey) {
+    logger.warn("WASENDER_API_KEY is not configured. Skipping WhatsApp dispatch.");
     return;
   }
 
   const cleanPhone = to.replace(/[^0-9]/g, "");
-  const url = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
+  if (!cleanPhone) {
+    logger.warn("Empty recipient phone number. Skipping.");
+    return;
+  }
+
+  const url = "https://www.wasenderapi.com/api/send-message";
   const headers = {
-    "Authorization": `Bearer ${token}`,
+    "Authorization": `Bearer ${apiKey}`,
     "Content-Type": "application/json",
   };
 
-  let payload = {
-    messaging_product: "whatsapp",
-    recipient_type: "individual",
+  const payload = {
     to: cleanPhone,
+    text: bodyText,
   };
 
-  if (templateData) {
-    payload.type = "template";
-    payload.template = {
-      name: templateData.name,
-      language: { code: "en_US" },
-      components: [
-        {
-          type: "body",
-          parameters: templateData.params.map(p => ({ type: "text", text: String(p) })),
-        },
-      ],
-    };
-  } else {
-    payload.type = "text";
-    payload.text = { body: bodyText };
-  }
-
-  // Implementation of Meta API with simple retry logic
+  // Implementation with simple retry logic
   let attempt = 0;
   const maxRetries = 3;
   while (attempt < maxRetries) {
@@ -88,7 +74,7 @@ async function sendWhatsAppNotification(to, bodyText, templateData = null) {
         logger.info(`WhatsApp notification successfully sent to ${cleanPhone}`);
         break;
       } else {
-        logger.error(`Attempt ${attempt} failed with Meta API error:`, result);
+        logger.error(`Attempt ${attempt} failed with Wasender API error:`, result);
       }
     } catch (error) {
       logger.error(`Attempt ${attempt} exception:`, error);

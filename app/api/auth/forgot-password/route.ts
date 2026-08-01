@@ -10,8 +10,9 @@ export async function POST(req: Request) {
     }
 
     // Check if user exists in Firebase Auth
+    let userRecord;
     try {
-      await adminAuth.getUserByEmail(email);
+      userRecord = await adminAuth.getUserByEmail(email);
     } catch (e: any) {
       console.log(`Password reset requested for non-existent email: ${email}`);
       return NextResponse.json({ ok: true, message: 'OTP sent if account exists' });
@@ -44,6 +45,26 @@ export async function POST(req: Request) {
     `;
 
     await sendEmail(email, subject, html);
+
+    // Try sending WhatsApp notification
+    try {
+      let phone = userRecord.phoneNumber;
+      if (!phone) {
+        const profileSnap = await adminDb.collection('profiles').doc(userRecord.uid).get();
+        if (profileSnap.exists) {
+          const profileData = profileSnap.data();
+          phone = profileData?.phone || profileData?.whatsapp || null;
+        }
+      }
+
+      if (phone) {
+        const { sendWhatsAppMessage } = await import('@/lib/notifications/whatsapp');
+        const waMsg = `Your Lifeholics verification code is:\n\n${otp}\n\nThis OTP will expire in 10 minutes.\n\nDo not share this code with anyone.`;
+        await sendWhatsAppMessage(phone, waMsg);
+      }
+    } catch (waErr) {
+      console.error('[API Forgot Password] WhatsApp dispatch failed:', waErr);
+    }
 
     return NextResponse.json({ ok: true, message: 'OTP sent successfully' });
   } catch (err: any) {

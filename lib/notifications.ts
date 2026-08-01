@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { sendWhatsAppMessage } from '@/lib/notifications/whatsapp';
 
 // Setup dynamic SMTP Transporter
 function getMailTransporter() {
@@ -16,88 +17,33 @@ function getMailTransporter() {
 }
 
 /**
- * Sends a WhatsApp message using Meta's WhatsApp Cloud API.
+ * Sends a WhatsApp message using WasenderAPI.
  */
 export async function sendWhatsAppNotification(to: string, bodyText: string, templateData: any = null) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-  if (!token || !phoneId) {
-    console.warn('[WhatsApp] Credentials missing. Skipping notification.');
-    return;
-  }
-
   const cleanPhone = to.replace(/[^0-9]/g, '');
-  const url = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
-  const headers = {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  };
+  try {
+    const result = await sendWhatsAppMessage(cleanPhone, bodyText, templateData);
 
-  let payload: any = {
-    messaging_product: 'whatsapp',
-    recipient_type: 'individual',
-    to: cleanPhone,
-  };
+    // Log delivery status in whatsappLogs collection
+    await addDoc(collection(db, 'whatsappLogs'), {
+      to: cleanPhone,
+      bodyText,
+      result,
+      status: 'delivered',
+      timestamp: serverTimestamp(),
+    });
 
-  if (templateData) {
-    payload.type = 'template';
-    payload.template = {
-      name: templateData.name,
-      language: { code: 'en_US' },
-      components: [
-        {
-          type: 'body',
-          parameters: templateData.params.map((p: any) => ({ type: 'text', text: String(p) })),
-        },
-      ],
-    };
-  } else {
-    payload.type = 'text';
-    payload.text = { body: bodyText };
-  }
-
-  let attempt = 0;
-  const maxRetries = 3;
-  while (attempt < maxRetries) {
-    attempt++;
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-      const result = await response.json();
-
-      // Log delivery status in whatsappLogs collection
-      await addDoc(collection(db, 'whatsappLogs'), {
-        to: cleanPhone,
-        payload,
-        result,
-        status: response.ok ? 'delivered' : 'failed',
-        attempt,
-        timestamp: serverTimestamp(),
-      });
-
-      if (response.ok) {
-        console.log(`[WhatsApp] Notification successfully sent to ${cleanPhone}`);
-        break;
-      } else {
-        console.error(`[WhatsApp] Attempt ${attempt} failed with Meta API error:`, result);
-      }
-    } catch (error: any) {
-      console.error(`[WhatsApp] Attempt ${attempt} exception:`, error);
-      if (attempt === maxRetries) {
-        await addDoc(collection(db, 'whatsappLogs'), {
-          to: cleanPhone,
-          payload,
-          error: error.message,
-          status: 'failed_exception',
-          attempt,
-          timestamp: serverTimestamp(),
-        });
-      }
-    }
+    console.log(`[WhatsApp] Notification successfully sent to ${cleanPhone}`);
+    return result;
+  } catch (error: any) {
+    console.error(`[WhatsApp] Failed to send notification to ${cleanPhone}:`, error);
+    await addDoc(collection(db, 'whatsappLogs'), {
+      to: cleanPhone,
+      bodyText,
+      error: error.message,
+      status: 'failed',
+      timestamp: serverTimestamp(),
+    });
   }
 }
 
@@ -158,6 +104,8 @@ export async function triggerBookingNotification(
       sessionTime: timeStr,
       bookingId: bookingId,
       bookingStatus: eventType === 'created' ? 'pending' : (eventType === 'meeting_updated' ? 'rescheduled' : eventType),
+      actionDetails: service_title,
+      meetLink: bookingData.meeting_link || '',
     };
 
     let templateType: any = 'booking_status_changed';
@@ -283,13 +231,91 @@ export async function triggerOrderNotification(orderId: string, orderData: any) 
     console.error('[Notifications] Failed to send order emails:', e);
   }
 
-  // Send WhatsApp Notification
-  if (phone) {
-    const userMsg = `Hello ${full_name || 'Customer'}, thank you for shopping with Lifeholics! Your order ${orderNumber} is confirmed. Total: ${total} ${currency}.`;
-    await sendWhatsAppNotification(phone, userMsg, {
-      name: 'order_confirmed',
-      params: [orderNumber, full_name || 'Customer', total, currency],
+  // Send WhatsApp Notifications
+  try {
+    const formattedItems = items.map((item: any) => 
+      `- ${item.name || item.title || 'Product'} (x${item.quantity || 1})`
+    ).join('\n');
+    
+    const formattedAddress = orderData.address 
+      ? `${orderData.address.line1 || ''}, ${orderData.address.city || ''}, ${orderData.address.state || ''}, ${orderData.address.postal_code || ''}, ${orderData.address.country || ''}`
+      : 'Digital Delivery';
+
+    const customerMsg = `🛍️ Order Confirmed\n\nHi ${full_name || 'Customer'},\n\nYour order has been successfully placed.\n\nOrder ID: ${orderNumber}\n\nItems:\n${formattedItems}\n\nTotal Amount: ${total} ${currency}\n\nPayment Status: ${orderData.payment_status || 'Paid'}\n\nShipping Address:\n${formattedAddress}\n\nThank you for shopping with Lifeholics.`;
+    
+    if (phone) {
+      await sendWhatsAppNotification(phone, customerMsg);
+    }
+
+    const ownerPhone = process.env.WASENDER_OWNER_PHONE || '917485001044';
+    const ownerMsg = `🛍️ New Product Order\n\nA new order has been placed.\n\nOrder ID: ${orderNumber}\n\nCustomer:\n${full_name || 'Customer'}\n\nPhone:\n${phone || 'N/A'}\n\nEmail:\n${email}\n\nItems:\n${formattedItems}\n\nTotal:\n${total} ${currency}\n\nPayment:\n${orderData.payment_status || 'Paid'}\n\nShipping Address:\n${formattedAddress}`;
+    
+    await sendWhatsAppNotification(ownerPhone, ownerMsg);
+  } catch (waErr) {
+    console.error('[Notifications] Failed to send order WhatsApp messages:', waErr);
+  }
+}
+
+/**
+ * Sends notifications for workshop registration confirmation.
+ */
+export async function triggerWorkshopNotification(
+  registrationId: string,
+  regData: any,
+  host: string,
+  protocol: string
+) {
+  try {
+    const wsRef = doc(db, 'workshops', regData.workshop_id);
+    const wsSnap = await getDoc(wsRef);
+    const ws = wsSnap.exists() ? wsSnap.data() : {};
+
+    const ticketUrl = `${protocol}://${host}/workshops/${registrationId}/ticket?name=${encodeURIComponent(regData.client_name || '')}&email=${encodeURIComponent(regData.client_email || '')}&phone=${encodeURIComponent(regData.client_phone || '')}&workshop=${encodeURIComponent(regData.workshop_title || '')}`;
+
+    const emailSubject = `Workshop Registration Confirmed: ${regData.workshop_title}`;
+    const emailBody = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+        <h2 style="color: #c5a880; margin-bottom: 20px;">Workshop Registration Confirmed!</h2>
+        <p>Hello ${regData.client_name},</p>
+        <p>Your registration for the workshop <strong>${regData.workshop_title}</strong> is confirmed. Here are the details:</p>
+        <div style="background-color: #fdfaf6; border-left: 4px solid #c5a880; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p><strong>Registration ID:</strong> ${regData.id || registrationId}</p>
+          <p><strong>Date:</strong> ${ws.date || 'N/A'}</p>
+          <p><strong>Time:</strong> ${ws.start_time || 'N/A'} - ${ws.end_time || 'N/A'} (${ws.timezone || 'IST'})</p>
+          ${ws.meeting_link ? `<p><strong>Meeting Link:</strong> <a href="${ws.meeting_link}" style="color: #c5a880;">${ws.meeting_link}</a></p>` : ''}
+        </div>
+        <p>You can view and download your entry ticket here:</p>
+        <a href="${ticketUrl}" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 30px; font-weight: bold; display: inline-block; margin-top: 10px;">Download Ticket</a>
+      </div>
+    `;
+
+    // 1. Send Customer Email
+    await sendEmailNotification({
+      to: regData.client_email,
+      subject: emailSubject,
+      html: emailBody,
     });
+
+    // 2. Send Admin/Owner Email
+    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'info.lifeholics@gmail.com';
+    await sendEmailNotification({
+      to: adminEmail,
+      subject: `[ADMIN] ${emailSubject}`,
+      html: emailBody,
+    });
+
+    // 3. Send Customer WhatsApp Notification
+    if (regData.client_phone) {
+      const userMsg = `🎉 Workshop Registration Confirmed!\n\nHi ${regData.client_name},\n\nYour registration for the workshop "${regData.workshop_title}" has been successfully confirmed.\n\n📅 Date: ${ws.date || 'N/A'}\n🕒 Time: ${ws.start_time || 'N/A'} - ${ws.end_time || 'N/A'} (${ws.timezone || 'IST'})\n🔗 Meeting Link: ${ws.meeting_link || 'Will be shared soon'}\n🎟️ Ticket Link: ${ticketUrl}\n\nWe look forward to seeing you there.\n\nTeam Lifeholics`;
+      await sendWhatsAppNotification(regData.client_phone, userMsg);
+    }
+
+    // 4. Send Owner WhatsApp Notification
+    const ownerPhone = process.env.WASENDER_OWNER_PHONE || '917485001044';
+    const ownerMsg = `📌 New Workshop Registration\n\nName: ${regData.client_name}\nPhone: ${regData.client_phone}\nEmail: ${regData.client_email}\nWorkshop: ${regData.workshop_title}\nDate: ${ws.date || 'N/A'}\nTime: ${ws.start_time || 'N/A'} - ${ws.end_time || 'N/A'} (${ws.timezone || 'IST'})\nMeeting Link: ${ws.meeting_link || 'N/A'}\nPayment Status: ${regData.payment_status || 'Paid'}\nBooking/Registration ID: ${regData.id || registrationId}`;
+    await sendWhatsAppNotification(ownerPhone, ownerMsg);
+  } catch (err) {
+    console.error('[Notifications] Failed to run triggerWorkshopNotification:', err);
   }
 }
 

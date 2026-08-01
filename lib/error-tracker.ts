@@ -4,11 +4,11 @@ import { collection, addDoc } from 'firebase/firestore';
 export interface SystemErrorLog {
   message: string;
   category: 'API' | 'Queue' | 'Worker' | 'Email' | 'WhatsApp' | 'Booking';
-  stack?: string;
-  userId?: string | null;
-  bookingId?: string | null;
+  stack: string | null;
+  userId: string | null;
+  bookingId: string | null;
   timestamp: string;
-  metadata?: Record<string, any>;
+  metadata: Record<string, any> | null;
 }
 
 /**
@@ -25,7 +25,7 @@ export async function logSystemError(
   } = {}
 ) {
   try {
-    const stack = context.error instanceof Error ? context.error.stack : undefined;
+    const stack = (context.error instanceof Error ? context.error.stack : null) || null;
     const log: SystemErrorLog = {
       message,
       category,
@@ -33,7 +33,7 @@ export async function logSystemError(
       userId: context.userId || null,
       bookingId: context.bookingId || null,
       timestamp: new Date().toISOString(),
-      metadata: context.metadata || undefined,
+      metadata: context.metadata || null,
     };
 
     console.error(`[SystemErrorLog] [${category}] ${message}`, context.error || '');

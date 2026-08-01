@@ -114,6 +114,15 @@ service cloud.firestore {
     match /notifications/{document} {
       allow read, write: if true;
     }
+    match /payments/{document} {
+      allow read, write: if true;
+    }
+    match /error_logs/{document} {
+      allow read, write: if true;
+    }
+    match /whatsappLogs/{document} {
+      allow read, write: if true;
+    }
     match /notification_logs/{document} {
       // Workers write logs server-side; admins can read
       allow read: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;

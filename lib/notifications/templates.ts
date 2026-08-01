@@ -13,6 +13,8 @@ export interface TemplateVars {
   actionDetails?: string;
   meetLink?: string;
   window?: string; // reminder window label e.g. "24h", "2h", "30m"
+  clientEmail?: string;
+  clientPhone?: string;
 }
 
 const DEFAULT_VARS = {
@@ -157,19 +159,29 @@ export const EMAIL_TEMPLATES = {
 
   booking_confirmation: (vars: TemplateVars) => {
     const content = `
-      <h2>Session Booking Request Received</h2>
+      <h2>Your Session Booking with Lifeholics is Confirmed!</h2>
       <p>Hello ${vars.memberName},</p>
-      <p>We have successfully received your session booking request. Here are the details:</p>
+      <p>Your session booking request has been successfully received and confirmed. Here are the details:</p>
       <div class="details-box">
         <div class="details-row"><span class="label">Booking ID:</span><span class="value">${vars.bookingId || 'N/A'}</span></div>
+        <div class="details-row"><span class="label">Session:</span><span class="value">${vars.actionDetails || 'Session'}</span></div>
         <div class="details-row"><span class="label">Date:</span><span class="value">${vars.sessionDate || 'N/A'}</span></div>
         <div class="details-row"><span class="label">Time:</span><span class="value">${vars.sessionTime || 'N/A'} (IST)</span></div>
-        <div class="details-row"><span class="label">Status:</span><span class="value" style="text-transform: capitalize; font-weight: bold; color: #d4af37;">${vars.bookingStatus || 'Pending'}</span></div>
+        ${vars.meetLink ? `<div class="details-row"><span class="label">Meeting Link:</span><span class="value"><a href="${vars.meetLink}" style="color:#d4af37; text-decoration:underline;">${vars.meetLink}</a></span></div>` : ''}
       </div>
-      <p>You will receive another update as soon as the session is confirmed by the practitioner.</p>
-      <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/account" class="btn">View Booking History</a>
+      <div style="background-color: #fdfaf6; border: 1px solid #f5ebd5; padding: 15px; border-radius: 8px; margin: 20px 0; font-size: 13px;">
+        <strong style="color: #c5a880;">Kindly Note:</strong>
+        <ul style="margin: 5px 0 0 15px; padding: 0; color: #555;">
+          <li>Please join a few minutes before your scheduled time.</li>
+          <li>Sessions are non-refundable.</li>
+          <li>If you’re unable to attend, you may reschedule at least 48 hours in advance.</li>
+          <li>Requests within 48 hours may not be accommodated.</li>
+        </ul>
+      </div>
+      <p>We look forward to supporting you on your healing journey.</p>
+      <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/account" class="btn">View Booking Details</a>
     `;
-    return getBaseHtml('Booking Pending Confirmation', content, vars);
+    return getBaseHtml('Booking Confirmed', content, vars);
   },
 
   booking_cancelled: (vars: TemplateVars) => {
@@ -299,7 +311,7 @@ export const WHATSAPP_TEMPLATES = {
     return `Hello ${vars.memberName}, welcome to ${vars.orgName || DEFAULT_VARS.orgName}! Your account registration was successful. You can manage your bookings here: ${process.env.NEXT_PUBLIC_SITE_URL}/account`;
   },
   booking_confirmation: (vars: TemplateVars) => {
-    return `Hello ${vars.memberName}, your session booking request (ID: ${vars.bookingId}) is pending confirmation. Date: ${vars.sessionDate}, Time: ${vars.sessionTime} IST. Thank you for choosing ${vars.orgName || DEFAULT_VARS.orgName}!`;
+    return `Your session with Lifeholics is confirmed!\n\nHi ${vars.memberName},\n\nYour ${vars.actionDetails || 'session'} has been successfully booked.\n\n📅 Date: ${vars.sessionDate}\n🕒 Time: ${vars.sessionTime}\n\n🔗 Meeting Link:\n${vars.meetLink || 'Will be shared soon'}\n\nKindly Note:\n• Please join a few minutes before your scheduled time.\n• Sessions are non-refundable.\n• If you’re unable to attend, you may reschedule at least 48 hours in advance.\n• Requests within 48 hours may not be accommodated.\n\nWe look forward to supporting you on your healing journey.\n\nTeam Lifeholics`;
   },
   booking_cancelled: (vars: TemplateVars) => {
     return `Hello ${vars.memberName}, your booking (ID: ${vars.bookingId}) for ${vars.sessionDate} at ${vars.sessionTime} IST has been cancelled. Contact support for assistance.`;
@@ -310,6 +322,9 @@ export const WHATSAPP_TEMPLATES = {
     return `Reminder${windowLabel}: Hello ${vars.memberName}, you have an upcoming healing session (ID: ${vars.bookingId}) scheduled for ${vars.sessionDate} at ${vars.sessionTime} IST.${meetPart}`;
   },
   booking_status_changed: (vars: TemplateVars) => {
+    if (vars.bookingStatus === 'confirmed') {
+      return `Your session with Lifeholics is confirmed!\n\nHi ${vars.memberName},\n\nYour ${vars.actionDetails || 'session'} has been successfully booked.\n\n📅 Date: ${vars.sessionDate}\n🕒 Time: ${vars.sessionTime}\n\n🔗 Meeting Link:\n${vars.meetLink || 'Will be provided before the session'}\n\nKindly Note:\n• Please join a few minutes before your scheduled time.\n• Sessions are non-refundable.\n• If you’re unable to attend, you may reschedule at least 48 hours in advance.\n• Requests within 48 hours may not be accommodated.\n\nWe look forward to supporting you on your healing journey.\n\nTeam Lifeholics`;
+    }
     return `Hello ${vars.memberName}, the status of your booking (ID: ${vars.bookingId}) has been updated to: *${vars.bookingStatus?.toUpperCase()}*. Details: ${process.env.NEXT_PUBLIC_SITE_URL}/account`;
   },
   certificate_generated: (vars: TemplateVars) => {
@@ -322,6 +337,9 @@ export const WHATSAPP_TEMPLATES = {
     return `Hello ${vars.memberName}, a password reset was requested for your account. If you did not request this, please contact support immediately.`;
   },
   admin_alert: (vars: TemplateVars) => {
+    if (vars.bookingStatus === 'New Booking') {
+      return `📌 New Session Booking\n\nA new session has been booked.\n\nName: ${vars.memberName}\nPhone: ${vars.clientPhone || 'N/A'}\nEmail: ${vars.clientEmail || 'N/A'}\nSession: ${vars.actionDetails || 'N/A'}\nDate: ${vars.sessionDate || 'N/A'}\nTime: ${vars.sessionTime || 'N/A'}\nMeeting Link: ${vars.meetLink || 'N/A'}\n\nPlease review the booking and prepare for the session.`;
+    }
     return `[Admin Alert] Action: ${vars.bookingStatus}. User: ${vars.memberName}. Details: ${vars.actionDetails || 'None'}.`;
   },
   promo_offer: (vars: TemplateVars) => {
