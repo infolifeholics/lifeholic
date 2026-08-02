@@ -13,6 +13,8 @@ import { formatPrice } from '@/lib/format';
 import { getProductRoute } from '@/lib/routes';
 import { SectionHeading } from '@/components/site/section-heading';
 
+import { ProductGallery } from '@/components/shop/product-gallery';
+
 export async function generateStaticParams() {
   const products = await getProducts();
   return products.map((p) => ({ slug: p.slug }));
@@ -59,7 +61,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const relatedFinal = related.length ? related : fallback;
 
   const onSale = product.compare_at_inr && product.compare_at_inr > product.price_inr;
-  const gallery = product.gallery.length ? product.gallery : [product.image];
+  const gallery = product.gallery && product.gallery.length ? product.gallery : [product.image];
 
   return (
     <div className="pt-28">
@@ -72,25 +74,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
         <div className="mt-6 grid gap-10 lg:grid-cols-2 lg:gap-16">
           {/* Gallery */}
-          <div className="flex flex-col gap-4">
-            <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-border/60 shadow-float">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={gallery[0]} alt={product.name} className="h-full w-full object-cover" />
-              <div className="absolute right-4 top-4">
-                <ProductWishlistButton productId={product.id} className="!h-11 !w-11" />
-              </div>
-            </div>
-            {gallery.length > 1 && (
-              <div className="grid grid-cols-4 gap-3">
-                {gallery.map((src, i) => (
-                  <div key={i} className="aspect-square overflow-hidden rounded-2xl border border-border/60">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt="" className="h-full w-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ProductGallery gallery={gallery} productName={product.name} productId={product.id} />
 
           {/* Info */}
           <div>
