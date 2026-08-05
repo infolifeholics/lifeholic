@@ -101,6 +101,43 @@ export function AdminLandingPage() {
     fetchLandingData();
   }, []);
 
+  const uploadToCloudinaryDirect = async (file: File, isVideoOrAudio: boolean) => {
+    // 1. Get signed upload credentials from backend
+    const signRes = await fetch('/api/upload/sign', { method: 'POST' });
+    if (!signRes.ok) {
+      const err = await signRes.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to generate upload signature');
+    }
+    const { signature, timestamp, cloudName, apiKey, folder } = await signRes.json();
+
+    // 2. Upload directly to Cloudinary
+    const resourceType = isVideoOrAudio ? 'video' : 'image';
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', String(timestamp));
+    formData.append('signature', signature);
+    formData.append('folder', folder);
+
+    const uploadRes = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!uploadRes.ok) {
+      const err = await uploadRes.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Direct Cloudinary upload failed');
+    }
+
+    const data = await uploadRes.json();
+    return {
+      url: data.secure_url,
+      public_id: data.public_id,
+    };
+  };
+
   const handleReplaceFeed = async (slotId: string, file: File) => {
     if (!file) return;
 
@@ -118,21 +155,7 @@ export function AdminLandingPage() {
 
     try {
       const isVideoFile = isVideo;
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Upload server error');
-      }
-
-      const { url: cloudinaryUrl, public_id: cloudinaryPublicId } = await res.json();
-      if (!cloudinaryUrl) throw new Error('Upload did not return URL');
+      const { url: cloudinaryUrl, public_id: cloudinaryPublicId } = await uploadToCloudinaryDirect(file, isVideoFile);
 
       // Delete old custom file if it exists
       const currentItem = feedItems.find(item => item.id === slotId);
@@ -169,21 +192,7 @@ export function AdminLandingPage() {
     const toastId = toast.loading(`Uploading image for Slot ${slotId}...`);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Upload server error');
-      }
-
-      const { url: cloudinaryUrl } = await res.json();
-      if (!cloudinaryUrl) throw new Error('Upload did not return URL');
+      const { url: cloudinaryUrl } = await uploadToCloudinaryDirect(file, false);
 
       // Delete old custom file if it exists
       const currentImage = images.find(img => img.id === slotId);
@@ -249,19 +258,7 @@ export function AdminLandingPage() {
     const toastId = toast.loading('Uploading background video...');
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Video upload failed.');
-      }
-      const data = await res.json();
+      const data = await uploadToCloudinaryDirect(file, true);
 
       // Delete old video from Cloudinary if exists
       if (videoUrl && videoUrl.includes('cloudinary.com')) {
@@ -316,19 +313,7 @@ export function AdminLandingPage() {
     const toastId = toast.loading('Uploading background music...');
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Music upload failed.');
-      }
-      const data = await res.json();
+      const data = await uploadToCloudinaryDirect(file, true);
 
       // Delete old music from Cloudinary if exists
       if (musicUrl && musicUrl.includes('cloudinary.com')) {
