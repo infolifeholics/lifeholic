@@ -63,12 +63,7 @@ npm run typecheck
 Use these commands to upload or sync your latest changes to GitHub:
 ```bash
 git add .
-git commit -m "feat: enhance session booking & time display formats
-
-- Restricted booking system and admin panels to online-only sessions.
-- Standardised time format to 12-hour AM/PM across notifications, calendar, dashboard, and slots.
-- Added Amazon URL support to products admin form.
-- Removed decorative circle from site logo."
+git commit -m "video upload failed fix"
 git push -u origin main
 ``` 
 

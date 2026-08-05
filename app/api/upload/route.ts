@@ -18,11 +18,24 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    const fileType = file.type || '';
+    const ext = file.name ? file.name.split('.').pop()?.toLowerCase() : '';
+    const isVideo = fileType.startsWith('video/') || ['mp4', 'mov', 'webm', 'mkv'].includes(ext || '');
+    const isAudio = fileType.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a'].includes(ext || '');
+    const isImage = fileType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext || '');
+
+    let resourceType = 'auto';
+    if (isVideo || isAudio) {
+      resourceType = 'video';
+    } else if (isImage) {
+      resourceType = 'image';
+    }
+
     const uploadResult = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload_stream(
         {
           folder: 'thelifeholics',
-          resource_type: 'auto',
+          resource_type: resourceType as any,
         },
         (error, result) => {
           if (error) reject(error);
