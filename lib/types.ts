@@ -45,6 +45,7 @@ export type Product = {
   updated_at?: string;
   featured?: boolean;
   best_seller?: boolean;
+  amazonUrl?: string;
 };
 
 export type Testimonial = {

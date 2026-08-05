@@ -37,50 +37,6 @@ export function PageLoader() {
             transition={{ duration: 0.8, ease: EASE }}
             className="relative z-10 flex flex-col items-center gap-5"
           >
-            {/* Animated circle + leaf mark */}
-            <div className="relative flex h-20 w-20 items-center justify-center">
-              <motion.svg
-                viewBox="0 0 80 80"
-                className="absolute inset-0"
-                initial={{ rotate: -10, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                transition={{ duration: 1, ease: EASE }}
-              >
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="36"
-                  fill="none"
-                  stroke="hsl(41 50% 72%)"
-                  strokeWidth="1.5"
-                  strokeDasharray="226"
-                  strokeDashoffset="226"
-                  style={{ animation: 'stroke-draw 1.4s ease forwards' }}
-                />
-              </motion.svg>
-              <motion.svg
-                viewBox="0 0 40 48"
-                className="h-9 w-9"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.3, ease: EASE }}
-              >
-                <path
-                  d="M20 44 C20 44 4 30 4 16 C4 7.2 11.2 2 20 2 C28.8 2 36 7.2 36 16 C36 30 20 44 20 44Z"
-                  fill="none"
-                  stroke="hsl(30 25% 32%)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M20 44 L20 14"
-                  stroke="hsl(41 50% 62%)"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </motion.svg>
-            </div>
-
             {/* Brand name */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}

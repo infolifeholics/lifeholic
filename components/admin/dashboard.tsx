@@ -725,7 +725,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                         </td>
                         <td className="py-4 pr-4 text-muted-foreground">
                           <p className="text-foreground text-xs">{formatInTz(b.start_time, 'Asia/Kolkata', { dateStyle: 'medium', timeStyle: 'short' })}</p>
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Mode: {b.mode}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Mode: {b.mode === 'offline' ? 'online' : b.mode}</p>
                         </td>
                         <td className="py-4 pr-4 font-semibold text-foreground">
                           {b.amount ? `₹${b.amount}` : '—'}

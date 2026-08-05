@@ -217,11 +217,11 @@ export function AdminCalendarView({ onSelectBooking }: CalendarViewProps) {
               >
                 <div className="flex items-center gap-4">
                   <span className="text-xs font-mono font-semibold py-1 px-2.5 rounded-full bg-black/10">
-                    {new Date(b.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(b.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
                   </span>
                   <div>
                     <p className="font-semibold text-sm text-foreground">{b.service_title}</p>
-                    <p className="text-xs text-muted-foreground capitalize mt-0.5">Client: {b.client_name} &middot; Mode: {b.mode}</p>
+                    <p className="text-xs text-muted-foreground capitalize mt-0.5">Client: {b.client_name} &middot; Mode: {b.mode === 'offline' ? 'online' : b.mode}</p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 opacity-60" />

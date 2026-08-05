@@ -106,19 +106,12 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
                   </div>
                   <div className="flex items-center justify-between border-b border-border/50 pb-3">
                     <dt className="inline-flex items-center gap-2 text-muted-foreground"><Sparkles className="h-4 w-4" /> Format</dt>
-                    <dd className="font-medium text-foreground capitalize">{service.mode}</dd>
+                    <dd className="font-medium text-foreground capitalize">online</dd>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {service.mode !== 'offline' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2.5 py-1 text-xs text-muted-foreground">
-                        <Video className="h-3 w-3" /> Online
-                      </span>
-                    )}
-                    {service.mode !== 'online' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2.5 py-1 text-xs text-muted-foreground">
-                        <Globe className="h-3 w-3" /> In person
-                      </span>
-                    )}
+                    <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2.5 py-1 text-xs text-muted-foreground">
+                      <Video className="h-3 w-3" /> Online
+                    </span>
                   </div>
                   <div className="flex items-end justify-between border-t border-border/50 pt-4">
                     <dt className="text-muted-foreground">Starting from</dt>

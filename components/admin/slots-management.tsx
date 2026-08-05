@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { DAYS_OF_WEEK, DEFAULT_WEEKLY_SLOTS } from '@/lib/booking-utils';
 import { auth } from '@/lib/firebase';
+import { formatTimeTo12Hour } from '@/lib/format';
 
 type Slot = {
   id: string;
@@ -449,7 +450,7 @@ export function AdminSlotsManagement() {
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4 text-gold shrink-0" />
                             <span className="font-semibold text-foreground">
-                              {s.start_time} – {s.end_time}
+                              {formatTimeTo12Hour(s.start_time)} – {formatTimeTo12Hour(s.end_time)}
                             </span>
                           </div>
                           <button

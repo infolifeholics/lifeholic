@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
+import { cn, isValidAmazonUrl } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 import seedData from '@/lib/seed-data.json';
 
@@ -105,6 +105,7 @@ export function AdminProducts() {
       sales_count: 0,
       featured: false,
       best_seller: false,
+      amazonUrl: '',
       created_at: new Date().toISOString(),
     });
   };
@@ -217,6 +218,11 @@ export function AdminProducts() {
 
     if (price_inr === undefined || price_inr <= 0 || price_usd === undefined || price_usd <= 0) {
       toast.error('Prices must be positive numbers.');
+      return false;
+    }
+
+    if (editingProduct.amazonUrl && !isValidAmazonUrl(editingProduct.amazonUrl)) {
+      toast.error('Please enter a valid Amazon product URL.');
       return false;
     }
 
@@ -405,6 +411,17 @@ export function AdminProducts() {
                   onChange={(e) => setEditingProduct({ ...editingProduct, tagline: e.target.value })}
                   className="mt-1.5 rounded-xl"
                   placeholder="A hand-poured sage candle for grounding rituals."
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="prod-amazon">Amazon Product URL (Optional)</Label>
+                <Input
+                  id="prod-amazon"
+                  value={editingProduct.amazonUrl || ''}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, amazonUrl: e.target.value })}
+                  className="mt-1.5 rounded-xl"
+                  placeholder="e.g. https://www.amazon.in/dp/B073XJ7Z16"
                 />
               </div>
 

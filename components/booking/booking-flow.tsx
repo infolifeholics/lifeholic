@@ -314,15 +314,9 @@ export function BookingFlow({ services }: { services: Service[] }) {
   };
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
-  // Determine available modes from all slots if none is selected
-  const availableModes = useMemo(() => {
-    if (selectedSlot) return selectedSlot.modes || [];
-    const allModes = new Set<string>();
-    slots.forEach(s => s.modes?.forEach(m => allModes.add(m)));
-    return allModes.size > 0 ? Array.from(allModes) as ('online' | 'offline')[] : ['online', 'offline'];
-  }, [selectedSlot, slots]);
-
-  const effectiveMode = (availableModes.includes(mode) ? mode : availableModes[0] || 'online') as 'online' | 'offline';
+  // We only support online mode
+  const availableModes = ['online'] as ('online' | 'offline')[];
+  const effectiveMode = 'online';
 
   return (
     <div ref={containerRef} className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">

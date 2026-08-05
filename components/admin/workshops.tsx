@@ -160,6 +160,7 @@ export function AdminWorkshops() {
         ...editingWs,
         id,
         slug,
+        type: 'online',
       };
 
       await setDoc(doc(db, 'workshops', id), finalWs, { merge: true });
@@ -644,13 +645,11 @@ export function AdminWorkshops() {
             <div>
               <Label>Type</Label>
               <select
-                value={editingWs.type || 'online'}
-                onChange={(e: any) => setEditingWs({ ...editingWs, type: e.target.value })}
-                className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+                value="online"
+                disabled
+                className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold cursor-not-allowed opacity-80"
               >
                 <option value="online">Online</option>
-                <option value="offline">Offline</option>
-                <option value="hybrid">Hybrid</option>
               </select>
             </div>
             <div>

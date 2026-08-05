@@ -434,15 +434,10 @@ function SomaticBookingFlowContent() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="mode" className="text-xs">Session Mode</Label>
-                  <Select value={mode} onValueChange={(v: any) => setMode(v)}>
-                    <SelectTrigger id="mode" className="rounded-xl border-border/60">
-                      <SelectValue placeholder="Select mode" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="online">Online (Google Meet)</SelectItem>
-                      <SelectItem value="offline">Offline (In-Person Mumbai)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    Online (Google Meet)
+                  </div>
                 </div>
               </div>
 

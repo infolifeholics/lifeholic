@@ -89,7 +89,7 @@ export async function triggerBookingNotification(
 
   const dateObj = new Date(start_time);
   const formatterDate = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', dateStyle: 'medium' });
-  const formatterTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', timeStyle: 'short' });
+  const formatterTime = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', timeStyle: 'short', hour12: true });
   const dateStr = formatterDate.format(dateObj);
   const timeStr = formatterTime.format(dateObj);
 

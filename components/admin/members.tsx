@@ -290,7 +290,7 @@ export function AdminMembers() {
                                   <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-gold/10 text-gold border border-gold/20">
                                     {sessionCountText}
                                   </span>
-                                  <p className="font-medium text-foreground">{b.service_title || `${b.mode} Session`}</p>
+                                  <p className="font-medium text-foreground">{b.service_title || `${b.mode === 'offline' ? 'online' : b.mode} Session`}</p>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1.5">{formatInTz(b.start_time, 'Asia/Kolkata', { dateStyle: 'medium', timeStyle: 'short' })}</p>
                               </div>

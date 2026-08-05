@@ -157,7 +157,7 @@ export function AccountDashboard() {
   const { ids: wishlistIds, toggle: toggleWishlist } = useWishlist();
 
   useEffect(() => {
-    getDocs(collection(db, 'products'))
+    getDocs(query(collection(db, 'products'), where('is_active', '==', true)))
       .then((snap) => setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product)))
       .catch((err) => console.error('Error fetching products:', err));
 
@@ -936,7 +936,7 @@ export function AccountDashboard() {
                             <div className="flex justify-between items-start gap-2 flex-wrap">
                               <p className="font-semibold text-xs text-foreground uppercase tracking-wider">{n.category || 'General'}</p>
                               <p className="text-[10px] text-muted-foreground">
-                                {dt.toLocaleDateString()} {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {dt.toLocaleDateString()} {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
                               </p>
                             </div>
                             <p className="font-medium text-xs text-foreground mt-0.5">{n.title}</p>

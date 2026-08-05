@@ -497,7 +497,7 @@ export function AdminTodaysBookings() {
                   <div>
                     <h4 className="text-xs font-semibold text-gold uppercase tracking-wider">Booking Created Time</h4>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(selectedBooking.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                      {new Date(selectedBooking.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true })}
                     </p>
                   </div>
                 )}
@@ -525,7 +525,7 @@ export function AdminTodaysBookings() {
                     {selectedBooking.status_timeline.map((entry, index) => (
                       <div key={index} className="flex gap-2 text-xs border-l-2 border-border/40 pl-2 ml-1">
                         <div className="flex-1">
-                          <p className="font-semibold capitalize text-foreground">{entry.status} &bull; <span className="text-[10px] text-muted-foreground font-normal">{new Date(entry.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</span></p>
+                          <p className="font-semibold capitalize text-foreground">{entry.status} &bull; <span className="text-[10px] text-muted-foreground font-normal">{new Date(entry.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true })}</span></p>
                           {entry.note && <p className="text-[10px] text-muted-foreground mt-0.5">{entry.note}</p>}
                         </div>
                       </div>

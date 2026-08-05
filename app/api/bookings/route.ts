@@ -16,7 +16,7 @@ const bookingBodySchema = z.object({
   client_timezone: z.string().optional().nullable(),
   start_time: z.string().min(1),
   end_time: z.string().min(1),
-  mode: z.enum(['online', 'offline']),
+  mode: z.enum(['online', 'offline']).optional().default('online'),
   notes: z.string().optional().nullable(),
   amount: z.number().optional().nullable(),
   currency: z.string().optional().nullable(),
@@ -51,7 +51,6 @@ export async function POST(req: Request) {
       client_timezone,
       start_time,
       end_time,
-      mode,
       notes,
       amount,
       currency,
@@ -65,13 +64,14 @@ export async function POST(req: Request) {
     } = parsed.data;
 
     const isSomatic = is_somatic_plan === true;
+    const mode = 'online';
 
     if (isSomatic) {
-      if (!somatic_plan_name || !client_name || !client_email || !start_time || !end_time || !mode) {
+      if (!somatic_plan_name || !client_name || !client_email || !start_time || !end_time) {
         return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
       }
     } else {
-      if (!service_id || !client_name || !client_email || !start_time || !end_time || !mode) {
+      if (!service_id || !client_name || !client_email || !start_time || !end_time) {
         return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
       }
     }
@@ -81,9 +81,6 @@ export async function POST(req: Request) {
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client_email)) {
       return NextResponse.json({ error: 'Valid email is required.' }, { status: 400 });
-    }
-    if (!['online', 'offline'].includes(mode)) {
-      return NextResponse.json({ error: 'Invalid mode.' }, { status: 400 });
     }
 
     let service: any;
@@ -115,9 +112,6 @@ export async function POST(req: Request) {
     const expectedDuration = (end.getTime() - start.getTime()) / 60_000;
     if (Math.abs(expectedDuration - service.duration_minutes) > 1) {
       return NextResponse.json({ error: 'Session duration mismatch.' }, { status: 400 });
-    }
-    if (!isSomatic && ((service.mode === 'online' && mode === 'offline') || (service.mode === 'offline' && mode === 'online'))) {
-      return NextResponse.json({ error: 'Mode not available for this service.' }, { status: 400 });
     }
 
     // Fetch all active healers

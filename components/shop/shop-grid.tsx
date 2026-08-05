@@ -207,64 +207,84 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                     </div>
 
                     <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/40 pt-3">
-                      <button className="inline-flex items-center justify-center h-8 rounded-full px-4 text-xs font-semibold bg-gold text-black border border-gold transition-all hover:bg-gold/90">
-                        Details
-                      </button>
-                      {(() => {
-                        const cartItem = items.find((item) => item.id === p.id);
-                        if (cartItem) {
-                          return (
-                            <div
-                              className="flex items-center gap-1"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                            >
-                              <div className="flex items-center rounded-full border border-border bg-card h-8">
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleDecrement(p.id, cartItem.quantity);
-                                  }}
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-l-full text-foreground hover:bg-secondary"
-                                  aria-label="Decrease quantity"
-                                >
-                                  <Minus className="h-3 w-3" />
-                                </button>
-                                <span className="w-5 text-center text-xs font-semibold">{cartItem.quantity}</span>
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleIncrement(p.id, cartItem.quantity);
-                                  }}
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-r-full text-foreground hover:bg-secondary"
-                                  aria-label="Increase quantity"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 rounded-full px-3 text-xs"
+                      {p.amazonUrl ? (
+                        <div className="flex items-center gap-2 w-full justify-between">
+                          <button
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              handleAddToCart(p);
+                              window.open(p.amazonUrl, '_blank');
                             }}
+                            className="inline-flex items-center justify-center h-8 rounded-full px-4 text-xs font-semibold bg-gold text-black border border-gold transition-all hover:bg-gold/90"
                           >
-                            Add to Cart
-                          </Button>
-                        );
-                      })()}
+                            Buy on Amazon
+                          </button>
+                          <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider bg-secondary/50 px-2.5 py-1 rounded-full">
+                            From Amazon
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          <button className="inline-flex items-center justify-center h-8 rounded-full px-4 text-xs font-semibold bg-gold text-black border border-gold transition-all hover:bg-gold/90">
+                            Details
+                          </button>
+                          {(() => {
+                            const cartItem = items.find((item) => item.id === p.id);
+                            if (cartItem) {
+                              return (
+                                <div
+                                  className="flex items-center gap-1"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <div className="flex items-center rounded-full border border-border bg-card h-8">
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleDecrement(p.id, cartItem.quantity);
+                                      }}
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-l-full text-foreground hover:bg-secondary"
+                                      aria-label="Decrease quantity"
+                                    >
+                                      <Minus className="h-3 w-3" />
+                                    </button>
+                                    <span className="w-5 text-center text-xs font-semibold">{cartItem.quantity}</span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleIncrement(p.id, cartItem.quantity);
+                                      }}
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-r-full text-foreground hover:bg-secondary"
+                                      aria-label="Increase quantity"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 rounded-full px-3 text-xs"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleAddToCart(p);
+                                }}
+                              >
+                                Add to Cart
+                              </Button>
+                            );
+                          })()}
+                        </>
+                      )}
                     </div>
                   </div>
                 </article>

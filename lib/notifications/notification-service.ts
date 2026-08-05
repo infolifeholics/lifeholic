@@ -58,7 +58,7 @@ export async function notifyAdmins(
         if (b.start_time) {
           const dateObj = new Date(b.start_time);
           const formatterDate = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', dateStyle: 'medium' });
-          const formatterTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', timeStyle: 'short' });
+          const formatterTime = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', timeStyle: 'short', hour12: true });
           sessionDate = formatterDate.format(dateObj);
           sessionTime = formatterTime.format(dateObj) + ' IST';
         }

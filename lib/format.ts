@@ -44,13 +44,35 @@ export function detectTimezone(): string {
 
 export function formatInTz(iso: string, tz: string, opts?: Intl.DateTimeFormatOptions): string {
   try {
-    return new Intl.DateTimeFormat('en-US', {
+    // Force hour12: true for consistent AM/PM display across all environments
+    const options: Intl.DateTimeFormatOptions = {
       timeZone: tz,
-      dateStyle: opts?.dateStyle ?? 'medium',
-      timeStyle: opts?.timeStyle ?? 'short',
+      hour12: true,
       ...opts,
-    }).format(new Date(iso));
+    };
+    if (!opts?.dateStyle && !opts?.timeStyle) {
+      options.dateStyle = 'medium';
+      options.timeStyle = 'short';
+    }
+    return new Intl.DateTimeFormat('en-US', options).format(new Date(iso));
   } catch {
-    return new Date(iso).toLocaleString();
+    return new Date(iso).toLocaleString('en-US', { hour12: true });
+  }
+}
+
+export function formatTimeTo12Hour(timeStr: string): string {
+  if (!timeStr) return '';
+  try {
+    const parts = timeStr.trim().split(':');
+    if (parts.length < 2) return timeStr;
+    let hours = parseInt(parts[0], 10);
+    const minutes = parts[1];
+    if (isNaN(hours)) return timeStr;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // '0' becomes '12'
+    return `${hours}:${minutes} ${ampm}`;
+  } catch {
+    return timeStr;
   }
 }

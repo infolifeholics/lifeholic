@@ -14,6 +14,8 @@ import { getProductRoute } from '@/lib/routes';
 import { SectionHeading } from '@/components/site/section-heading';
 
 import { ProductGallery } from '@/components/shop/product-gallery';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export async function generateStaticParams() {
   const products = await getProducts();
@@ -119,18 +121,37 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </ul>
 
             <div className="mt-8">
-              <AddToCart
-                product={{
-                  id: product.id,
-                  slug: product.slug,
-                  name: product.name,
-                  price_inr: product.price_inr,
-                  price_usd: product.price_usd,
-                  image: product.image,
-                  type: product.type,
-                  stock: product.stock,
-                }}
-              />
+              {product.amazonUrl ? (
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <a
+                    href={product.amazonUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      buttonVariants({ size: 'lg' }),
+                      "flex-1 rounded-full bg-gold hover:bg-gold-hover text-black font-semibold text-center transition-all duration-300"
+                    )}
+                  >
+                    Buy on Amazon
+                  </a>
+                  <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider bg-secondary/50 px-3.5 py-2 rounded-full whitespace-nowrap self-start sm:self-center">
+                    From Amazon
+                  </span>
+                </div>
+              ) : (
+                <AddToCart
+                  product={{
+                    id: product.id,
+                    slug: product.slug,
+                    name: product.name,
+                    price_inr: product.price_inr,
+                    price_usd: product.price_usd,
+                    image: product.image,
+                    type: product.type,
+                    stock: product.stock,
+                  }}
+                />
+              )}
             </div>
 
             <div className="mt-6 grid grid-cols-3 gap-3 text-xs">

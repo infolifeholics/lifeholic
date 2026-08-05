@@ -51,7 +51,7 @@ export function AdminServices() {
       duration_minutes: 60,
       price_inr: 2000,
       price_usd: 30,
-      mode: 'both',
+      mode: 'online',
       image: 'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=1200',
       category: 'Therapy',
       featured: true,
@@ -102,6 +102,7 @@ export function AdminServices() {
         ...editingService,
         id,
         slug,
+        mode: 'online',
         benefits: editingService.benefits?.filter(Boolean) || [],
         process: editingService.process?.filter(Boolean) || [],
         active: editingService.active !== false,
@@ -218,13 +219,11 @@ export function AdminServices() {
               <Label htmlFor="s-mode">Delivery Mode</Label>
               <select
                 id="s-mode"
-                value={editingService.mode || 'both'}
-                onChange={(e) => setEditingService({ ...editingService, mode: e.target.value as any })}
-                className="mt-1.5 block w-full rounded-2xl border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                value="online"
+                disabled
+                className="mt-1.5 block w-full rounded-2xl border border-input bg-background/50 px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-not-allowed opacity-80"
               >
                 <option value="online">Online Only</option>
-                <option value="offline">In Person Only</option>
-                <option value="both">Both (Online & In Person)</option>
               </select>
             </div>
             <div>

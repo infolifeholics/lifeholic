@@ -58,16 +58,9 @@ export default async function ServicesPage() {
                       <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{s.short}</p>
 
                       <div className="mt-4 flex flex-wrap gap-1.5">
-                        {s.mode !== 'offline' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2 py-1 text-[10px] text-muted-foreground">
-                            <Video className="h-3 w-3" /> Online
-                          </span>
-                        )}
-                        {s.mode !== 'online' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2 py-1 text-[10px] text-muted-foreground">
-                            <Globe className="h-3 w-3" /> In person
-                          </span>
-                        )}
+                        <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2 py-1 text-[10px] text-muted-foreground">
+                          <Video className="h-3 w-3" /> Online
+                        </span>
                       </div>
 
                       <div className="mt-auto flex items-center justify-between border-t border-border/50 pt-4">

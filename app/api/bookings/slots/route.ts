@@ -74,7 +74,7 @@ export async function GET(req: Request) {
           end: endUTC.toISOString(),
           start_time: slot.start_time,
           end_time: slot.end_time,
-          modes: ['online', 'offline'] as ('online' | 'offline')[]
+          modes: ['online'] as ('online' | 'offline')[]
         };
       })
       .filter(slot => {
