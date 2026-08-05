@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
+import { promises as fs } from 'fs';
+import path from 'path';
+import os from 'os';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -31,18 +34,48 @@ export async function POST(req: NextRequest) {
       resourceType = 'image';
     }
 
-    const uploadResult = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        {
-          folder: 'thelifeholics',
-          resource_type: resourceType as any,
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      ).end(buffer);
-    });
+    let uploadResult;
+
+    if (isVideo || isAudio) {
+      // Use upload_large to support chunked uploads for large video/audio files
+      const tempDir = os.tmpdir();
+      const tempFilePath = path.join(tempDir, `${Date.now()}-${file.name}`);
+      await fs.writeFile(tempFilePath, buffer);
+
+      try {
+        uploadResult = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload_large(
+            tempFilePath,
+            {
+              folder: 'thelifeholics',
+              resource_type: 'video',
+              chunk_size: 6000000, // 6MB chunks
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+        });
+      } finally {
+        // Clean up temp file
+        await fs.unlink(tempFilePath).catch(() => {});
+      }
+    } else {
+      // Use upload_stream for images
+      uploadResult = await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          {
+            folder: 'thelifeholics',
+            resource_type: resourceType as any,
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        ).end(buffer);
+      });
+    }
 
     return NextResponse.json({
       url: (uploadResult as any).secure_url,
@@ -53,3 +86,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message || 'Upload failed' }, { status: 500 });
   }
 }
+

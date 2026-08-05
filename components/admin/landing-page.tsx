@@ -126,7 +126,10 @@ export function AdminLandingPage() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error('Upload server error');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Upload server error');
+      }
 
       const { url: cloudinaryUrl, public_id: cloudinaryPublicId } = await res.json();
       if (!cloudinaryUrl) throw new Error('Upload did not return URL');
@@ -174,7 +177,10 @@ export function AdminLandingPage() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error('Upload server error');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Upload server error');
+      }
 
       const { url: cloudinaryUrl } = await res.json();
       if (!cloudinaryUrl) throw new Error('Upload did not return URL');
@@ -251,7 +257,10 @@ export function AdminLandingPage() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error('Video upload failed.');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Video upload failed.');
+      }
       const data = await res.json();
 
       // Delete old video from Cloudinary if exists
@@ -315,7 +324,10 @@ export function AdminLandingPage() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error('Music upload failed.');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Music upload failed.');
+      }
       const data = await res.json();
 
       // Delete old music from Cloudinary if exists
