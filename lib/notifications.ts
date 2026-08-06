@@ -97,6 +97,18 @@ export async function triggerBookingNotification(
 
   try {
     const { queueNotification, notifyAdmins } = await import('@/lib/notifications/notification-service');
+    const { doc, getDoc } = await import('firebase/firestore');
+
+    // Fetch default meet link from global settings
+    let defaultMeetLink = '';
+    try {
+      const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
+      if (settingsSnap.exists()) {
+        defaultMeetLink = settingsSnap.data().google_meet_link || '';
+      }
+    } catch (e) {
+      console.error('Error fetching global settings for meet link:', e);
+    }
 
     const vars = {
       memberName: client_name,
@@ -105,7 +117,7 @@ export async function triggerBookingNotification(
       bookingId: bookingId,
       bookingStatus: eventType === 'created' ? 'pending' : (eventType === 'meeting_updated' ? 'rescheduled' : eventType),
       actionDetails: service_title,
-      meetLink: bookingData.meeting_link || '',
+      meetLink: bookingData.meeting_link || defaultMeetLink,
     };
 
     let templateType: any = 'booking_status_changed';

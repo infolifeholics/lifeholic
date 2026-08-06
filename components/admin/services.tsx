@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ export function AdminServices() {
   const [loading, setLoading] = useState(true);
   const [editingService, setEditingService] = useState<Partial<Service> | null>(null);
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchServices = async () => {
     try {
@@ -60,23 +61,47 @@ export function AdminServices() {
     } as any);
   };
 
+  const uploadToCloudinaryDirect = async (file: File, isVideoOrAudio: boolean) => {
+    const signRes = await fetch('/api/upload/sign', { method: 'POST' });
+    if (!signRes.ok) {
+      const err = await signRes.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to generate upload signature');
+    }
+    const { signature, timestamp, cloudName, apiKey, folder } = await signRes.json();
+
+    const resourceType = isVideoOrAudio ? 'video' : 'image';
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', String(timestamp));
+    formData.append('signature', signature);
+    formData.append('folder', folder);
+
+    const uploadRes = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!uploadRes.ok) {
+      const err = await uploadRes.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Direct Cloudinary upload failed');
+    }
+
+    const data = await uploadRes.json();
+    return {
+      url: data.secure_url,
+      public_id: data.public_id,
+    };
+  };
+
   const handleImageUpload = async (file: File) => {
     if (!file) return;
     setUploading(true);
     const toastId = toast.loading('Uploading image to Cloudinary...');
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error('Upload error');
-      const { url } = await res.json();
-      if (!url) throw new Error('No URL returned');
-
+      const { url } = await uploadToCloudinaryDirect(file, false);
       setEditingService((prev) => (prev ? { ...prev, image: url } : null));
       toast.success('Image uploaded successfully!', { id: toastId });
     } catch (err: any) {
@@ -277,25 +302,33 @@ export function AdminServices() {
             <div className="flex items-center gap-4">
               <div className="h-20 w-28 overflow-hidden rounded-xl border border-border bg-background-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={editingService.image} alt="Service Preview" className="h-full w-full object-cover" />
+                <img 
+                  src={editingService.image || 'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=700'} 
+                  alt="Service Preview" 
+                  className="h-full w-full object-cover" 
+                />
               </div>
               <div>
-                <label className="cursor-pointer">
-                  <span className="sr-only">Upload file</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    disabled={uploading}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file);
-                    }}
-                    className="hidden"
-                  />
-                  <Button type="button" variant="outline" className="rounded-full flex items-center gap-2">
-                    <UploadCloud className="h-4 w-4" /> Upload Image
-                  </Button>
-                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(file);
+                  }}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-full gap-2 h-10 px-4"
+                >
+                  <UploadCloud className="h-4 w-4" /> Upload Image
+                </Button>
               </div>
             </div>
           </div>

@@ -52,6 +52,22 @@ export async function POST(req: Request) {
         seats_booked: Math.min(seatsTotal, seatsBooked + 1),
       });
 
+      // Update coupon usage count if a coupon was used
+      if (reg.coupon_code) {
+        const couponRef = doc(db, 'coupons', reg.coupon_code.toUpperCase());
+        const couponDoc = await transaction.get(couponRef);
+        if (couponDoc.exists()) {
+          const currentCount = couponDoc.data().usage_count || 0;
+          const usageLimit = couponDoc.data().usage_limit;
+          if (usageLimit && currentCount >= usageLimit) {
+            throw new Error('Sorry, you are late! Coupon usage limit reached.');
+          }
+          transaction.update(couponRef, {
+            usage_count: currentCount + 1
+          });
+        }
+      }
+
       // Update registration details
       transaction.update(regDoc.ref, {
         payment_status: 'paid',

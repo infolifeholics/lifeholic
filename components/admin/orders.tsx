@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Package, ArrowLeft, Mail, MessageSquare, Phone, User, ExternalLink, ShieldCheck, MapPin, Tag } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -56,16 +57,50 @@ export function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Detail selection states
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [memberProfile, setMemberProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
+
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    const toastId = toast.loading(`Updating order status to ${newStatus}...`);
+    try {
+      await updateDoc(doc(db, 'orders', id), { status: newStatus });
+      toast.success('Order status updated successfully!', { id: toastId });
+      
+      // Update local state
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+      if (selectedOrder && selectedOrder.id === id) {
+        setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+    } catch (err: any) {
+      toast.error('Failed to update status: ' + err.message, { id: toastId });
+    }
+  };
+
+  const handleDeleteOrder = async (id: string) => {
+    if (!confirm('Are you sure you want to permanently delete this order?')) return;
+    const toastId = toast.loading('Deleting order...');
+    try {
+      await deleteDoc(doc(db, 'orders', id));
+      toast.success('Order deleted successfully!', { id: toastId });
+      
+      // Update local state
+      setOrders(prev => prev.filter(o => o.id !== id));
+      if (selectedOrder && selectedOrder.id === id) {
+        setSelectedOrder(null);
+      }
+    } catch (err: any) {
+      toast.error('Failed to delete order: ' + err.message, { id: toastId });
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'orders'), orderBy('created_at', 'desc'), limit(100));
     getDocs(q)
       .then((snap) => {
-        const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Order);
+        const list = snap.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }) as Order)
+          .filter((o) => !!o.address);
         setOrders(list);
         setLoading(false);
       })
@@ -127,9 +162,30 @@ export function AdminOrders() {
                   <h3 className="font-display text-lg font-medium text-foreground">Order Items</h3>
                   <p className="text-xs text-muted-foreground">Order Ref: {order.number}</p>
                 </div>
-                <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold capitalize', statusColor(order.status))}>
-                  {order.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  {order.status !== 'fulfilled' && (
+                    <Button 
+                      type="button"
+                      onClick={() => handleUpdateStatus(order.id, 'fulfilled')}
+                      size="sm" 
+                      className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 h-8"
+                    >
+                      Ready (Deliver)
+                    </Button>
+                  )}
+                  <Button 
+                    type="button"
+                    onClick={() => handleDeleteOrder(order.id)}
+                    size="sm" 
+                    variant="destructive"
+                    className="rounded-full text-xs px-3 h-8"
+                  >
+                    Delete
+                  </Button>
+                  <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold capitalize', statusColor(order.status))}>
+                    {order.status}
+                  </span>
+                </div>
               </div>
 
               <ul className="divide-y divide-border/40">
@@ -307,16 +363,26 @@ export function AdminOrders() {
               )}
 
               {/* Shipping Address */}
-              {order.address && (
+              {(order.address || memberProfile?.address) && (
                 <div className="pt-5 border-t border-border/40 space-y-2">
                   <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5 text-primary" /> Shipping Delivery Address
                   </span>
                   <div className="text-sm text-foreground bg-secondary/20 border border-border/40 p-3.5 rounded-2xl space-y-1">
-                    <p>{order.full_name}</p>
-                    <p>{order.address.line1}</p>
-                    <p>{order.address.city}, {order.address.state} - {order.address.postal_code}</p>
-                    <p className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mt-1">{order.address.country}</p>
+                    <p className="font-semibold">{order.full_name || memberProfile?.full_name || 'Recipient name not provided'}</p>
+                    {order.address ? (
+                      typeof order.address === 'string' ? (
+                        <p>{order.address}</p>
+                      ) : (
+                        <>
+                          <p>{order.address.line1 || ''}{order.address.line2 ? `, ${order.address.line2}` : ''}</p>
+                          <p>{order.address.city || ''}, {order.address.state || ''} - {order.address.postal_code || ''}</p>
+                          <p className="font-semibold text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{order.address.country || 'India'}</p>
+                        </>
+                      )
+                    ) : (
+                      <p>{memberProfile?.address}</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -352,9 +418,43 @@ export function AdminOrders() {
               </li>
             ))}
           </ul>
-          <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-3 text-sm">
+          {o.address && (
+            <div className="mt-3 bg-secondary/20 border border-border/30 p-3 rounded-xl text-xs space-y-0.5 text-left" onClick={(e) => e.stopPropagation()}>
+              <span className="font-semibold text-muted-foreground text-[10px] uppercase block tracking-wider flex items-center gap-1">
+                <MapPin className="h-3 w-3 text-gold" /> Delivery Address:
+              </span>
+              {typeof o.address === 'string' ? (
+                <p className="text-foreground">{o.address}</p>
+              ) : (
+                <p className="text-foreground leading-relaxed mt-0.5">
+                  {o.address.line1 || ''}{o.address.line2 ? `, ${o.address.line2}` : ''}, {o.address.city || ''}, {o.address.state || ''} - {o.address.postal_code || ''} ({o.address.country || 'India'})
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-3 text-sm flex-wrap gap-2">
             <span className="text-muted-foreground">{new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-            <span className="font-medium text-foreground">{formatPrice(o.total, o.currency as 'INR' | 'USD')}</span>
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              {o.status !== 'fulfilled' && (
+                <Button
+                  type="button"
+                  onClick={() => handleUpdateStatus(o.id, 'fulfilled')}
+                  className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-2.5 h-7"
+                >
+                  Ready
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => handleDeleteOrder(o.id)}
+                className="rounded-full text-[10px] px-2.5 h-7"
+              >
+                Delete
+              </Button>
+              <span className="font-medium text-foreground ml-2">{formatPrice(o.total, o.currency as 'INR' | 'USD')}</span>
+            </div>
           </div>
         </div>
       ))}

@@ -85,7 +85,7 @@ export default function WorkshopsPage() {
           <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
             WORKSHOPS
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+          <p className="text-sm sm:text-base text-black font-medium leading-relaxed">
             At Lifeholics, our workshops are designed to help you understand yourself on a deeper level while experiencing practical healing techniques that you can apply in your daily life. Each workshop focuses on a specific area of healing and personal transformation.
           </p>
         </div>
@@ -136,7 +136,7 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
   const pct = Math.round((w.seats_booked / w.seats_total) * 100);
 
   return (
-    <article className="group relative h-full overflow-hidden rounded-3xl border border-border/60 bg-card p-4 hover:border-gold/30 hover:shadow-soft transition-all duration-300 flex flex-col justify-between">
+    <article className="group relative h-full overflow-hidden rounded-3xl border border-white/20 bg-white/40 backdrop-blur-md p-4 hover:border-gold/30 hover:shadow-soft transition-all duration-300 flex flex-col justify-between">
       <div className="space-y-4">
         <div className="aspect-[16/10] overflow-hidden rounded-2xl relative border border-border/20">
           <img src={w.image} alt={w.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-103" />

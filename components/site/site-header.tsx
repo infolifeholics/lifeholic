@@ -21,7 +21,6 @@ const NAV = [
   { href: '/services', label: 'Services' },
   { href: '/workshops', label: 'Workshops' },
   { href: '/shop', label: 'Shop' },
-  { href: '/blog', label: 'Journal' },
   { href: '/contact', label: 'Contact' },
 ];
 
@@ -177,17 +176,17 @@ export function SiteHeader() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'relative rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-300 border border-transparent',
+                    'relative rounded-full px-5 py-2.5 text-sm font-bold transition-all duration-300 border border-transparent',
                     isActive(item.href)
-                      ? 'text-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-black/10 hover:backdrop-blur-md hover:border-white/5 hover:shadow-soft hover:scale-105'
+                      ? 'text-black'
+                      : 'text-black/85 hover:text-black hover:bg-black/10 hover:backdrop-blur-md hover:border-black/5 hover:shadow-soft hover:scale-105'
                   )}
                 >
                   <span className="relative z-10">{item.label}</span>
                   {isActive(item.href) && (
                     <motion.span
                       layoutId="activeNav"
-                      className="absolute inset-0 z-0 rounded-full bg-white/10 shadow-soft"
+                      className="absolute inset-0 z-0 rounded-full bg-black/5 shadow-soft"
                       transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                     />
                   )}
@@ -198,7 +197,7 @@ export function SiteHeader() {
             <div className="flex items-center gap-2">
               <Link
                 href="/shop/wishlist"
-                className="hidden rounded-full p-2.5 text-muted-foreground transition-all hover:bg-white/10 hover:text-foreground sm:inline-flex"
+                className="hidden rounded-full p-2.5 text-black/85 transition-all hover:bg-black/10 hover:text-black sm:inline-flex"
                 aria-label="Wishlist"
               >
                 <Heart className="h-[18px] w-[18px]" />
@@ -210,7 +209,7 @@ export function SiteHeader() {
               </Link>
               <Link
                 href="/shop/cart"
-                className="relative rounded-full p-2.5 text-muted-foreground transition-all hover:bg-white/10 hover:text-foreground"
+                className="relative rounded-full p-2.5 text-black/85 transition-all hover:bg-black/10 hover:text-black"
                 aria-label="Cart"
               >
                 <ShoppingBag className="h-[18px] w-[18px]" />
@@ -224,7 +223,7 @@ export function SiteHeader() {
                 <div className="relative">
                   <button
                     onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-                    className="relative rounded-full p-2.5 text-muted-foreground transition-all hover:bg-white/10 hover:text-foreground"
+                    className="relative rounded-full p-2.5 text-black/85 transition-all hover:bg-black/10 hover:text-black"
                     aria-label="Notifications"
                   >
                     <Bell className="h-[18px] w-[18px]" />
@@ -307,7 +306,7 @@ export function SiteHeader() {
               )}
               <Link
                 href={user ? '/account' : '/auth/login'}
-                className="hidden rounded-full p-2.5 text-muted-foreground transition-all hover:bg-white/10 hover:text-foreground sm:inline-flex"
+                className="hidden rounded-full p-2.5 text-black/85 transition-all hover:bg-black/10 hover:text-black sm:inline-flex"
                 aria-label="Account"
               >
                 <User className="h-[18px] w-[18px]" />
@@ -316,7 +315,7 @@ export function SiteHeader() {
                 <Link href="/booking">Book a Session</Link>
               </Button>
               <button
-                className="rounded-full p-2.5 text-foreground lg:hidden hover:bg-white/10 transition-colors"
+                className="rounded-full p-2.5 text-black lg:hidden hover:bg-black/10 transition-colors"
                 aria-label="Toggle menu"
                 onClick={() => setOpen((v) => !v)}
               >

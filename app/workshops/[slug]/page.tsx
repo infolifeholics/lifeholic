@@ -44,6 +44,13 @@ export default function WorkshopDetailsPage() {
   const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
   const [relatedWs, setRelatedWs] = useState<Workshop[]>([]);
 
+  // Coupon promo code states
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [discount, setDiscount] = useState(0);
+  const [applying, setApplying] = useState(false);
+  const [activeCouponBanner, setActiveCouponBanner] = useState<any>(null);
+
   useEffect(() => {
     // Real-time listener for seats sync
     const q = query(collection(db, 'workshops'), where('slug', '==', slug));
@@ -99,6 +106,63 @@ export default function WorkshopDetailsPage() {
     });
     return () => unsub();
   }, [slug]);
+
+  useEffect(() => {
+    // Fetch active coupons for workshops to show the remaining slots banner
+    getDocs(collection(db, 'coupons'))
+      .then((snap) => {
+        const list = snap.docs.map(doc => doc.data());
+        const wCoupon = list.find((c: any) => c.active === true && (c.applicable_to === 'workshops' || c.applicable_to === 'all'));
+        if (wCoupon) {
+          const remaining = (wCoupon.usage_limit || 0) - (wCoupon.usage_count || 0);
+          if (remaining > 0) {
+            setActiveCouponBanner({
+              code: wCoupon.code,
+              remaining,
+              value: wCoupon.value,
+              type: wCoupon.type
+            });
+          }
+        }
+      })
+      .catch((e) => console.error('Error fetching workshop coupons:', e));
+  }, [ws]);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode) return;
+    setApplying(true);
+    try {
+      const res = await fetch('/api/coupons/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: couponCode,
+          amount: ws?.price_inr || 0,
+          context: 'workshops',
+        }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setDiscount(data.discount);
+        setAppliedCoupon(data.code);
+        toast.success(`Coupon "${data.code}" applied! You saved ${formatPrice(data.discount, 'INR')}`);
+      } else {
+        toast.error(data.error || 'Invalid or expired coupon code. Sorry, you are late!');
+      }
+    } catch {
+      toast.error('Could not apply coupon.');
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setDiscount(0);
+    toast.info('Coupon code removed.');
+  };
 
   useEffect(() => {
     if (user) {
@@ -180,6 +244,7 @@ export default function WorkshopDetailsPage() {
           country,
           notes,
           user_id: user?.uid,
+          coupon_code: appliedCoupon || null,
         }),
       });
 
@@ -462,10 +527,24 @@ export default function WorkshopDetailsPage() {
           {/* Registration Sidebar */}
           <div className="lg:col-span-4 space-y-6">
             <div className="rounded-3xl border border-border bg-card p-6 shadow-soft space-y-6 sticky top-24">
-              <h3 className="font-display text-lg font-medium text-foreground flex items-center gap-2">
-                <FileText className="h-5 w-5 text-gold" />
-                <span>Logistics &amp; Booking</span>
-              </h3>
+              <div className="space-y-2">
+                <h3 className="font-display text-lg font-medium text-foreground flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-gold" />
+                  <span>Logistics &amp; Booking</span>
+                </h3>
+
+                {activeCouponBanner && (
+                  <div className="bg-amber-950/20 border border-amber-500/20 text-[11px] text-amber-200 p-3 rounded-2xl flex flex-col gap-1 select-none animate-pulse">
+                    <p className="font-semibold flex items-center gap-1">
+                      <Sparkles className="h-3.5 w-3.5 text-gold shrink-0" />
+                      <span>Hurry up! Grab your coupon!</span>
+                    </p>
+                    <p className="leading-relaxed">
+                      Only <span className="font-bold text-gold">{activeCouponBanner.remaining} slots</span> remaining to get {activeCouponBanner.value}{activeCouponBanner.type === 'percent' ? '%' : ' INR'} off using code <span className="font-mono font-bold bg-amber-500/20 px-1.5 py-0.5 rounded text-white">{activeCouponBanner.code}</span>!
+                    </p>
+                  </div>
+                )}
+              </div>
 
               <div className="space-y-3 text-xs text-muted-foreground">
                 <div className="flex gap-2 items-center">
@@ -523,10 +602,61 @@ export default function WorkshopDetailsPage() {
                         <Label className="text-xs">Phone Number</Label>
                         <Input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} className="mt-1 h-9 rounded-xl" required />
                       </div>
+
+                      {/* Coupon input code */}
+                      <div className="pt-2 border-t border-border/40">
+                        <Label className="text-xs">Promo Coupon</Label>
+                        <div className="flex gap-2 mt-1">
+                          <Input 
+                            placeholder="e.g. EARLY10" 
+                            value={couponCode} 
+                            onChange={(e) => setCouponCode(e.target.value)} 
+                            disabled={!!appliedCoupon || applying}
+                            className="h-9 rounded-xl uppercase font-mono font-semibold" 
+                          />
+                          {appliedCoupon ? (
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={handleRemoveCoupon}
+                              className="h-9 rounded-xl text-xs px-3 hover:text-destructive hover:bg-destructive/10"
+                            >
+                              Remove
+                            </Button>
+                          ) : (
+                            <Button 
+                              type="button" 
+                              disabled={applying || !couponCode} 
+                              onClick={handleApplyCoupon}
+                              className="h-9 rounded-xl text-xs px-3 bg-gold hover:bg-gold-hover text-gold-foreground font-semibold"
+                            >
+                              Apply
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-border/40 space-y-1.5 text-[11px]">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Original Ticket Price:</span>
+                          <span className="font-semibold text-foreground">{formatPrice(ws.price_inr, 'INR')}</span>
+                        </div>
+                        {discount > 0 && (
+                          <div className="flex justify-between text-emerald-500 font-semibold">
+                            <span>Promo Discount:</span>
+                            <span>-{formatPrice(discount, 'INR')}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between border-t border-border/20 pt-1.5 font-bold text-xs">
+                          <span>Total Payable:</span>
+                          <span className="text-gold">{formatPrice(ws.price_inr - discount, 'INR')}</span>
+                        </div>
+                      </div>
+
                       <Button 
                         type="submit" 
                         disabled={paying}
-                        className="w-full rounded-full py-6 bg-gold hover:bg-gold-hover text-gold-foreground font-semibold"
+                        className="w-full rounded-full py-6 bg-gold hover:bg-gold-hover text-gold-foreground font-semibold mt-2"
                       >
                         {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Confirm &amp; Pay'}
                       </Button>

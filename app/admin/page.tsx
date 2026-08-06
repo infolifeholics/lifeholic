@@ -36,28 +36,20 @@ import { AdminOffers } from '@/components/admin/offers';
 import { AdminHealers } from '@/components/admin/healers';
 import { AdminCoupons } from '@/components/admin/coupons';
 import { AdminProducts } from '@/components/admin/products';
-import { AdminCMS } from '@/components/admin/cms';
-import { AdminAboutCMS } from '@/components/admin/about-cms';
 import { AdminTestimonials } from '@/components/admin/testimonials';
-import { AdminBlog } from '@/components/admin/blog';
 import { AdminRecommendations } from '@/components/admin/recommendations';
 import { AdminSettingsPanel } from '@/components/admin/settings-panel';
 import { AdminWorkshops } from '@/components/admin/workshops';
 import { AdminTodaysBookings } from '@/components/admin/todays-bookings';
 import { AdminSlotsManagement } from '@/components/admin/slots-management';
-import { AdminHolidayManagement } from '@/components/admin/holiday-management';
-import { AdminQueueDashboard } from '@/components/admin/queue-dashboard';
-import { AdminAnalyticsDashboard } from '@/components/admin/analytics-dashboard';
-import { AdminErrorLogsViewer } from '@/components/admin/error-logs-viewer';
-import { AlertTriangle, TrendingUp } from 'lucide-react';
+import { AdminSearchOptions } from '@/components/admin/search-options';
+import { AlertTriangle, HelpCircle } from 'lucide-react';
 
 const NAV = [
   // { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'analytics', label: 'Analytics Trends', icon: TrendingUp },
   { id: 'todays_bookings', label: "Today's Bookings", icon: CalendarDays },
   { id: 'bookings', label: 'Bookings & Calendar', icon: CalendarDays },
   { id: 'slots_management', label: 'Session Slots', icon: Settings },
-  { id: 'holiday_management', label: 'Holidays & Off-days', icon: CalendarDays },
   { id: 'workshops', label: 'Workshops', icon: CalendarDays },
   { id: 'healers', label: 'Healers', icon: Users },
   { id: 'services', label: 'Services', icon: Settings },
@@ -67,13 +59,9 @@ const NAV = [
   { id: 'orders', label: 'Orders', icon: Package },
   { id: 'members', label: 'Members', icon: Users },
   { id: 'messages', label: 'Messages & Contact', icon: Inbox },
-  { id: 'cms', label: 'CMS Manager', icon: ImageIcon },
-  { id: 'about_cms', label: 'About Page CMS', icon: FileText },
   { id: 'landing_page', label: 'Landing Page Assets', icon: ImageIcon },
+  { id: 'search_options', label: 'Somatic Search Options', icon: HelpCircle },
   { id: 'testimonials', label: 'Testimonials', icon: Heart },
-  { id: 'blog', label: 'Articles & Blogs', icon: FileText },
-  { id: 'queue_monitor', label: 'Notification Queue', icon: Activity },
-  { id: 'error_logs', label: 'System Error Logs', icon: AlertTriangle },
   { id: 'settings', label: 'System Settings', icon: Settings },
 ] as const;
 
@@ -88,7 +76,7 @@ export default function AdminPage() {
 }
 
 function AdminShell() {
-  const [section, setSection] = useState<Section>();
+  const [section, setSection] = useState<Section>('todays_bookings');
   const [count, setCount] = useState(0);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -157,11 +145,9 @@ function AdminShell() {
           </h1>
           <div className="mt-6">
             {/* {section === 'overview' && <AdminDashboard onNavigateSection={setSection} />} */}
-            {section === 'analytics' && <AdminAnalyticsDashboard />}
             {section === 'todays_bookings' && <AdminTodaysBookings />}
             {section === 'bookings' && <AdminDashboard onNavigateSection={setSection} />}
             {section === 'slots_management' && <AdminSlotsManagement />}
-            {section === 'holiday_management' && <AdminHolidayManagement />}
             {section === 'workshops' && <AdminWorkshops />}
             {section === 'healers' && <AdminHealers />}
             {section === 'services' && <AdminServices />}
@@ -171,13 +157,9 @@ function AdminShell() {
             {section === 'orders' && <AdminOrders />}
             {section === 'members' && <AdminMembers />}
             {section === 'messages' && <AdminMessages />}
-            {section === 'cms' && <AdminCMS />}
-            {section === 'about_cms' && <AdminAboutCMS />}
             {section === 'landing_page' && <AdminLandingPage />}
+            {section === 'search_options' && <AdminSearchOptions />}
             {section === 'testimonials' && <AdminTestimonials />}
-            {section === 'blog' && <AdminBlog />}
-            {section === 'queue_monitor' && <AdminQueueDashboard />}
-            {section === 'error_logs' && <AdminErrorLogsViewer />}
             {section === 'settings' && <AdminSettingsPanel />}
           </div>
         </div>

@@ -22,6 +22,7 @@ type Coupon = {
   expiry_date: string;
   active: boolean;
   featured_promo?: boolean;
+  applicable_to?: 'all' | 'sessions' | 'shop' | 'workshops';
 };
 
 export function AdminCoupons() {
@@ -36,6 +37,7 @@ export function AdminCoupons() {
   const [usageLimit, setUsageLimit] = useState(100);
   const [expiryDate, setExpiryDate] = useState('');
   const [featuredPromo, setFeaturedPromo] = useState(false);
+  const [applicableTo, setApplicableTo] = useState<'all' | 'sessions' | 'shop' | 'workshops'>('all');
   const [broadcastEmail, setBroadcastEmail] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export function AdminCoupons() {
     setUsageLimit(c.usage_limit || 100);
     setExpiryDate(c.expiry_date || '');
     setFeaturedPromo(c.featured_promo || false);
+    setApplicableTo(c.applicable_to || 'all');
     setCreating(true);
   };
 
@@ -96,6 +99,7 @@ export function AdminCoupons() {
         usage_limit: usageLimit,
         expiry_date: expiryDate,
         featured_promo: featuredPromo,
+        applicable_to: applicableTo,
       };
 
       if (!editingId) {
@@ -122,6 +126,7 @@ export function AdminCoupons() {
       setBroadcastEmail(false);
       setEditingId(null);
       setCreating(false);
+      setApplicableTo('all');
       fetchCoupons();
     } catch (err: any) {
       toast.error('Failed to save coupon: ' + err.message, { id: toastId });
@@ -161,23 +166,29 @@ export function AdminCoupons() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <p className="text-xs text-muted-foreground">Manage promo codes and checkout discounts.</p>
+          <h2 className="font-display text-lg font-medium text-foreground">Discount Coupons &amp; Promos</h2>
+          <p className="text-xs text-muted-foreground">Manage discount codes and configure promotional scope limits.</p>
         </div>
         {!creating && (
-          <Button onClick={() => setCreating(true)} className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground gap-1">
+          <Button onClick={() => {
+            setEditingId(null);
+            setCode('');
+            setCreating(true);
+          }} className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground gap-1">
             <Plus className="h-4 w-4" /> Create Coupon
           </Button>
         )}
       </div>
 
       {creating && (
-        <form onSubmit={handleCreate} className="rounded-3xl border border-border bg-card p-6 space-y-4 text-left">
+        <form onSubmit={handleCreate} className="rounded-3xl border border-border bg-card p-6 space-y-4 text-left shadow-soft">
           <div className="flex justify-between items-center pb-2 border-b border-border/40">
-            <h3 className="font-display text-lg font-medium text-foreground">
+            <h3 className="font-display text-base font-semibold text-foreground">
               {editingId ? 'Edit Promo Coupon' : 'Create Promo Coupon'}
             </h3>
             <Button
               size="sm"
+              type="button"
               variant="ghost"
               onClick={() => {
                 setCreating(false);
@@ -185,6 +196,7 @@ export function AdminCoupons() {
                 setCode('');
                 setFeaturedPromo(false);
                 setBroadcastEmail(false);
+                setApplicableTo('all');
               }}
               className="rounded-full"
             >
@@ -192,7 +204,7 @@ export function AdminCoupons() {
             </Button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <Label>Promo Code</Label>
               <Input
@@ -212,6 +224,19 @@ export function AdminCoupons() {
               >
                 <option value="percent">Percentage (%)</option>
                 <option value="flat">Flat Amount (Currency)</option>
+              </select>
+            </div>
+            <div>
+              <Label>Applicable To (Scope)</Label>
+              <select
+                value={applicableTo}
+                onChange={(e: any) => setApplicableTo(e.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+              >
+                <option value="all">All (Everywhere)</option>
+                <option value="sessions">Sessions (1-on-1 Booking)</option>
+                <option value="shop">E-commerce Shop Products</option>
+                <option value="workshops">Workshops (Group Retreats)</option>
               </select>
             </div>
           </div>
@@ -249,7 +274,7 @@ export function AdminCoupons() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <Label>Usage Limit Count</Label>
+              <Label>Max Usage Limit (e.g. 10 Members)</Label>
               <Input
                 type="number"
                 value={usageLimit}
@@ -279,21 +304,31 @@ export function AdminCoupons() {
               />
               <Label htmlFor="feat-promo" className="text-xs cursor-pointer">Show as Website Homepage Promo Popup</Label>
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                id="broad-email"
-                type="checkbox"
-                checked={broadcastEmail}
-                onChange={(e) => setBroadcastEmail(e.target.checked)}
-                className="h-4 w-4 rounded border-border bg-card text-gold focus:ring-gold cursor-pointer"
-              />
-              <Label htmlFor="broad-email" className="text-xs cursor-pointer text-gold">Send Email Notification to all Members and Subscribers</Label>
-            </div>
+            {!editingId && (
+              <div className="flex items-center gap-2">
+                <input
+                  id="broad-email"
+                  type="checkbox"
+                  checked={broadcastEmail}
+                  onChange={(e) => setBroadcastEmail(e.target.checked)}
+                  className="h-4 w-4 rounded border-border bg-card text-gold focus:ring-gold cursor-pointer"
+                />
+                <Label htmlFor="broad-email" className="text-xs cursor-pointer text-gold">Send Email Notification to all Members and Subscribers</Label>
+              </div>
+            )}
           </div>
 
-          <Button type="submit" className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground px-6 mt-2">
-            {editingId ? 'Save Changes' : 'Generate Code'}
-          </Button>
+          <div className="flex gap-2">
+            <Button type="submit" className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground px-6 mt-2">
+              {editingId ? 'Save Changes' : 'Generate Code'}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => {
+              setCreating(false);
+              setEditingId(null);
+            }} className="rounded-full px-6 mt-2">
+              Cancel
+            </Button>
+          </div>
         </form>
       )}
 
@@ -314,6 +349,10 @@ export function AdminCoupons() {
 
               <ul className="space-y-1.5 text-xs text-muted-foreground">
                 <li className="flex justify-between">
+                  <span>Scope (Applicable To):</span>
+                  <span className="font-semibold text-foreground capitalize">{c.applicable_to || 'all'}</span>
+                </li>
+                <li className="flex justify-between">
                   <span>Type:</span>
                   <span className="font-semibold text-foreground capitalize">{c.type}</span>
                 </li>
@@ -322,7 +361,7 @@ export function AdminCoupons() {
                   <span className="font-semibold text-foreground">{c.value}{c.type === 'percent' ? '%' : ''}</span>
                 </li>
                 <li className="flex justify-between">
-                  <span>Usage:</span>
+                  <span>Usage Count:</span>
                   <span className="font-semibold text-foreground">{c.usage_count || 0} / {c.usage_limit}</span>
                 </li>
                 {c.expiry_date && (

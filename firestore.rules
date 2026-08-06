@@ -61,10 +61,11 @@ service cloud.firestore {
     match /orders/{document} {
       allow read: if request.auth != null && (resource.data.user_id == request.auth.uid || get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true);
       allow create: if true;
+      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
     }
     match /messages/{document} {
       allow create: if true;
-      allow read, update: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
+      allow read, update, delete: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
     }
     match /newsletter/{document} {
       allow create: if true;

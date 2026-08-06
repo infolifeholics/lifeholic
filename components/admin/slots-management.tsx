@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Edit2, Check, X, Clock, Copy, Layers, RotateCcw } from 'lucide-react';
+import { Loader2, Plus, Trash2, Edit2, Check, X, Clock, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { DAYS_OF_WEEK, DEFAULT_WEEKLY_SLOTS } from '@/lib/booking-utils';
+import { DAYS_OF_WEEK } from '@/lib/booking-utils';
 import { auth } from '@/lib/firebase';
 import { formatTimeTo12Hour } from '@/lib/format';
 
@@ -17,6 +17,16 @@ type Slot = {
   start_time: string;
   end_time: string;
   active: boolean;
+};
+
+type Holiday = {
+  id: string;
+  date: string;
+  from_date?: string;
+  to_date?: string;
+  start_time: string | null;
+  end_time: string | null;
+  note: string;
 };
 
 export function AdminSlotsManagement() {
@@ -35,14 +45,16 @@ export function AdminSlotsManagement() {
   const [editEnd, setEditEnd] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Copy / Duplicate / Bulk Create state
-  const [copyTargetDay, setCopyTargetDay] = useState<number>(2);
-  const [selectedDuplicateDays, setSelectedDuplicateDays] = useState<number[]>([]);
-  const [selectedBulkDays, setSelectedBulkDays] = useState<number[]>([1, 2, 3, 4, 5]); // default Mon-Fri
-  
-  const [copying, setCopying] = useState(false);
-  const [duplicating, setDuplicating] = useState(false);
-  const [bulkCreating, setBulkCreating] = useState(false);
+  // Holiday States
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [holidaysLoading, setHolidaysLoading] = useState(true);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [note, setNote] = useState('');
+  const [isSlotSpecific, setIsSlotSpecific] = useState(false);
+  const [startTime, setStartTime] = useState('10:30');
+  const [endTime, setEndTime] = useState('11:00');
+  const [addingHoliday, setAddingHoliday] = useState(false);
 
   const fetchSlots = async () => {
     try {
@@ -60,8 +72,25 @@ export function AdminSlotsManagement() {
     }
   };
 
+  const fetchHolidays = async () => {
+    try {
+      const res = await fetch('/api/admin/holidays');
+      const data = await res.json();
+      if (res.ok) {
+        setHolidays(data.holidays || []);
+      } else {
+        toast.error(data.error || 'Failed to load holidays.');
+      }
+    } catch {
+      toast.error('Network error loading holidays.');
+    } finally {
+      setHolidaysLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchSlots();
+    fetchHolidays();
   }, []);
 
   const handleAddSlot = async () => {
@@ -197,127 +226,89 @@ export function AdminSlotsManagement() {
     }
   };
 
-  const handleCopyDay = async () => {
-    if (selectedDay === copyTargetDay) {
-      toast.error('Source and destination days must be different.');
+  // Holiday Functions
+  const handleAddHoliday = async () => {
+    if (!fromDate || !toDate) {
+      toast.error('Please select both start and end dates.');
       return;
     }
-    setCopying(true);
+    if (!note.trim()) {
+      toast.error('Holiday message is required.');
+      return;
+    }
+    if (toDate < fromDate) {
+      toast.error('End date cannot be before start date.');
+      return;
+    }
+    setAddingHoliday(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/slots', {
+      const res = await fetch('/api/admin/holidays', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          action: 'copy_day',
-          from_day: selectedDay,
-          to_day: copyTargetDay
+          action: 'add',
+          holiday: {
+            from_date: fromDate,
+            to_date: toDate,
+            note: note.trim(),
+            start_time: isSlotSpecific ? startTime : null,
+            end_time: isSlotSpecific ? endTime : null,
+          }
         })
       });
+      const data = await res.json();
       if (res.ok) {
-        toast.success(`Copied schedule to ${DAYS_OF_WEEK.find(d => d.value === copyTargetDay)?.name}`);
-        fetchSlots();
+        toast.success('Holiday added successfully.');
+        setFromDate('');
+        setToDate('');
+        setNote('');
+        setIsSlotSpecific(false);
+        fetchHolidays();
       } else {
-        toast.error('Failed to copy schedule.');
+        toast.error(data.error || 'Failed to add holiday.');
       }
     } catch {
-      toast.error('Network error copying schedule.');
+      toast.error('Network error adding holiday.');
     } finally {
-      setCopying(false);
+      setAddingHoliday(false);
     }
   };
 
-  const handleDuplicateDay = async () => {
-    if (selectedDuplicateDays.length === 0) {
-      toast.error('Please select at least one day to duplicate to.');
-      return;
-    }
-    setDuplicating(true);
+  const handleDeleteHoliday = async (id: string) => {
+    if (!confirm('Are you sure you want to remove this holiday?')) return;
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/slots', {
+      const res = await fetch('/api/admin/holidays', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          action: 'duplicate',
-          from_day: selectedDay,
-          to_days: selectedDuplicateDays
+          action: 'delete',
+          id
         })
       });
       if (res.ok) {
-        toast.success('Schedule duplicated successfully.');
-        setSelectedDuplicateDays([]);
-        fetchSlots();
+        toast.success('Holiday removed.');
+        setHolidays(prev => prev.filter(h => h.id !== id));
       } else {
-        toast.error('Failed to duplicate schedule.');
+        toast.error('Failed to remove holiday.');
       }
     } catch {
-      toast.error('Network error duplicating schedule.');
-    } finally {
-      setDuplicating(false);
-    }
-  };
-
-  const handleBulkCreate = async () => {
-    if (selectedBulkDays.length === 0) {
-      toast.error('Please select at least one day for bulk creation.');
-      return;
-    }
-    if (!confirm('This will delete all existing slots on the selected days and replace them with default slots. Proceed?')) return;
-    setBulkCreating(true);
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/slots', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          action: 'bulk_create',
-          days: selectedBulkDays,
-          slots: DEFAULT_WEEKLY_SLOTS
-        })
-      });
-      if (res.ok) {
-        toast.success('Default schedule created successfully.');
-        fetchSlots();
-      } else {
-        toast.error('Failed to bulk create schedule.');
-      }
-    } catch {
-      toast.error('Network error bulk creating.');
-    } finally {
-      setBulkCreating(false);
+      toast.error('Network error removing holiday.');
     }
   };
 
   const filteredSlots = slots.filter(s => s.day_of_week === selectedDay);
 
-  const toggleDuplicateDay = (val: number) => {
-    if (selectedDuplicateDays.includes(val)) {
-      setSelectedDuplicateDays(prev => prev.filter(d => d !== val));
-    } else {
-      setSelectedDuplicateDays(prev => [...prev, val]);
-    }
-  };
-
-  const toggleBulkDay = (val: number) => {
-    if (selectedBulkDays.includes(val)) {
-      setSelectedBulkDays(prev => prev.filter(d => d !== val));
-    } else {
-      setSelectedBulkDays(prev => [...prev, val]);
-    }
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* 1. Session Slots Panel */}
       <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
         <div>
           <h2 className="font-display text-xl font-medium text-foreground">Session Slot Management</h2>
@@ -492,99 +483,164 @@ export function AdminSlotsManagement() {
         </div>
       </div>
 
-      {/* Duplication, Copy and Bulk Actions Dashboard */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Copy Schedule */}
-        <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft space-y-4">
-          <h3 className="font-display text-lg font-medium text-foreground flex items-center gap-1.5">
-            <Copy className="h-4.5 w-4.5 text-gold" /> Copy Schedule
+      {/* 2. Integrated Holiday Management Section */}
+      <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
+        <div>
+          <h2 className="font-display text-xl font-medium text-foreground">Holiday &amp; Off-days</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Declare session closures or block specific hours/days for holidays.</p>
+        </div>
+
+        {/* Add Holiday Form */}
+        <div className="mt-6 p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
+          <h3 className="text-xs font-semibold text-gold uppercase tracking-wider flex items-center gap-1.5">
+            <Plus className="h-4 w-4" /> Add Holiday closure
           </h3>
-          <p className="text-xs text-muted-foreground">Copy all slots from the currently active day ({DAYS_OF_WEEK.find(d => d.value === selectedDay)?.name}) to a selected day.</p>
-          <div className="grid grid-cols-2 gap-4 items-end">
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label className="text-xs">Destination Day</Label>
-              <select
-                value={copyTargetDay}
-                onChange={(e) => setCopyTargetDay(Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
-              >
-                {DAYS_OF_WEEK.map((d) => (
-                  <option key={d.value} value={d.value}>{d.name}</option>
-                ))}
-              </select>
+              <Label htmlFor="holiday-from-date" className="text-xs">From Date</Label>
+              <Input
+                id="holiday-from-date"
+                type="date"
+                value={fromDate}
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  if (!toDate) setToDate(e.target.value);
+                }}
+                className="mt-1 rounded-xl"
+              />
             </div>
-            <Button onClick={handleCopyDay} disabled={copying} className="rounded-full w-full">
-              {copying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Copy Schedule'}
-            </Button>
+            <div>
+              <Label htmlFor="holiday-to-date" className="text-xs">To Date</Label>
+              <Input
+                id="holiday-to-date"
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="mt-1 rounded-xl"
+              />
+            </div>
+            <div>
+              <Label htmlFor="holiday-label" className="text-xs">Holiday Message / Reason *</Label>
+              <Input
+                id="holiday-label"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="e.g. Our team is on leave due to festival."
+                className="mt-1 rounded-xl"
+                required
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Duplicate Schedule */}
-        <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft space-y-4">
-          <h3 className="font-display text-lg font-medium text-foreground flex items-center gap-1.5">
-            <Layers className="h-4.5 w-4.5 text-gold" /> Duplicate Schedule
-          </h3>
-          <p className="text-xs text-muted-foreground">Duplicate current schedule of {DAYS_OF_WEEK.find(d => d.value === selectedDay)?.name} to multiple weekdays.</p>
-          
-          <div className="flex flex-wrap gap-2 py-2">
-            {DAYS_OF_WEEK.map((d) => (
-              <label
-                key={d.value}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium cursor-pointer select-none transition-colors",
-                  selectedDuplicateDays.includes(d.value)
-                    ? "bg-primary/10 border-primary text-foreground"
-                    : "bg-secondary/30 border-border/50 text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedDuplicateDays.includes(d.value)}
-                  onChange={() => toggleDuplicateDay(d.value)}
-                  className="hidden"
+          {/* Slot Specific Toggles */}
+          <div className="flex items-center gap-2 pt-2">
+            <input
+              id="slot-specific-checkbox"
+              type="checkbox"
+              checked={isSlotSpecific}
+              onChange={(e) => setIsSlotSpecific(e.target.checked)}
+              className="h-4 w-4 rounded border-border bg-card text-primary focus:ring-primary"
+            />
+            <Label htmlFor="slot-specific-checkbox" className="text-xs select-none">
+              Block a specific time slot only (e.g. half-day holiday)
+            </Label>
+          </div>
+
+          {isSlotSpecific && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-card/50 border border-border/20 rounded-xl animate-fade-in">
+              <div>
+                <Label htmlFor="holiday-start-time" className="text-[10px]">Start Time (24h)</Label>
+                <Input
+                  id="holiday-start-time"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="mt-1 rounded-xl"
                 />
-                {d.name.slice(0, 3)}
-              </label>
-            ))}
-          </div>
+              </div>
+              <div>
+                <Label htmlFor="holiday-end-time" className="text-[10px]">End Time (24h)</Label>
+                <Input
+                  id="holiday-end-time"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="mt-1 rounded-xl"
+                />
+              </div>
+            </div>
+          )}
 
-          <Button onClick={handleDuplicateDay} disabled={duplicating} className="rounded-full w-full">
-            {duplicating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Duplicate Day schedule'}
+          <Button onClick={handleAddHoliday} disabled={addingHoliday} className="rounded-full w-full">
+            {addingHoliday ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Declare Holiday'}
           </Button>
         </div>
 
-        {/* Bulk Create Weekly Schedules */}
-        <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft space-y-4 md:col-span-2">
-          <h3 className="font-display text-lg font-medium text-foreground flex items-center gap-1.5">
-            <RotateCcw className="h-4.5 w-4.5 text-gold" /> Bulk Create Default Schedules
-          </h3>
-          <p className="text-xs text-muted-foreground">Select days to reset to default operational weekly schedule (7 slots daily, Monday to Friday defaults).</p>
-          
-          <div className="flex flex-wrap gap-2 py-2">
-            {DAYS_OF_WEEK.map((d) => (
-              <label
-                key={d.value}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium cursor-pointer select-none transition-colors",
-                  selectedBulkDays.includes(d.value)
-                    ? "bg-primary/10 border-primary text-foreground"
-                    : "bg-secondary/30 border-border/50 text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedBulkDays.includes(d.value)}
-                  onChange={() => toggleBulkDay(d.value)}
-                  className="hidden"
-                />
-                {d.name}
-              </label>
-            ))}
-          </div>
+        {/* Holiday list */}
+        <div className="mt-8">
+          <h3 className="text-xs font-semibold text-gold uppercase tracking-wider mb-4">Scheduled Holidays / Off-days</h3>
 
-          <Button onClick={handleBulkCreate} disabled={bulkCreating} className="rounded-full w-full bg-gold hover:bg-gold-hover text-gold-foreground">
-            {bulkCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reset Selected Days to Default Schedule'}
-          </Button>
+          {holidaysLoading ? (
+            <div className="py-12 flex justify-center items-center">
+              <Loader2 className="h-6 w-6 animate-spin text-gold" />
+            </div>
+          ) : holidays.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground text-sm border border-dashed border-border/50 rounded-2xl">
+              No holidays declared.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {holidays.map((h) => {
+                const start = h.from_date || h.date;
+                const end = h.to_date || h.date;
+                const todayStr = new Date().toLocaleDateString('en-CA');
+                const isExpired = end < todayStr;
+
+                return (
+                  <div
+                    key={h.id}
+                    className="flex items-center justify-between p-4 rounded-2xl border border-border/60 bg-card hover:border-gold/30 transition-all animate-fade-in"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Calendar className="h-4 w-4 text-gold shrink-0" />
+                        <span className="font-semibold text-foreground">
+                          {start === end ? start : `${start} to ${end}`}
+                        </span>
+                        {h.start_time ? (
+                          <span className="inline-flex items-center gap-1 text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                            <Clock className="h-3 w-3" /> {h.start_time} – {h.end_time}
+                          </span>
+                        ) : (
+                          <span className="text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full">
+                            All Day
+                          </span>
+                        )}
+                        <span className={cn(
+                          "text-[10px] px-2.5 py-0.5 rounded-full font-medium border",
+                          isExpired 
+                            ? "bg-secondary/40 text-muted-foreground border-border" 
+                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                        )}>
+                          {isExpired ? "Expired" : "Active"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{h.note}</p>
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteHoliday(h.id)}
+                      className="p-2 rounded-xl text-muted-foreground hover:bg-secondary hover:text-rose-400 transition-colors"
+                      title="Remove holiday"
+                    >
+                      <Trash2 className="h-4.5 w-4.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

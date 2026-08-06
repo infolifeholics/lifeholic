@@ -390,14 +390,46 @@ export function AdminWorkshops() {
     }
   };
 
+  const uploadToCloudinaryDirect = async (file: File, isVideoOrAudio: boolean) => {
+    const signRes = await fetch('/api/upload/sign', { method: 'POST' });
+    if (!signRes.ok) {
+      const err = await signRes.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to generate upload signature');
+    }
+    const { signature, timestamp, cloudName, apiKey, folder } = await signRes.json();
+
+    const resourceType = isVideoOrAudio ? 'video' : 'image';
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', String(timestamp));
+    formData.append('signature', signature);
+    formData.append('folder', folder);
+
+    const uploadRes = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!uploadRes.ok) {
+      const err = await uploadRes.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Direct Cloudinary upload failed');
+    }
+
+    const data = await uploadRes.json();
+    return {
+      url: data.secure_url,
+      public_id: data.public_id,
+    };
+  };
+
   const handleUploadFile = async (file: File, target: 'image' | 'thumbnail' | 'gallery' | 'resources' | 'videos') => {
     const toastId = toast.loading(`Uploading file to Cloudinary...`);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('Upload failed');
-      const { url } = await res.json();
+      const isVideo = file.type.startsWith('video/') || target === 'videos';
+      const { url } = await uploadToCloudinaryDirect(file, isVideo);
       
       const meta = {
         secure_url: url,
@@ -1055,11 +1087,8 @@ export function AdminWorkshops() {
                   if (file) {
                     const toastId = toast.loading(`Uploading resource to Cloudinary...`);
                     try {
-                      const formData = new FormData();
-                      formData.append('file', file);
-                      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                      if (!res.ok) throw new Error('Upload failed');
-                      const { url } = await res.json();
+                      const isAudio = file.type.startsWith('audio/');
+                      const { url } = await uploadToCloudinaryDirect(file, isAudio);
                       setResourceForm({
                         name: file.name,
                         url: url,

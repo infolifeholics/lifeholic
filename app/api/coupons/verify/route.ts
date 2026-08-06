@@ -4,7 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 
 export async function POST(req: Request) {
   try {
-    const { code, amount } = await req.json();
+    const { code, amount, context } = await req.json();
     if (!code) {
       return NextResponse.json({ error: 'Promo code is required.' }, { status: 400 });
     }
@@ -17,6 +17,15 @@ export async function POST(req: Request) {
     const coupon = docSnap.data();
     if (coupon.active === false) {
       return NextResponse.json({ error: 'Coupon is inactive.' }, { status: 400 });
+    }
+
+    // Check application scope context
+    if (coupon.applicable_to && coupon.applicable_to !== 'all') {
+      if (coupon.applicable_to !== context) {
+        return NextResponse.json({ 
+          error: `This coupon is not applicable for ${context || 'this type of'} bookings.` 
+        }, { status: 400 });
+      }
     }
 
     // Check expiry

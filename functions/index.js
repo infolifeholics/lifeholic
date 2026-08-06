@@ -123,6 +123,17 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
     meeting_link,
   } = afterData;
 
+  let defaultMeetLink = "";
+  try {
+    const settingsSnap = await db.collection("settings").doc("global").get();
+    if (settingsSnap.exists) {
+      defaultMeetLink = settingsSnap.data().google_meet_link || "";
+    }
+  } catch (e) {
+    logger.error("Error fetching default meet link in functions:", e);
+  }
+  const finalMeetLink = meeting_link || defaultMeetLink;
+
   const dateStr = start_time ? new Date(start_time).toLocaleDateString() : "—";
   const timeStr = start_time ? new Date(start_time).toLocaleTimeString() : "—";
   const problemsStr = Array.isArray(problems) ? problems.join(", ") : "None";
@@ -215,7 +226,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
           <li><strong>Service:</strong> ${service_title}</li>
           <li><strong>Date:</strong> ${dateStr}</li>
           <li><strong>Time:</strong> ${timeStr}</li>
-          ${meeting_link ? `<li><strong>Meeting Link:</strong> <a href="${meeting_link}">${meeting_link}</a></li>` : ""}
+          ${finalMeetLink ? `<li><strong>Meeting Link:</strong> <a href="${finalMeetLink}">${finalMeetLink}</a></li>` : ""}
         </ul>
       </div>
     `;
@@ -231,7 +242,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
       logger.error("Failed to send confirmation email:", e);
     }
 
-    const confirmMsg = `Hello ${client_name}, your booking (ID: ${bookingId}) is confirmed for ${service_title} on ${dateStr}!`;
+    const confirmMsg = `Hello ${client_name}, your booking (ID: ${bookingId}) is confirmed for ${service_title} on ${dateStr}!${finalMeetLink ? ` Join link: ${finalMeetLink}` : ""}`;
     if (client_phone) {
       await sendWhatsAppNotification(client_phone, confirmMsg, {
         name: "booking_confirmed",

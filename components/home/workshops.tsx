@@ -12,15 +12,13 @@ export function HomeWorkshops({ items }: { items: Workshop[] }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow="Gather together"
-          title="Upcoming workshops"
-          description="Group experiences to deepen your practice in community."
+          title="Completed workshops"
+          description="Group experiences we held in community."
         />
 
         <Stagger className="mt-14 grid gap-6 md:grid-cols-3" gap={0.08}>
           {items.map((w) => {
             const date = new Date(w.date);
-            const left = Math.max(0, w.seats_total - w.seats_booked);
-            const pct = Math.round((w.seats_booked / w.seats_total) * 100);
             return (
               <StaggerItem key={w.id}>
                 <Link href={`/workshops/${w.slug}`} className="block h-full group">
@@ -56,20 +54,14 @@ export function HomeWorkshops({ items }: { items: Workshop[] }) {
                     </div>
                     <div className="p-6 pt-0">
                       <div className="mt-2">
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-accent to-gold"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">{left} seats left</span>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Completed</span>
                           <span className="font-medium text-foreground">from {formatPrice(w.price_inr, 'INR')}</span>
                         </div>
                       </div>
                       <div className="mt-4 pt-3 border-t border-white/5 flex justify-end">
-                        <span className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors">
-                          Details &amp; Book
+                        <span className="rounded-full bg-secondary text-secondary-foreground px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors group-hover:bg-gold group-hover:text-gold-foreground">
+                          View Details
                         </span>
                       </div>
                     </div>

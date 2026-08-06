@@ -56,6 +56,41 @@ export async function POST(req: Request) {
       }
     }
 
+    // Check coupon code
+    let discount = 0;
+    if (body.coupon_code) {
+      const couponRef = doc(db, 'coupons', body.coupon_code.toUpperCase());
+      const couponSnap = await getDoc(couponRef);
+      if (!couponSnap.exists()) {
+        return NextResponse.json({ error: 'Invalid coupon code.' }, { status: 400 });
+      }
+      const coupon = couponSnap.data();
+      if (coupon.active === false) {
+        return NextResponse.json({ error: 'Coupon is inactive.' }, { status: 400 });
+      }
+      if (coupon.applicable_to && coupon.applicable_to !== 'all' && coupon.applicable_to !== 'workshops') {
+        return NextResponse.json({ error: 'Coupon is not applicable to workshops.' }, { status: 400 });
+      }
+      // Check expiry
+      if (coupon.expiry_date && new Date() > new Date(coupon.expiry_date)) {
+        return NextResponse.json({ error: 'Coupon has expired.' }, { status: 400 });
+      }
+      // Check limit
+      if (coupon.usage_limit && (coupon.usage_count || 0) >= coupon.usage_limit) {
+        return NextResponse.json({ error: 'Sorry, you are late! Coupon usage limit reached.' }, { status: 400 });
+      }
+      // Calculate discount
+      if (coupon.type === 'percent') {
+        discount = (finalPrice * (coupon.value || 0)) / 100;
+        if (coupon.max_discount && discount > coupon.max_discount) {
+          discount = coupon.max_discount;
+        }
+      } else {
+        discount = coupon.value || 0;
+      }
+      finalPrice = Math.max(0, finalPrice - discount);
+    }
+
     const regId = 'wreg_' + Math.random().toString(36).substring(7).toUpperCase();
     const orderId = 'order_ws_' + Math.random().toString(36).substring(7).toUpperCase();
 
@@ -79,6 +114,8 @@ export async function POST(req: Request) {
       status: 'pending',
       created_at: new Date().toISOString(),
       order_id: orderId,
+      coupon_code: body.coupon_code || null,
+      discount_amount: discount,
     };
 
     await addDoc(collection(db, 'workshopRegistrations'), regData);

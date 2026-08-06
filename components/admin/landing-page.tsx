@@ -2,57 +2,33 @@
 
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, UploadCloud, Trash2, Video, X, Music } from 'lucide-react';
+import { Loader2, UploadCloud, Trash2, Video, X, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const DEFAULT_LANDING_IMAGES = [
-  'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=1200',
-  'https://images.pexels.com/photos/3280130/pexels-photo-3280130.jpeg?auto=compress&cs=tinysrgb&w=1200',
-  'https://images.pexels.com/photos/3182452/pexels-photo-3182452.jpeg?auto=compress&cs=tinysrgb&w=1200',
-  'https://images.pexels.com/photos/409127/pexels-photo-409127.jpeg?auto=compress&cs=tinysrgb&w=1200',
-  'https://images.pexels.com/photos/290518/pexels-photo-290518.jpeg?auto=compress&cs=tinysrgb&w=1200',
+const DEFAULT_VIDEO = 'https://cdn.prod.website-files.com/691c3d8b8165d353a2345b2d%2F691d841c9c6b35b63efb82bc_hero-bg-video_mp4.mp4';
+const DEFAULT_FOUNDER_IMAGE = '/images/founder/photo.jpg';
+const DEFAULT_GALLERY = [
+  'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=700',
+  'https://images.pexels.com/photos/4202325/pexels-photo-4202325.jpeg?auto=compress&cs=tinysrgb&w=700',
+  'https://images.pexels.com/photos/3823039/pexels-photo-3823039.jpeg?auto=compress&cs=tinysrgb&w=700',
+  'https://images.pexels.com/photos/3771115/pexels-photo-3771115.jpeg?auto=compress&cs=tinysrgb&w=700',
 ];
 
-const DEFAULT_VIDEO = 'https://cdn.prod.website-files.com/691c3d8b8165d353a2345b2d%2F691d841c9c6b35b63efb82bc_hero-bg-video_mp4.mp4';
-
-interface LandingImage {
-  id: number;
-  url: string;
-  isCustom?: boolean;
-}
-
 export function AdminLandingPage() {
-  const [images, setImages] = useState<LandingImage[]>([]);
   const [videoUrl, setVideoUrl] = useState('');
-  const [musicUrl, setMusicUrl] = useState('');
+  const [founderImage, setFounderImage] = useState(DEFAULT_FOUNDER_IMAGE);
+  const [gallery, setGallery] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
+
   const [uploadingVideo, setUploadingVideo] = useState(false);
-  const [uploadingMusic, setUploadingMusic] = useState(false);
-  const [feedItems, setFeedItems] = useState<any[]>([]);
-  const [uploadingFeedSlot, setUploadingFeedSlot] = useState<string | null>(null);
+  const [uploadingFounder, setUploadingFounder] = useState(false);
+  const [uploadingGalleryIdx, setUploadingGalleryIdx] = useState<number | null>(null);
 
-  const fetchLandingData = async () => {
+  const fetchData = async () => {
     try {
-      // 1. Fetch Carousel Images
-      const colRef = collection(db, 'landing_images');
-      const snap = await getDocs(colRef);
-      const data = snap.docs.map((d) => d.data());
-
-      const populated: LandingImage[] = Array.from({ length: 5 }, (_, i) => {
-        const id = i + 1;
-        const found = data?.find((d) => Number(d.id) === id);
-        return {
-          id,
-          url: found ? found.url : '',
-          isCustom: !!found,
-        };
-      });
-      setImages(populated);
-
-      // 2. Fetch Video Settings
+      // 1. Fetch Video Settings
       const videoDoc = await getDoc(doc(db, 'settings', 'video'));
       if (videoDoc.exists()) {
         setVideoUrl(videoDoc.data().url || '');
@@ -60,49 +36,35 @@ export function AdminLandingPage() {
         setVideoUrl('');
       }
 
-      // 3. Fetch Music Settings
-      const musicDoc = await getDoc(doc(db, 'settings', 'music'));
-      if (musicDoc.exists()) {
-        setMusicUrl(musicDoc.data().url || '');
-      } else {
-        setMusicUrl('');
+      // 2. Fetch Founder portrait details
+      const globalDoc = await getDoc(doc(db, 'cms', 'global'));
+      if (globalDoc.exists()) {
+        setFounderImage(globalDoc.data().about_image || DEFAULT_FOUNDER_IMAGE);
       }
 
-      // 4. Fetch Landing Feed Items
-      const feedSnap = await getDocs(collection(db, 'landing_feed'));
-      const feedData = feedSnap.docs.map((d) => d.data());
-      const defaultPosts = [
-        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=500',
-        'https://images.pexels.com/photos/3823039/pexels-photo-3823039.jpeg?auto=compress&cs=tinysrgb&w=500',
-        'https://images.pexels.com/photos/4202325/pexels-photo-4202325.jpeg?auto=compress&cs=tinysrgb&w=500',
-        'https://images.pexels.com/photos/3771115/pexels-photo-3771115.jpeg?auto=compress&cs=tinysrgb&w=500',
-      ];
-      const populatedFeed = Array.from({ length: 4 }, (_, i) => {
-        const id = `slot_${i + 1}`;
-        const found = feedData?.find((d) => d.id === id);
-        return {
-          id,
-          url: (found && found.url) ? found.url : defaultPosts[i],
-          type: found ? found.type : 'image',
-          public_id: found ? found.public_id : '',
-          isCustom: !!(found && found.url),
-          likes: found ? found.likes || 0 : 0
-        };
-      });
-      setFeedItems(populatedFeed);
+      // 3. Fetch About Gallery items
+      const galleryDoc = await getDoc(doc(db, 'settings', 'about_gallery'));
+      if (galleryDoc.exists()) {
+        const items = galleryDoc.data().items || [];
+        const populated = Array.from({ length: 4 }, (_, i) => {
+          return (items[i]?.url || DEFAULT_GALLERY[i]) as string;
+        });
+        setGallery(populated);
+      } else {
+        setGallery(DEFAULT_GALLERY);
+      }
     } catch (err: any) {
-      console.warn('Could not fetch data:', err.message);
+      console.error('Error fetching CMS data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchLandingData();
+    fetchData();
   }, []);
 
   const uploadToCloudinaryDirect = async (file: File, isVideoOrAudio: boolean) => {
-    // 1. Get signed upload credentials from backend
     const signRes = await fetch('/api/upload/sign', { method: 'POST' });
     if (!signRes.ok) {
       const err = await signRes.json().catch(() => ({}));
@@ -110,7 +72,6 @@ export function AdminLandingPage() {
     }
     const { signature, timestamp, cloudName, apiKey, folder } = await signRes.json();
 
-    // 2. Upload directly to Cloudinary
     const resourceType = isVideoOrAudio ? 'video' : 'image';
     const url = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
 
@@ -138,129 +99,16 @@ export function AdminLandingPage() {
     };
   };
 
-  const handleReplaceFeed = async (slotId: string, file: File) => {
-    if (!file) return;
-
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(ext || '');
-    const isVideo = file.type.startsWith('video/') || ['mp4', 'mov', 'webm'].includes(ext || '');
-
-    if (!isImage && !isVideo) {
-      toast.error('Unsupported file type. Please upload a JPG, PNG, WEBP image or MP4, MOV, WEBM video.');
-      return;
-    }
-
-    setUploadingFeedSlot(slotId);
-    const toastId = toast.loading(`Uploading media for Landing Feed ${slotId}...`);
-
-    try {
-      const isVideoFile = isVideo;
-      const { url: cloudinaryUrl, public_id: cloudinaryPublicId } = await uploadToCloudinaryDirect(file, isVideoFile);
-
-      // Delete old custom file if it exists
-      const currentItem = feedItems.find(item => item.id === slotId);
-      if (currentItem?.isCustom && currentItem.url.includes('cloudinary.com')) {
-        await fetch('/api/upload/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: currentItem.url }),
-        });
-      }
-
-      await setDoc(doc(db, 'landing_feed', slotId), {
-        id: slotId,
-        url: cloudinaryUrl,
-        public_id: cloudinaryPublicId || '',
-        type: isVideoFile ? 'video' : 'image',
-        likes: currentItem ? currentItem.likes || 0 : 0,
-        updated_at: new Date().toISOString(),
-      });
-
-      toast.success(`Landing Feed ${slotId} replaced successfully!`, { id: toastId });
-      fetchLandingData();
-    } catch (error: any) {
-      toast.error(`Failed: ${error.message}`, { id: toastId });
-    } finally {
-      setUploadingFeedSlot(null);
-    }
-  };
-
-  const handleReplace = async (slotId: number, file: File) => {
-    if (!file) return;
-
-    setUploadingSlot(slotId);
-    const toastId = toast.loading(`Uploading image for Slot ${slotId}...`);
-
-    try {
-      const { url: cloudinaryUrl } = await uploadToCloudinaryDirect(file, false);
-
-      // Delete old custom file if it exists
-      const currentImage = images.find(img => img.id === slotId);
-      if (currentImage?.isCustom && currentImage.url.includes('cloudinary.com')) {
-        await fetch('/api/upload/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: currentImage.url }),
-        });
-      }
-
-      await setDoc(doc(db, 'landing_images', String(slotId)), {
-        id: slotId,
-        url: cloudinaryUrl,
-        updated_at: new Date().toISOString(),
-      });
-
-      toast.success(`Slot ${slotId} replaced successfully!`, { id: toastId });
-      fetchLandingData();
-    } catch (error: any) {
-      toast.error(`Failed: ${error.message}`, { id: toastId });
-    } finally {
-      setUploadingSlot(null);
-    }
-  };
-
-  const handleDeleteImage = async (slotId: number, imageUrl: string) => {
-    if (!imageUrl) {
-      toast.info(`Slot ${slotId} is already empty.`);
-      return;
-    }
-
-    const confirm = window.confirm(`Are you sure you want to permanently delete Slot ${slotId} image from Cloudinary?`);
-    if (!confirm) return;
-
-    const toastId = toast.loading(`Deleting image ${slotId} from Cloudinary...`);
-    try {
-      // 1. Delete from Cloudinary permanently
-      if (imageUrl.includes('cloudinary.com')) {
-        const delRes = await fetch('/api/upload/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: imageUrl }),
-        });
-        if (!delRes.ok) throw new Error('Failed to delete from Cloudinary.');
-      }
-
-      // 2. Remove document from Firestore
-      await deleteDoc(doc(db, 'landing_images', String(slotId)));
-
-      toast.success(`Slot ${slotId} custom image permanently deleted.`, { id: toastId });
-      fetchLandingData();
-    } catch (err: any) {
-      toast.error(err.message || 'Deletion failed.', { id: toastId });
-    }
-  };
-
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadingVideo(true);
-    const toastId = toast.loading('Uploading background video...');
+    const toastId = toast.loading('Uploading custom background video...');
 
     try {
-      const data = await uploadToCloudinaryDirect(file, true);
+      const { url } = await uploadToCloudinaryDirect(file, true);
 
-      // Delete old video from Cloudinary if exists
       if (videoUrl && videoUrl.includes('cloudinary.com')) {
         await fetch('/api/upload/delete', {
           method: 'POST',
@@ -270,24 +118,25 @@ export function AdminLandingPage() {
       }
 
       await setDoc(doc(db, 'settings', 'video'), {
-        url: data.url,
+        url,
         updated_at: new Date().toISOString(),
-      });
+      }, { merge: true });
 
-      setVideoUrl(data.url);
-      toast.success('Background video uploaded successfully!', { id: toastId });
+      setVideoUrl(url);
+      toast.success('Background video updated successfully!', { id: toastId });
     } catch (err: any) {
-      toast.error(err.message || 'Video upload failed.', { id: toastId });
+      toast.error('Upload failed: ' + err.message, { id: toastId });
     } finally {
       setUploadingVideo(false);
     }
   };
 
   const handleDeleteVideo = async () => {
-    const confirm = window.confirm('Are you sure you want to permanently delete custom background video? It will fallback to default video.');
+    if (!videoUrl) return;
+    const confirm = window.confirm('Are you sure you want to restore the default cinematic video?');
     if (!confirm) return;
 
-    const toastId = toast.loading('Deleting video...');
+    const toastId = toast.loading('Restoring default video...');
     try {
       if (videoUrl.includes('cloudinary.com')) {
         await fetch('/api/upload/delete', {
@@ -297,85 +146,158 @@ export function AdminLandingPage() {
         });
       }
 
-      await setDoc(doc(db, 'settings', 'video'), { url: '' });
+      await setDoc(doc(db, 'settings', 'video'), {
+        url: '',
+        updated_at: new Date().toISOString(),
+      }, { merge: true });
+
       setVideoUrl('');
-      toast.success('Custom video deleted. Restored default video.', { id: toastId });
+      toast.success('Default video restored.', { id: toastId });
     } catch (err: any) {
-      toast.error(err.message || 'Failed to delete video.', { id: toastId });
+      toast.error('Failed: ' + err.message, { id: toastId });
     }
   };
 
-  const handleMusicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFounderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingMusic(true);
-    const toastId = toast.loading('Uploading background music...');
+    setUploadingFounder(true);
+    const toastId = toast.loading('Uploading founder portrait...');
 
     try {
-      const data = await uploadToCloudinaryDirect(file, true);
+      const { url } = await uploadToCloudinaryDirect(file, false);
 
-      // Delete old music from Cloudinary if exists
-      if (musicUrl && musicUrl.includes('cloudinary.com')) {
+      if (founderImage && founderImage.includes('cloudinary.com')) {
         await fetch('/api/upload/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: musicUrl }),
+          body: JSON.stringify({ url: founderImage }),
         });
       }
 
-      await setDoc(doc(db, 'settings', 'music'), {
-        url: data.url,
-        updated_at: new Date().toISOString(),
-      });
+      await setDoc(doc(db, 'cms', 'global'), {
+        about_image: url,
+      }, { merge: true });
 
-      setMusicUrl(data.url);
-      toast.success('Background music uploaded successfully!', { id: toastId });
+      setFounderImage(url);
+      toast.success('Founder portrait updated!', { id: toastId });
     } catch (err: any) {
-      toast.error(err.message || 'Music upload failed.', { id: toastId });
+      toast.error('Upload failed: ' + err.message, { id: toastId });
     } finally {
-      setUploadingMusic(false);
+      setUploadingFounder(false);
     }
   };
 
-  const handleDeleteMusic = async () => {
-    const confirm = window.confirm('Are you sure you want to permanently delete custom background music? It will fallback to default ambient sound.');
+  const handleDeleteFounder = async () => {
+    if (founderImage === DEFAULT_FOUNDER_IMAGE) return;
+    const confirm = window.confirm('Are you sure you want to restore the default founder portrait?');
     if (!confirm) return;
 
-    const toastId = toast.loading('Deleting music...');
+    const toastId = toast.loading('Restoring default portrait...');
     try {
-      if (musicUrl.includes('cloudinary.com')) {
+      if (founderImage.includes('cloudinary.com')) {
         await fetch('/api/upload/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: musicUrl }),
+          body: JSON.stringify({ url: founderImage }),
         });
       }
 
-      await setDoc(doc(db, 'settings', 'music'), { url: '' });
-      setMusicUrl('');
-      toast.success('Custom music deleted. Restored default ambient sound.', { id: toastId });
+      await setDoc(doc(db, 'cms', 'global'), {
+        about_image: '',
+      }, { merge: true });
+
+      setFounderImage(DEFAULT_FOUNDER_IMAGE);
+      toast.success('Default portrait restored.', { id: toastId });
     } catch (err: any) {
-      toast.error(err.message || 'Failed to delete music.', { id: toastId });
+      toast.error('Failed: ' + err.message, { id: toastId });
+    }
+  };
+
+  const handleGalleryReplace = async (index: number, file: File) => {
+    if (!file) return;
+
+    setUploadingGalleryIdx(index);
+    const toastId = toast.loading(`Uploading image for Slot ${index + 1}...`);
+
+    try {
+      const { url } = await uploadToCloudinaryDirect(file, false);
+
+      const oldUrl = gallery[index];
+      if (oldUrl && oldUrl.includes('cloudinary.com')) {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: oldUrl }),
+        });
+      }
+
+      const updated = [...gallery];
+      updated[index] = url;
+
+      const itemsPayload = updated.map((u) => ({ url: u, type: 'image' }));
+      await setDoc(doc(db, 'settings', 'about_gallery'), {
+        items: itemsPayload,
+      });
+
+      setGallery(updated);
+      toast.success(`Slot ${index + 1} updated successfully!`, { id: toastId });
+    } catch (err: any) {
+      toast.error('Upload failed: ' + err.message, { id: toastId });
+    } finally {
+      setUploadingGalleryIdx(null);
+    }
+  };
+
+  const handleDeleteGalleryItem = async (index: number) => {
+    const itemUrl = gallery[index];
+    if (itemUrl === DEFAULT_GALLERY[index]) return;
+
+    const confirm = window.confirm(`Are you sure you want to restore the default image for Slot ${index + 1}?`);
+    if (!confirm) return;
+
+    const toastId = toast.loading(`Restoring Slot ${index + 1} to default...`);
+    try {
+      if (itemUrl.includes('cloudinary.com')) {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: itemUrl }),
+        });
+      }
+
+      const updated = [...gallery];
+      updated[index] = DEFAULT_GALLERY[index];
+
+      const itemsPayload = updated.map((u) => ({ url: u, type: 'image' }));
+      await setDoc(doc(db, 'settings', 'about_gallery'), {
+        items: itemsPayload,
+      });
+
+      setGallery(updated);
+      toast.success(`Slot ${index + 1} restored to default.`, { id: toastId });
+    } catch (err: any) {
+      toast.error('Failed: ' + err.message, { id: toastId });
     }
   };
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" />
-        Loading landing configurations...
+      <div className="flex h-40 items-center justify-center text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin text-gold" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* SECTION: Video Configuration */}
-      <div className="rounded-3xl border border-border/60 bg-card/70 p-6 shadow-soft space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="space-y-8 text-left">
+      
+      {/* SECTION: Video Settings */}
+      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-soft space-y-6">
+        <div className="flex items-center justify-between border-b border-border/30 pb-4">
           <div className="flex items-center gap-3">
-            <Video className="h-6 w-6 text-primary" />
+            <Video className="h-6 w-6 text-gold" />
             <div>
               <h2 className="font-display text-xl font-medium text-foreground">Landing Background Video</h2>
               <p className="text-sm text-muted-foreground">Upload a custom video or restore the default cinematic clip.</p>
@@ -384,15 +306,14 @@ export function AdminLandingPage() {
           {videoUrl && (
             <button
               onClick={handleDeleteVideo}
-              className="p-1.5 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all animate-fade-in"
-              title="Delete custom video and restore default"
+              className="p-1.5 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all"
+              title="Restore default video"
             >
               <X className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        {/* Video Preview Block */}
         <div className="grid gap-6 md:grid-cols-[2fr_1fr] items-start">
           <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-border/40 bg-card">
             <video
@@ -407,7 +328,7 @@ export function AdminLandingPage() {
             />
             {uploadingVideo && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 className="h-8 w-8 animate-spin text-gold" />
                 <span className="mt-2 text-sm font-medium text-foreground">Uploading video...</span>
               </div>
             )}
@@ -416,23 +337,24 @@ export function AdminLandingPage() {
           <div className="space-y-4">
             <div className="p-4 bg-secondary/30 rounded-2xl border border-border/30">
               <span className="text-xs font-semibold text-muted-foreground block">Active Video Source</span>
-              <p className="text-xs text-foreground font-mono mt-1 break-all bg-card/60 p-2 rounded-lg border border-border/20">
+              <p className="text-[11px] text-foreground font-mono mt-1 break-all bg-card/60 p-2 rounded-lg border border-border/20">
                 {videoUrl || 'Default Cinematic Clip'}
               </p>
             </div>
 
             <label className="block w-full">
               <span className="sr-only">Choose video</span>
-              <input type="file" accept="video/*" disabled={uploadingVideo} onChange={handleVideoUpload} className="hidden" />
+              <input type="file" accept="video/*" disabled={uploadingVideo} onChange={handleVideoUpload} className="hidden" id="bg-video-input" />
               <Button
                 asChild
                 variant="outline"
-                className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2"
+                className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2 h-11"
                 disabled={uploadingVideo}
+                onClick={() => document.getElementById('bg-video-input')?.click()}
               >
                 <span>
                   <UploadCloud className="h-4 w-4 text-muted-foreground" />
-                  Upload Custom Video
+                  Replace Video
                 </span>
               </Button>
             </label>
@@ -440,70 +362,63 @@ export function AdminLandingPage() {
         </div>
       </div>
 
-      {/* SECTION: Music Configuration */}
-      <div className="rounded-3xl border border-border/60 bg-card/70 p-6 shadow-soft space-y-6">
-        <div className="flex items-center justify-between">
+      {/* SECTION: About Page Main Portrait */}
+      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-soft space-y-6">
+        <div className="flex items-center justify-between border-b border-border/30 pb-4">
           <div className="flex items-center gap-3">
-            <Music className="h-6 w-6 text-primary" />
+            <ImageIcon className="h-6 w-6 text-gold" />
             <div>
-              <h2 className="font-display text-xl font-medium text-foreground">Landing Background Music</h2>
-              <p className="text-sm text-muted-foreground">Upload a custom music track or restore the default ambient sounds.</p>
+              <h2 className="font-display text-xl font-medium text-foreground">About Main Portrait</h2>
+              <p className="text-sm text-muted-foreground">Manage the main profile photo shown on the About page.</p>
             </div>
           </div>
-          {musicUrl && (
+          {founderImage !== DEFAULT_FOUNDER_IMAGE && (
             <button
-              onClick={handleDeleteMusic}
-              className="p-1.5 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all animate-fade-in"
-              title="Delete custom music and restore default"
+              onClick={handleDeleteFounder}
+              className="p-1.5 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all"
+              title="Restore default portrait"
             >
               <X className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        <div className="grid gap-6 md:grid-cols-[2fr_1fr] items-start">
-          <div className="relative p-6 flex flex-col items-center justify-center rounded-2xl border border-border/40 bg-background-2/40 aspect-[3/1] md:aspect-auto">
-            {musicUrl ? (
-              <audio
-                key={musicUrl}
-                controls
-                className="w-full max-w-md my-4"
-                src={musicUrl}
-              />
-            ) : (
-              <div className="text-center p-4 my-2">
-                <p className="text-sm font-semibold text-muted-foreground">Synthesized Ambient Soundtrack Active</p>
-                <p className="text-xs text-muted-foreground/80 mt-1">Gently modulated wind generator + singing bowl chimes.</p>
-              </div>
-            )}
-            {uploadingMusic && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm rounded-2xl">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="mt-2 text-sm font-medium text-foreground">Uploading music...</span>
+        <div className="grid gap-6 md:grid-cols-[1.5fr_2fr] items-start">
+          <div className="relative aspect-[3/4] max-w-[240px] w-full overflow-hidden rounded-2xl border border-border/40 bg-card">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={founderImage}
+              alt="Founder Profile"
+              className="h-full w-full object-cover object-top"
+            />
+            {uploadingFounder && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+                <Loader2 className="h-8 w-8 animate-spin text-gold" />
+                <span className="mt-2 text-xs font-medium text-foreground">Uploading...</span>
               </div>
             )}
           </div>
 
           <div className="space-y-4">
             <div className="p-4 bg-secondary/30 rounded-2xl border border-border/30">
-              <span className="text-xs font-semibold text-muted-foreground block">Active Music Source</span>
-              <p className="text-xs text-foreground font-mono mt-1 break-all bg-card/60 p-2 rounded-lg border border-border/20">
-                {musicUrl || 'Default Synthesized Ambient Sound'}
+              <span className="text-xs font-semibold text-muted-foreground block">Portrait Source</span>
+              <p className="text-[11px] text-foreground font-mono mt-1 break-all bg-card/60 p-2 rounded-lg border border-border/20">
+                {founderImage === DEFAULT_FOUNDER_IMAGE ? 'Default Founder Portrait' : founderImage}
               </p>
             </div>
 
             <label className="block w-full">
-              <span className="sr-only">Choose music file</span>
-              <input type="file" accept="audio/*" disabled={uploadingMusic} onChange={handleMusicUpload} className="hidden" />
+              <input type="file" accept="image/*" disabled={uploadingFounder} onChange={handleFounderUpload} className="hidden" id="portrait-input" />
               <Button
                 asChild
                 variant="outline"
-                className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2"
-                disabled={uploadingMusic}
+                className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2 h-11"
+                disabled={uploadingFounder}
+                onClick={() => document.getElementById('portrait-input')?.click()}
               >
                 <span>
                   <UploadCloud className="h-4 w-4 text-muted-foreground" />
-                  Upload Custom Music
+                  Replace Portrait
                 </span>
               </Button>
             </label>
@@ -511,162 +426,82 @@ export function AdminLandingPage() {
         </div>
       </div>
 
-      {/* SECTION: Carousel Images */}
-      <div className="rounded-3xl border border-border/60 bg-card/70 p-6 shadow-soft">
-        <h2 className="font-display text-xl font-medium text-foreground">Hero Section Carousel Images</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Replace or delete custom images in the main slideshow. Deleting restores default presets.
-        </p>
+      {/* SECTION: About Page Bottom Gallery (4 Slots) */}
+      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-soft space-y-6">
+        <div>
+          <h2 className="font-display text-xl font-medium text-foreground">About Page Gallery (4 Pictures)</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Replace the 4 custom pictures shown at the bottom of the About page.
+          </p>
+        </div>
 
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {images.map((img) => (
-            <div
-              key={img.id}
-              className="relative overflow-hidden rounded-2xl border border-border/80 bg-background-2/40 p-4 transition-all hover:border-border"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Slot {img.id} {img.isCustom && <span className="text-[10px] text-primary capitalize ml-1">(custom)</span>}
-                </span>
-                <button
-                  onClick={() => handleDeleteImage(img.id, img.url)}
-                  className="p-1 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all"
-                  title="Reset to default image"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {gallery.map((imgUrl, idx) => {
+            const isCustom = imgUrl !== DEFAULT_GALLERY[idx];
+            return (
+              <div
+                key={idx}
+                className="relative overflow-hidden rounded-2xl border border-border/80 bg-background-2/40 p-4 transition-all hover:border-border"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Slot {idx + 1} {isCustom && <span className="text-[10px] text-gold font-bold ml-1">(custom)</span>}
+                  </span>
+                  {isCustom && (
+                    <button
+                      onClick={() => handleDeleteGalleryItem(idx)}
+                      className="p-1 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all"
+                      title="Restore default image"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
 
-              <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-border/40 bg-card flex flex-col items-center justify-center">
-                {img.url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-border/40 bg-card flex flex-col items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={img.url}
-                    alt={`Slot ${img.id}`}
+                    src={imgUrl}
+                    alt={`Gallery Slot ${idx + 1}`}
                     className="h-full w-full object-cover"
                   />
-                ) : (
-                  <div className="text-center p-4">
-                    <UploadCloud className="h-8 w-8 text-muted-foreground mx-auto mb-1" />
-                    <span className="text-xs text-muted-foreground font-medium block">Empty Slot</span>
-                  </div>
-                )}
+                  {uploadingGalleryIdx === idx && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+                      <Loader2 className="h-6 w-6 animate-spin text-gold" />
+                      <span className="mt-2 text-xs font-medium text-foreground">Uploading...</span>
+                    </div>
+                  )}
+                </div>
 
-                {uploadingSlot === img.id && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    <span className="mt-2 text-xs font-medium text-foreground">Uploading...</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4">
-                <label className="block w-full">
-                  <span className="sr-only">Choose image</span>
+                <div className="mt-4">
                   <input
                     type="file"
                     accept="image/*"
-                    disabled={uploadingSlot !== null}
+                    disabled={uploadingGalleryIdx !== null}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleReplace(img.id, file);
+                      if (file) handleGalleryReplace(idx, file);
                     }}
                     className="hidden"
-                    id={`replace-input-${img.id}`}
+                    id={`replace-gallery-${idx}`}
                   />
                   <Button
-                    asChild
+                    type="button"
                     variant="outline"
-                    className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2"
-                    disabled={uploadingSlot !== null}
+                    className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2 text-xs"
+                    disabled={uploadingGalleryIdx !== null}
+                    onClick={() => document.getElementById(`replace-gallery-${idx}`)?.click()}
                   >
-                    <span onClick={() => document.getElementById(`replace-input-${img.id}`)?.click()}>
-                      <UploadCloud className="h-4 w-4 text-muted-foreground" />
-                      Replace Image
-                    </span>
+                    <UploadCloud className="h-3.5 w-3.5 text-muted-foreground" />
+                    Replace Image
                   </Button>
-                </label>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* SECTION: Landing Feed (Instagram style) */}
-      <div className="rounded-3xl border border-border/60 bg-card/70 p-6 shadow-soft">
-        <h2 className="font-display text-xl font-medium text-foreground">"A Little Quiet On Your Feed" Section Media</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Replace or update the 4 active landing page feed items. Supports both high-resolution Images and Portrait/Landscape Videos.
-        </p>
-
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {feedItems.map((item) => (
-            <div
-              key={item.id}
-              className="relative overflow-hidden rounded-2xl border border-border/80 bg-background-2/40 p-4 transition-all hover:border-border"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Slot {item.id.replace('slot_', '')} {item.isCustom ? <span className="text-[10px] text-primary capitalize ml-1">(custom)</span> : <span className="text-[10px] text-muted-foreground/60 ml-1">(default)</span>}
-                </span>
-                <span className="text-[10px] font-mono bg-secondary/80 px-2 py-0.5 rounded-full border border-border/30 capitalize text-foreground/80">
-                  {item.type}
-                </span>
-              </div>
-
-              <div className="relative aspect-square overflow-hidden rounded-xl border border-border/40 bg-card flex flex-col items-center justify-center">
-                {item.type === 'video' ? (
-                  <video
-                    src={item.url}
-                    className="h-full w-full object-cover"
-                    muted
-                    loop
-                    playsInline
-                    autoPlay
-                  />
-                ) : (
-                  <img
-                    src={item.url}
-                    alt={`Feed ${item.id}`}
-                    className="h-full w-full object-cover"
-                  />
-                )}
-
-                {uploadingFeedSlot === item.id && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    <span className="mt-2 text-xs font-medium text-foreground">Uploading...</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
-                  disabled={uploadingFeedSlot !== null}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleReplaceFeed(item.id, file);
-                  }}
-                  className="hidden"
-                  id={`replace-feed-input-${item.id}`}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2"
-                  disabled={uploadingFeedSlot !== null}
-                  onClick={() => document.getElementById(`replace-feed-input-${item.id}`)?.click()}
-                >
-                  <UploadCloud className="h-4 w-4 text-muted-foreground" />
-                  Replace Media
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

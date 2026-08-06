@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, Plus, Trash2, ShieldAlert, Sparkles, Check, X } from 'lucide-react';
+import { Loader2, Plus, Trash2, Edit2, Sparkles, Check, X, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,11 +20,41 @@ type RecRule = {
   severity: string; // 'high' | 'medium' | 'low'
 };
 
+const DEFAULT_RECOMMENDATION_RULES: Omit<RecRule, 'id'>[] = [
+  {
+    category: 'finances',
+    subcategory: 'Ancestral Money Patterns',
+    problems: [],
+    recommended_services: ['ancestral-healing', 'personal-healing-clarity'],
+    priority: 1,
+    severity: 'medium',
+  },
+  {
+    category: 'relationships',
+    subcategory: 'Family',
+    problems: [],
+    recommended_services: ['one-on-one-therapy', 'personal-healing-clarity'],
+    priority: 1,
+    severity: 'medium',
+  },
+  {
+    category: 'relationships',
+    subcategory: 'Partner / Marriage',
+    problems: [],
+    recommended_services: ['one-on-one-therapy', 'personal-healing-clarity'],
+    priority: 1,
+    severity: 'medium',
+  }
+];
+
 export function AdminRecommendations() {
   const [rules, setRules] = useState<RecRule[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Creation / Editing modes
   const [creating, setCreating] = useState(false);
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
 
   // Form states
   const [category, setCategory] = useState('relationships');
@@ -36,11 +66,30 @@ export function AdminRecommendations() {
 
   const fetchRulesAndServices = async () => {
     try {
-      const rSnap = await getDocs(collection(db, 'recommendation_rules'));
-      setRules(rSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as RecRule));
-
       const sSnap = await getDocs(collection(db, 'services'));
-      setServices(sSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Service));
+      const dbServices = sSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Service);
+      setServices(dbServices);
+
+      const rSnap = await getDocs(collection(db, 'recommendation_rules'));
+      let rulesList = rSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as RecRule);
+      
+      // If collection is empty, seed defaults
+      if (rulesList.length === 0) {
+        const toastId = toast.loading('Seeding default recommendation rules...');
+        for (const item of DEFAULT_RECOMMENDATION_RULES) {
+          const id = 'rule_' + Math.random().toString(36).substring(7).toUpperCase();
+          await setDoc(doc(db, 'recommendation_rules', id), {
+            id,
+            ...item
+          });
+        }
+        toast.success('Default rules loaded successfully!', { id: toastId });
+        
+        const freshSnap = await getDocs(collection(db, 'recommendation_rules'));
+        rulesList = freshSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as RecRule);
+      }
+
+      setRules(rulesList);
     } catch (e: any) {
       toast.error('Failed to load rules: ' + e.message);
     } finally {
@@ -52,16 +101,17 @@ export function AdminRecommendations() {
     fetchRulesAndServices();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedSlugs.length === 0) {
       toast.error('Please assign at least one recommended service.');
       return;
     }
 
-    const toastId = toast.loading('Creating rule...');
+    const isEditing = !!editingRuleId;
+    const toastId = toast.loading(isEditing ? 'Updating rule...' : 'Creating rule...');
     try {
-      const id = 'rule_' + Math.random().toString(36).substring(7).toUpperCase();
+      const id = isEditing ? editingRuleId : ('rule_' + Math.random().toString(36).substring(7).toUpperCase());
       const problems = problemsRaw ? problemsRaw.split(',').map(p => p.trim()).filter(Boolean) : [];
 
       await setDoc(doc(db, 'recommendation_rules', id), {
@@ -72,17 +122,34 @@ export function AdminRecommendations() {
         recommended_services: selectedSlugs,
         priority,
         severity,
-      });
+      }, { merge: true });
 
-      toast.success('Recommendation rule added successfully!', { id: toastId });
+      toast.success(isEditing ? 'Rule updated successfully!' : 'Recommendation rule added successfully!', { id: toastId });
+      
+      // Reset form states
       setCreating(false);
+      setEditingRuleId(null);
       setSubcategory('');
       setProblemsRaw('');
       setSelectedSlugs([]);
+      setPriority(1);
+      setSeverity('medium');
       fetchRulesAndServices();
     } catch (err: any) {
       toast.error('Failed to save rule: ' + err.message, { id: toastId });
     }
+  };
+
+  const handleEditClick = (rule: RecRule) => {
+    setEditingRuleId(rule.id);
+    setCategory(rule.category);
+    setSubcategory(rule.subcategory || '');
+    setProblemsRaw(rule.problems ? rule.problems.join(', ') : '');
+    setSelectedSlugs(rule.recommended_services || []);
+    setPriority(rule.priority || 1);
+    setSeverity(rule.severity || 'medium');
+    setCreating(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id: string) => {
@@ -108,20 +175,32 @@ export function AdminRecommendations() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
+          <h2 className="font-display text-lg font-medium text-foreground">Recommendation Mapping Rules</h2>
           <p className="text-xs text-muted-foreground">Map client questionnaires, concerns, and categories to recommended services.</p>
         </div>
         {!creating && (
-          <Button onClick={() => setCreating(true)} className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground gap-1">
+          <Button onClick={() => {
+            setEditingRuleId(null);
+            setSubcategory('');
+            setProblemsRaw('');
+            setSelectedSlugs([]);
+            setCreating(true);
+          }} className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground gap-1">
             <Plus className="h-4 w-4" /> Add Rule
           </Button>
         )}
       </div>
 
       {creating && (
-        <form onSubmit={handleCreate} className="rounded-3xl border border-border bg-card p-6 space-y-4 text-left">
+        <form onSubmit={handleCreateOrUpdate} className="rounded-3xl border border-border bg-card p-6 space-y-4 text-left shadow-soft">
           <div className="flex justify-between items-center pb-2 border-b border-border/40">
-            <h3 className="font-display text-lg font-medium text-foreground">Add Recommendation Rule</h3>
-            <Button size="sm" variant="ghost" onClick={() => setCreating(false)} className="rounded-full">&times; Close</Button>
+            <h3 className="font-display text-md font-semibold text-foreground">
+              {editingRuleId ? 'Edit Recommendation Rule' : 'Add Recommendation Rule'}
+            </h3>
+            <Button size="sm" type="button" variant="ghost" onClick={() => {
+              setCreating(false);
+              setEditingRuleId(null);
+            }} className="rounded-full">&times; Close</Button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -189,7 +268,7 @@ export function AdminRecommendations() {
               {services.map((s) => {
                 const checked = selectedSlugs.includes(s.slug);
                 return (
-                  <label key={s.id} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
+                  <label key={s.id} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={checked}
@@ -208,9 +287,17 @@ export function AdminRecommendations() {
             </div>
           </div>
 
-          <Button type="submit" className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground px-6 mt-2">
-            Save Mapping Rule
-          </Button>
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground px-6">
+              {editingRuleId ? 'Update Mapping Rule' : 'Save Mapping Rule'}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => {
+              setCreating(false);
+              setEditingRuleId(null);
+            }} className="rounded-full px-6">
+              Cancel
+            </Button>
+          </div>
         </form>
       )}
 
@@ -243,7 +330,7 @@ export function AdminRecommendations() {
                   <span className="font-semibold text-foreground text-[10px] uppercase tracking-wider block mb-1">Recommended Services</span>
                   <div className="flex flex-wrap gap-1">
                     {r.recommended_services.map((slug) => (
-                      <span key={slug} className="bg-secondary/60 text-[9px] px-2 py-0.5 rounded-full font-medium text-foreground">
+                      <span key={slug} className="bg-secondary/60 text-[9px] px-2.5 py-1 rounded-full font-medium text-foreground">
                         {slug}
                       </span>
                     ))}
@@ -252,7 +339,10 @@ export function AdminRecommendations() {
               </ul>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-border/20 mt-4">
+            <div className="flex justify-end gap-2 pt-4 border-t border-border/20 mt-4">
+              <Button size="sm" variant="ghost" onClick={() => handleEditClick(r)} className="rounded-full text-xs h-7 px-3 hover:text-gold hover:bg-gold/10">
+                <Edit2 className="h-4 w-4 mr-1.5" /> Edit
+              </Button>
               <Button size="sm" variant="ghost" onClick={() => handleDelete(r.id)} className="rounded-full text-xs h-7 px-3 hover:text-destructive hover:bg-destructive/10">
                 <Trash2 className="h-4 w-4 mr-1.5" /> Delete
               </Button>

@@ -3,13 +3,6 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { queueNotification } from '@/lib/notifications/notification-service';
 
-// Reminder windows in minutes (before session start)
-const REMINDER_WINDOWS = [
-  { key: 'reminder_sent_24h', minutes: 24 * 60, label: '24h' },
-  { key: 'reminder_sent_2h',  minutes: 2 * 60,  label: '2h'  },
-  { key: 'reminder_sent_30m', minutes: 30,       label: '30m' },
-];
-
 const WINDOW_TOLERANCE_MINUTES = 15; // ± minutes tolerance
 
 export async function GET(req: Request) {
@@ -22,12 +15,23 @@ export async function GET(req: Request) {
       }
     }
 
-    // 1. Fetch global settings (meeting link fallback)
+    // 1. Fetch global settings (meeting link fallback and dynamic reminder window)
     let defaultMeetLink = '';
+    let reminderHours = 24;
     const globalSettingsSnap = await getDoc(doc(db, 'settings', 'global'));
     if (globalSettingsSnap.exists()) {
-      defaultMeetLink = globalSettingsSnap.data().google_meet_link || '';
+      const gData = globalSettingsSnap.data();
+      defaultMeetLink = gData.google_meet_link || '';
+      reminderHours = Number(gData.reminder_hours_before) || 24;
     }
+
+    // Dynamic reminder windows:
+    // 1. Dynamic Configured window (e.g. 24h, 2h, etc)
+    // 2. Final 30-minute reminder
+    const activeReminderWindows = [
+      { key: `reminder_sent_dyn_${reminderHours}h`, minutes: reminderHours * 60, label: `${reminderHours}h` },
+      { key: 'reminder_sent_30m',                   minutes: 30,                 label: '30m' }
+    ];
 
     // 2. Fetch all confirmed bookings
     const q = query(collection(db, 'bookings'), where('status', '==', 'confirmed'));
@@ -61,7 +65,7 @@ export async function GET(req: Request) {
 
       const updates: Record<string, any> = {};
 
-      for (const window of REMINDER_WINDOWS) {
+      for (const window of activeReminderWindows) {
         // Already sent for this window?
         if (booking[window.key]) continue;
 

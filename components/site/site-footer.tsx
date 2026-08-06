@@ -24,7 +24,6 @@ const COLS = [
   {
     title: 'Resources',
     links: [
-      { href: '/blog', label: 'Journal' },
       { href: '/contact', label: 'Contact' },
       { href: '/faq', label: 'FAQ' },
       { href: '/account', label: 'My Account' },
@@ -67,14 +66,14 @@ export function SiteFooter() {
 
   return (
     <footer className={cn(
-      "relative mt-32 border-t border-white/5 bg-black/10 backdrop-blur-md",
+      "relative mt-32 border-t border-white/10 bg-[#161210] text-white",
       pathname.startsWith('/account') && "hidden md:block"
     )}>
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-14 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1.6fr]">
           <div>
-            <Logo />
-            <p className="mt-5 max-w-xs text-pretty text-sm leading-relaxed text-muted-foreground font-sans">
+            <Logo className="text-white [&&_img]:invert [&&_img]:brightness-[200]" />
+            <p className="mt-5 max-w-xs text-pretty text-sm leading-relaxed text-white/80 font-sans">
               A calm, safe space for spiritual psychology, emotional healing and mindful growth —
               online and in person, for clients across the world.
             </p>
@@ -91,7 +90,7 @@ export function SiteFooter() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 glass text-muted-foreground transition-all hover:-translate-y-1 hover:border-gold hover:text-foreground hover:scale-105"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 glass text-white/80 transition-all hover:-translate-y-1 hover:border-gold hover:text-white hover:scale-105"
                 >
                   <Icon className="h-[18px] w-[18px]" />
                 </a>
@@ -101,13 +100,13 @@ export function SiteFooter() {
 
           {COLS.map((col) => (
             <div key={col.title}>
-              <h4 className="font-display text-lg font-medium text-foreground">{col.title}</h4>
+              <h4 className="font-display text-lg font-medium text-white">{col.title}</h4>
               <ul className="mt-4 space-y-3">
                 {col.links.map((l) => (
                   <li key={l.href}>
                     <Link
                       href={l.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-sm text-white/85 transition-colors hover:text-white"
                     >
                       {l.label}
                     </Link>
@@ -118,8 +117,8 @@ export function SiteFooter() {
           ))}
 
           <div>
-            <h4 className="font-display text-lg font-medium text-foreground">Letters of stillness</h4>
-            <p className="mt-4 text-sm text-muted-foreground">
+            <h4 className="font-display text-lg font-medium text-white">Letters of stillness</h4>
+            <p className="mt-4 text-sm text-white/80">
               Slow, thoughtful notes on healing, presence and the inner life. No noise, ever.
             </p>
             <form onSubmit={subscribe} className="mt-5 flex gap-2">
@@ -128,20 +127,20 @@ export function SiteFooter() {
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="rounded-full glass border border-white/10 text-foreground placeholder:text-muted-foreground"
+                className="rounded-full bg-white/5 border border-white/10 text-white placeholder:text-white/60 focus:ring-1 focus:ring-gold/60"
                 required
               />
-              <Button type="submit" className="rounded-full px-5 bg-primary text-primary-foreground hover:scale-105 hover:bg-primary/90 transition-all">
+              <Button type="submit" className="rounded-full px-5 bg-gold text-gold-foreground hover:scale-105 hover:bg-gold/90 transition-all">
                 Join
               </Button>
             </form>
           </div>
         </div>
 
-        <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-8 text-sm text-muted-foreground sm:flex-row">
+        <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-sm text-white/70 sm:flex-row">
           <p>© {new Date().getFullYear()} TheLifeHolics. Crafted with intention.</p>
           <p className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 rounded-full bg-success/80 animate-breathe" />
+            <span className="inline-block h-2 w-2 rounded-full bg-success animate-breathe" />
             Currently accepting new clients · IST &amp; global timezones
           </p>
         </div>

@@ -94,6 +94,7 @@ function PaymentPageContent() {
         body: JSON.stringify({
           code: couponCode,
           amount: bookingData.amount,
+          context: 'sessions',
         }),
       });
       const data = await res.json();

@@ -72,16 +72,10 @@ export function CinematicVideoBg() {
           muted
           loop
           playsInline
-          className="h-full w-full object-cover select-none pointer-events-none blur-[2px]"
+          className="h-full w-full object-cover select-none pointer-events-none"
           src={videoSrc}
         />
       </motion.div>
-
-      {/* Premium Cinematic Overlay (white gradient, vignette, radial glow, grain) */}
-      <div className="absolute inset-0 bg-white/20" />
-      <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/45 to-white/75" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(172, 168, 168, 0.85)_100%)]" />
-      <div className="absolute inset-0 bg-grain opacity-[0.18] mix-blend-overlay" />
 
       {/* Ambient floating CSS particles (lightweight dust) */}
       <div className="absolute inset-0 overflow-hidden opacity-[0.35]">

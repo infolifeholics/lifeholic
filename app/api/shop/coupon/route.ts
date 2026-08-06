@@ -17,6 +17,13 @@ export async function POST(req: Request) {
 
     const data = snap.docs[0].data();
 
+    // Check scope
+    if (data.applicable_to && data.applicable_to !== 'all') {
+      if (data.applicable_to !== 'shop') {
+        return NextResponse.json({ error: 'This coupon is not applicable for shop purchases.' }, { status: 400 });
+      }
+    }
+
     if (data.expires_at && new Date(data.expires_at) < new Date()) {
       return NextResponse.json({ error: 'This code has expired.' }, { status: 400 });
     }

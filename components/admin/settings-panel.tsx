@@ -168,11 +168,10 @@ const DEFAULT_SOMATIC_PLAN_SETTINGS: SomaticPlanSettings = {
 
 export function AdminSettingsPanel() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'global' | 'certificate' | 'somatic' | 'notifications'>('global');
+  const [activeTab, setActiveTab] = useState<'global' | 'certificate'>('global');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
-  const [somaticSettings, setSomaticSettings] = useState<SomaticPlanSettings>(DEFAULT_SOMATIC_PLAN_SETTINGS);
   const [previewTemplateType, setPreviewTemplateType] = useState<string>('welcome');
 
   const handleDownloadBackup = async () => {
@@ -276,28 +275,7 @@ export function AdminSettingsPanel() {
         }));
       }
 
-      // Somatic Plans
-      const somaticDocRef = doc(db, 'settings', 'somatic_plans');
-      const somaticSnap = await getDoc(somaticDocRef);
-      if (somaticSnap.exists()) {
-        const data = somaticSnap.data();
-        setSomaticSettings({
-          essential_title: data.essential_title || DEFAULT_SOMATIC_PLAN_SETTINGS.essential_title,
-          essential_price_inr: data.essential_price_inr ?? DEFAULT_SOMATIC_PLAN_SETTINGS.essential_price_inr,
-          essential_short: data.essential_short || DEFAULT_SOMATIC_PLAN_SETTINGS.essential_short,
-          essential_benefits: Array.isArray(data.essential_benefits) ? data.essential_benefits.join('\n') : (data.essential_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.essential_benefits),
-          
-          premium_title: data.premium_title || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_title,
-          premium_price_inr: data.premium_price_inr ?? DEFAULT_SOMATIC_PLAN_SETTINGS.premium_price_inr,
-          premium_short: data.premium_short || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_short,
-          premium_benefits: Array.isArray(data.premium_benefits) ? data.premium_benefits.join('\n') : (data.premium_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_benefits),
-          
-          elite_title: data.elite_title || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_title,
-          elite_price_inr: data.elite_price_inr ?? DEFAULT_SOMATIC_PLAN_SETTINGS.elite_price_inr,
-          elite_short: data.elite_short || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_short,
-          elite_benefits: Array.isArray(data.elite_benefits) ? data.elite_benefits.join('\n') : (data.elite_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_benefits),
-        });
-      }
+
     } catch (e: any) {
       console.error(e);
     } finally {
@@ -336,35 +314,6 @@ export function AdminSettingsPanel() {
     }
   };
 
-  const handleSaveSomaticSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    const toastId = toast.loading('Saving Somatic plans...');
-    try {
-      const finalObj = {
-        essential_title: somaticSettings.essential_title,
-        essential_price_inr: Number(somaticSettings.essential_price_inr || 0),
-        essential_short: somaticSettings.essential_short,
-        essential_benefits: somaticSettings.essential_benefits.split('\n').map(b => b.trim()).filter(Boolean),
-        
-        premium_title: somaticSettings.premium_title,
-        premium_price_inr: Number(somaticSettings.premium_price_inr || 0),
-        premium_short: somaticSettings.premium_short,
-        premium_benefits: somaticSettings.premium_benefits.split('\n').map(b => b.trim()).filter(Boolean),
-        
-        elite_title: somaticSettings.elite_title,
-        elite_price_inr: Number(somaticSettings.elite_price_inr || 0),
-        elite_short: somaticSettings.elite_short,
-        elite_benefits: somaticSettings.elite_benefits.split('\n').map(b => b.trim()).filter(Boolean),
-      };
-      await setDoc(doc(db, 'settings', 'somatic_plans'), finalObj, { merge: true });
-      toast.success('Somatic plans settings saved successfully!', { id: toastId });
-    } catch (err: any) {
-      toast.error('Failed to save plans: ' + err.message, { id: toastId });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleSaveNotifications = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -452,24 +401,7 @@ export function AdminSettingsPanel() {
         >
           Certificate Configurator
         </button>
-        <button
-          onClick={() => setActiveTab('somatic')}
-          className={cn(
-            'pb-2 px-1 text-sm font-semibold tracking-wide border-b-2 transition-all',
-            activeTab === 'somatic' ? 'border-gold text-foreground' : 'border-transparent text-muted-foreground'
-          )}
-        >
-          Somatic Plans Editor
-        </button>
-        <button
-          onClick={() => setActiveTab('notifications')}
-          className={cn(
-            'pb-2 px-1 text-sm font-semibold tracking-wide border-b-2 transition-all',
-            activeTab === 'notifications' ? 'border-gold text-foreground' : 'border-transparent text-muted-foreground'
-          )}
-        >
-          Notification Settings
-        </button>
+
 
         <button
           onClick={handleDownloadBackup}
@@ -552,7 +484,7 @@ export function AdminSettingsPanel() {
             </div>
           </div>
         </form>
-      ) : activeTab === 'certificate' ? (
+      ) : (
         <div className="grid gap-6 lg:grid-cols-12 text-left">
           {/* Certificate Editor Panels */}
           <div className="lg:col-span-7 space-y-6">
@@ -942,367 +874,6 @@ export function AdminSettingsPanel() {
             </div>
           </div>
         </div>
-      ) : activeTab === 'notifications' ? (
-        <form onSubmit={handleSaveNotifications} className="rounded-3xl border border-border bg-card p-6 space-y-6 text-left shadow-soft">
-          <div className="flex justify-between items-center pb-3 border-b border-border/40">
-            <div>
-              <h3 className="font-display text-lg font-medium text-foreground">Notification Channels & Toggles</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Configure SMTP emails, Meta/Twilio WhatsApp settings, and customize event templates.</p>
-            </div>
-            <Button type="submit" disabled={saving} className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground gap-1.5 px-6">
-              <Save className="h-4 w-4" /> Save Notifications
-            </Button>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Sender and General Info */}
-            <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
-                <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5 border-b border-border/20 pb-2">
-                  <Mail className="h-4 w-4 text-gold" /> Sender Details
-                </h4>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs">Sender Display Name</Label>
-                    <Input
-                      value={notificationSettings.sender_name}
-                      onChange={(e) => setNotificationSettings({ ...notificationSettings, sender_name: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Support Email Address</Label>
-                    <Input
-                      type="email"
-                      value={notificationSettings.support_email}
-                      onChange={(e) => setNotificationSettings({ ...notificationSettings, support_email: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Support Phone Number</Label>
-                    <Input
-                      value={notificationSettings.support_phone}
-                      onChange={(e) => setNotificationSettings({ ...notificationSettings, support_phone: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Toggles */}
-              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
-                <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5 border-b border-border/20 pb-2">
-                  <Sliders className="h-4 w-4 text-gold" /> Notification Channels & Timing
-                </h4>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-semibold text-foreground">Outbound Email Notifications</p>
-                      <p className="text-[10px] text-muted-foreground">Send notifications via SMTP mail transporter</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={notificationSettings.email_notifications_enabled}
-                      onChange={(e) => setNotificationSettings({ ...notificationSettings, email_notifications_enabled: e.target.checked })}
-                      className="h-4 w-4 rounded border-border bg-card text-gold focus:ring-gold"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-semibold text-foreground">WhatsApp Notifications</p>
-                      <p className="text-[10px] text-muted-foreground">Send message updates via Meta Cloud or Twilio API</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={notificationSettings.whatsapp_notifications_enabled}
-                      onChange={(e) => setNotificationSettings({ ...notificationSettings, whatsapp_notifications_enabled: e.target.checked })}
-                      className="h-4 w-4 rounded border-border bg-card text-gold focus:ring-gold"
-                    />
-                  </div>
-
-                  <div className="border-t border-border/20 pt-3">
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-2">Individual Toggles</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {Object.keys(notificationSettings.toggles).map((key) => (
-                        <label key={key} className="flex items-center gap-2 cursor-pointer capitalize">
-                          <input
-                            type="checkbox"
-                            checked={(notificationSettings.toggles as any)[key]}
-                            onChange={(e) => setNotificationSettings({
-                              ...notificationSettings,
-                              toggles: {
-                                ...notificationSettings.toggles,
-                                [key]: e.target.checked
-                              }
-                            })}
-                            className="h-3 w-3 rounded text-gold focus:ring-gold"
-                          />
-                          <span>{key.replace(/_/g, ' ')}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* WhatsApp Integration Credentials */}
-            <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
-                <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5 border-b border-border/20 pb-2">
-                  <MessageSquare className="h-4 w-4 text-gold" /> WhatsApp Gateway Credentials
-                </h4>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs font-medium">WhatsApp Service Provider</Label>
-                    <select
-                      value={notificationSettings.whatsapp_provider}
-                      onChange={(e) => setNotificationSettings({ ...notificationSettings, whatsapp_provider: e.target.value })}
-                      className="w-full mt-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-1 focus:ring-gold"
-                    >
-                      <option value="meta">Meta Cloud API (Recommended)</option>
-                      <option value="twilio">Twilio WhatsApp Sandbox/API</option>
-                    </select>
-                  </div>
-
-                  {notificationSettings.whatsapp_provider === 'meta' ? (
-                    <>
-                      <div>
-                        <Label className="text-xs">Meta Access Token</Label>
-                        <Input
-                          type="password"
-                          value={notificationSettings.whatsapp_access_token}
-                          onChange={(e) => setNotificationSettings({ ...notificationSettings, whatsapp_access_token: e.target.value })}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Meta Phone Number ID</Label>
-                        <Input
-                          value={notificationSettings.whatsapp_phone_number_id}
-                          onChange={(e) => setNotificationSettings({ ...notificationSettings, whatsapp_phone_number_id: e.target.value })}
-                          className="mt-1"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <Label className="text-xs">Twilio Account SID</Label>
-                        <Input
-                          value={notificationSettings.twilio_account_sid}
-                          onChange={(e) => setNotificationSettings({ ...notificationSettings, twilio_account_sid: e.target.value })}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Twilio Auth Token</Label>
-                        <Input
-                          type="password"
-                          value={notificationSettings.twilio_auth_token}
-                          onChange={(e) => setNotificationSettings({ ...notificationSettings, twilio_auth_token: e.target.value })}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Twilio WhatsApp Phone Number</Label>
-                        <Input
-                          placeholder="whatsapp:+14155238886"
-                          value={notificationSettings.twilio_phone_number}
-                          onChange={(e) => setNotificationSettings({ ...notificationSettings, twilio_phone_number: e.target.value })}
-                          className="mt-1"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Template Previewer */}
-              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
-                <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5 border-b border-border/20 pb-2">
-                  <Sparkles className="h-4 w-4 text-gold" /> Template Previewer
-                </h4>
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs">Select Template to Preview</Label>
-                    <select
-                      value={previewTemplateType}
-                      onChange={(e) => setPreviewTemplateType(e.target.value)}
-                      className="w-full mt-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:ring-1 focus:ring-gold"
-                    >
-                      <option value="welcome">Welcome Message</option>
-                      <option value="booking_confirmation">Booking Confirmation</option>
-                      <option value="booking_cancelled">Booking Cancelled</option>
-                      <option value="booking_reminder">Upcoming Session Reminder</option>
-                      <option value="booking_status_changed">Booking Status Changed</option>
-                      <option value="certificate_generated">Certificate Generated</option>
-                      <option value="rec_letter_generated">Recommendation Letter Generated</option>
-                    </select>
-                  </div>
-                  <div className="border border-border/40 rounded-xl overflow-hidden bg-card/60 p-3">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">WhatsApp Message Copy</p>
-                    <div className="text-xs p-2.5 rounded bg-emerald-950/20 text-foreground border border-emerald-500/20 whitespace-pre-line font-mono">
-                      {typeof WHATSAPP_TEMPLATES[previewTemplateType as keyof typeof WHATSAPP_TEMPLATES] === 'function'
-                        ? WHATSAPP_TEMPLATES[previewTemplateType as keyof typeof WHATSAPP_TEMPLATES]({
-                            memberName: 'Aarav Sharma',
-                            sessionDate: '2026-07-28',
-                            sessionTime: '11:15 AM - 11:45 AM',
-                            bookingId: 'BK_9827',
-                            bookingStatus: 'Confirmed',
-                            orgName: notificationSettings.sender_name,
-                            certUrl: 'https://thelifeholics.com/cert/demo',
-                            recLetterUrl: 'https://thelifeholics.com/rec/demo'
-                          })
-                        : 'No WhatsApp Template Loaded'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </form>
-      ) : (
-        <form onSubmit={handleSaveSomaticSettings} className="rounded-3xl border border-border bg-card p-6 space-y-6 text-left shadow-soft">
-          <div className="flex justify-between items-center pb-3 border-b border-border/40">
-            <div>
-              <h3 className="font-display text-lg font-medium text-foreground">Somatic Plans Configurator</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Edit titles, prices, descriptions, and feature checklists for Somatic Search Plans.</p>
-            </div>
-            <Button type="submit" disabled={saving} className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground gap-1.5 px-6">
-              <Save className="h-4 w-4" /> Save Somatic Plans
-            </Button>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-3">
-            {/* PLAN A */}
-            <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
-              <h4 className="font-semibold text-sm text-foreground border-b border-border/20 pb-2">Plan A (Essential)</h4>
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-xs">Title</Label>
-                  <Input
-                    value={somaticSettings.essential_title}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, essential_title: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Price (INR)</Label>
-                  <Input
-                    type="number"
-                    value={somaticSettings.essential_price_inr}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, essential_price_inr: parseInt(e.target.value) || 0 })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Short Description</Label>
-                  <Input
-                    value={somaticSettings.essential_short}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, essential_short: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Plan Features (One per line)</Label>
-                  <textarea
-                    value={somaticSettings.essential_benefits}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, essential_benefits: e.target.value })}
-                    rows={6}
-                    className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* PLAN B */}
-            <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
-              <h4 className="font-semibold text-sm text-foreground border-b border-border/20 pb-2">Plan B (Premium)</h4>
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-xs">Title</Label>
-                  <Input
-                    value={somaticSettings.premium_title}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, premium_title: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Price (INR)</Label>
-                  <Input
-                    type="number"
-                    value={somaticSettings.premium_price_inr}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, premium_price_inr: parseInt(e.target.value) || 0 })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Short Description</Label>
-                  <Input
-                    value={somaticSettings.premium_short}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, premium_short: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Plan Features (One per line)</Label>
-                  <textarea
-                    value={somaticSettings.premium_benefits}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, premium_benefits: e.target.value })}
-                    rows={6}
-                    className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* PLAN C */}
-            <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
-              <h4 className="font-semibold text-sm text-foreground border-b border-border/20 pb-2">Plan C (Elite)</h4>
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-xs">Title</Label>
-                  <Input
-                    value={somaticSettings.elite_title}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_title: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Price (INR)</Label>
-                  <Input
-                    type="number"
-                    value={somaticSettings.elite_price_inr}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_price_inr: parseInt(e.target.value) || 0 })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Short Description</Label>
-                  <Input
-                    value={somaticSettings.elite_short}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_short: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Plan Features (One per line)</Label>
-                  <textarea
-                    value={somaticSettings.elite_benefits}
-                    onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_benefits: e.target.value })}
-                    rows={6}
-                    className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
-                  />
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </form>
       )}
     </div>
   );

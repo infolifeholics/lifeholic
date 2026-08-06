@@ -53,7 +53,17 @@ export async function notifyAdmins(
         const b = bookingSnap.data();
         clientEmail = b.client_email || '';
         clientPhone = b.client_phone || '';
-        meetLink = b.meeting_link || '';
+        
+        let defaultMeetLink = '';
+        try {
+          const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
+          if (settingsSnap.exists()) {
+            defaultMeetLink = settingsSnap.data().google_meet_link || '';
+          }
+        } catch (e) {
+          console.error('Error fetching global settings for meet link:', e);
+        }
+        meetLink = b.meeting_link || defaultMeetLink;
         
         if (b.start_time) {
           const dateObj = new Date(b.start_time);
