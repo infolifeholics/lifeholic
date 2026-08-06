@@ -2,6 +2,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
 import seedData from './seed-data.json';
 import type { Service, Product, Testimonial, Workshop, BlogPost, Faq, Availability } from '@/lib/types';
+import { unstable_noStore as noStore } from 'next/cache';
 
 // Check if we are running in build environment with dummy config
 const isDummyConfig =
@@ -15,6 +16,7 @@ const CACHE_TTL = 10 * 1000; // 10 sec cache lifetime
 
 // Helper to auto-seed a collection from seed-data.json if it is empty
 async function getCollectionData<T>(colName: string): Promise<T[]> {
+  noStore();
   const defaults = (seedData as any)[colName] || [];
 
   if (isDummyConfig) {

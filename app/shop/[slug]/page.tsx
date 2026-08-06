@@ -37,6 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     },
   };
 }
+export const dynamic = 'force-dynamic';
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -48,13 +49,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     const qReviews = query(
       collection(db, 'product_reviews'),
       where('product_id', '==', product.id),
-      orderBy('created_at', 'desc'),
-      limit(20)
+      limit(100)
     );
     const snap = await getDocs(qReviews);
-    reviewRows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    reviewRows = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
   } catch (err) {
-    console.warn('Could not fetch reviews from Firestore (probably empty collection):', err);
+    console.warn('Could not fetch reviews from Firestore:', err);
   }
 
   const all = await getProducts();

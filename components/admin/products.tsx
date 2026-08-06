@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -20,6 +20,9 @@ export function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [migrating, setMigrating] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
+  
+  const mainImageInputRef = useRef<HTMLInputElement>(null);
+  const galleryImageInputRef = useRef<HTMLInputElement>(null);
   
   // Search, Filter, Sort, Pagination states
   const [searchQuery, setSearchQuery] = useState('');
@@ -564,16 +567,24 @@ export function AdminProducts() {
                       </button>
                     </div>
                   ) : (
-                    <label className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-card hover:border-gold/50 transition-colors">
-                      <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                      <span className="mt-1 text-[10px] text-muted-foreground">Upload Image</span>
+                    <div className="flex flex-col gap-2">
                       <input
+                        ref={mainImageInputRef}
                         type="file"
                         accept="image/*"
                         onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], false)}
                         className="hidden"
                       />
-                    </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => mainImageInputRef.current?.click()}
+                        className="h-28 w-28 rounded-2xl border-2 border-dashed border-border/80 bg-card hover:border-gold/50 transition-colors flex flex-col items-center justify-center gap-1 text-muted-foreground font-normal"
+                      >
+                        <ImageIcon className="h-6 w-6" />
+                        <span className="text-[10px]">Upload Image</span>
+                      </Button>
+                    </div>
                   )}
                   <div className="text-xs text-muted-foreground space-y-1">
                     <p>Supported: JPG, PNG, WEBP</p>
@@ -598,16 +609,24 @@ export function AdminProducts() {
                       </button>
                     </div>
                   ))}
-                  <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card hover:border-gold/50 transition-colors">
-                    <Plus className="h-5 w-5 text-muted-foreground" />
-                    <span className="mt-0.5 text-[9px] text-muted-foreground">Add More</span>
+                  <div className="flex flex-col">
                     <input
+                      ref={galleryImageInputRef}
                       type="file"
                       accept="image/*"
                       onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], true)}
                       className="hidden"
                     />
-                  </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => galleryImageInputRef.current?.click()}
+                      className="h-20 w-20 rounded-xl border border-dashed border-border bg-card hover:border-gold/50 transition-colors flex flex-col items-center justify-center text-muted-foreground font-normal"
+                    >
+                      <Plus className="h-5 w-5" />
+                      <span className="text-[9px] mt-0.5">Add More</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
 
