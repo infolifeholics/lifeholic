@@ -68,7 +68,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const gallery = product.gallery && product.gallery.length ? product.gallery : [product.image];
 
   return (
-    <div className="pt-28">
+    <div className="pt-28 relative min-h-screen">
+      {/* White glassmorphism backdrop blur on top of background video */}
+      <div className="fixed inset-0 -z-10 bg-white/20 backdrop-blur-[4px] dark:bg-black/40 dark:backdrop-blur-[4px]" />
+
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <nav className="flex items-center gap-2 text-xs text-muted-foreground" aria-label="Breadcrumb">
           <Link href="/shop" className="hover:text-foreground">Shop</Link>
