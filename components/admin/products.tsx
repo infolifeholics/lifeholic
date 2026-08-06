@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn, isValidAmazonUrl } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 import seedData from '@/lib/seed-data.json';
+import { ImageCropperModal } from './image-cropper-modal';
 
 const ITEMS_PER_PAGE = 8;
 
@@ -32,6 +33,22 @@ export function AdminProducts() {
 
   // Cloudinary uploading state
   const [uploading, setUploading] = useState(false);
+
+  // Cropper states
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperSrc, setCropperSrc] = useState<string>('');
+  const [cropperIsGallery, setCropperIsGallery] = useState(false);
+
+  const handleFileSelect = (file: File, isGallery = false) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      setCropperSrc(reader.result as string);
+      setCropperIsGallery(isGallery);
+      setCropperOpen(true);
+    });
+    reader.readAsDataURL(file);
+  };
 
   const fetchProducts = async () => {
     try {
@@ -572,7 +589,7 @@ export function AdminProducts() {
                         ref={mainImageInputRef}
                         type="file"
                         accept="image/*"
-                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], false)}
+                        onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], false)}
                         className="hidden"
                       />
                       <Button
@@ -614,7 +631,7 @@ export function AdminProducts() {
                       ref={galleryImageInputRef}
                       type="file"
                       accept="image/*"
-                      onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], true)}
+                      onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], true)}
                       className="hidden"
                     />
                     <Button
@@ -863,6 +880,22 @@ export function AdminProducts() {
             </div>
           )}
         </div>
+      )}
+
+      {cropperOpen && (
+        <ImageCropperModal
+          isOpen={cropperOpen}
+          onClose={() => {
+            setCropperOpen(false);
+            setCropperSrc('');
+          }}
+          imageSrc={cropperSrc}
+          aspect={1} // 1:1 for products
+          onCropComplete={(croppedFile) => {
+            handleImageUpload(croppedFile, cropperIsGallery);
+          }}
+          title="Crop Product Image"
+        />
       )}
     </div>
   );

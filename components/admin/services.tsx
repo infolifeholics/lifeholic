@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import type { Service } from '@/lib/types';
+import { ImageCropperModal } from './image-cropper-modal';
 
 export function AdminServices() {
   const [services, setServices] = useState<Service[]>([]);
@@ -18,6 +19,20 @@ export function AdminServices() {
   const [editingService, setEditingService] = useState<Partial<Service> | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Cropper states
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperSrc, setCropperSrc] = useState<string>('');
+
+  const handleFileSelect = (file: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      setCropperSrc(reader.result as string);
+      setCropperOpen(true);
+    });
+    reader.readAsDataURL(file);
+  };
 
   const fetchServices = async () => {
     try {
@@ -316,7 +331,7 @@ export function AdminServices() {
                   disabled={uploading}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleImageUpload(file);
+                    if (file) handleFileSelect(file);
                   }}
                   className="hidden"
                 />
@@ -526,6 +541,22 @@ export function AdminServices() {
             </table>
           </div>
         </div>
+      )}
+
+      {cropperOpen && (
+        <ImageCropperModal
+          isOpen={cropperOpen}
+          onClose={() => {
+            setCropperOpen(false);
+            setCropperSrc('');
+          }}
+          imageSrc={cropperSrc}
+          aspect={16 / 11} // 16:11 ratio for services
+          onCropComplete={(croppedFile) => {
+            handleImageUpload(croppedFile);
+          }}
+          title="Crop Service Image (16:11)"
+        />
       )}
     </div>
   );

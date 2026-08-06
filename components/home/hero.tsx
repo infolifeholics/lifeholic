@@ -508,27 +508,7 @@ export function HomeHero() {
     return () => clearInterval(interval);
   }, [images]);
 
-  // Handle outside click to close dropdown
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Close dropdown on scroll to avoid overlaying about page when scrolled
-  useEffect(() => {
-    function handleScroll() {
-      if (window.scrollY > 30) {
-        setIsOpen(false);
-      }
-    }
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Handlers for outside click and scroll close have been removed to prevent auto-hiding
 
 
   const hasImages = images.length > 0;
@@ -637,7 +617,9 @@ export function HomeHero() {
         <div ref={dropdownRef} className={cn("relative w-full transition-all duration-300", isOpen ? "z-[100]" : "z-20")}>
           {/* Outer Search Bar Wrapper */}
           <div
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={() => {
+              if (!isOpen) setIsOpen(true);
+            }}
             className={cn(
               "group relative flex items-center gap-4 rounded-2xl px-5 py-4 cursor-pointer backdrop-blur-md",
               "border-2 transition-all duration-500",
@@ -656,18 +638,33 @@ export function HomeHero() {
                   : "Which area of your life feels most difficult these days?"}
               </p>
             </div>
-            {totalSelectedCount > 0 && (
+            {isOpen ? (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  resetDropdown();
+                  setIsOpen(false);
                 }}
-                className="p-1 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                className="p-1.5 rounded-full hover:bg-white/10 text-white transition-colors"
+                type="button"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5 text-gold" />
               </button>
+            ) : (
+              <>
+                {totalSelectedCount > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      resetDropdown();
+                    }}
+                    className="p-1 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors mr-1"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+                <ChevronRight className="h-5 w-5 text-white/70" />
+              </>
             )}
-            <ChevronRight className={cn("h-5 w-5 text-white/70 transition-transform duration-300", isOpen ? "rotate-90 text-gold" : "")} />
           </div>
 
           {/* Not sure where to begin? Button placed directly below search bar */}
@@ -952,23 +949,6 @@ export function HomeHero() {
         </div>
       </div>
 
-      {/* scroll cue */}
-      {totalSelectedCount === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.4, duration: 1 }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex justify-center z-10"
-        >
-          <div className="flex h-10 w-6 items-start justify-center rounded-full border border-border/45 p-1.5 bg-black/10 backdrop-blur-sm">
-            <motion.span
-              animate={{ y: [0, 12, 0], opacity: [1, 0.3, 1] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-              className="h-1.5 w-1.5 rounded-full bg-foreground/60"
-            />
-          </div>
-        </motion.div>
-      )}
 
       {/* PROMO POPUP MODAL */}
       {showPromoPopup && promoCoupon && (

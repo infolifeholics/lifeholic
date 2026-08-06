@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import type { Workshop, Speaker, AgendaItem, WorkshopRegistration, WorkshopFeedback } from '@/lib/types';
+import { ImageCropperModal } from './image-cropper-modal';
 
 export function AdminWorkshops() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
@@ -25,6 +26,32 @@ export function AdminWorkshops() {
   const [loading, setLoading] = useState(true);
   const [migrating, setMigrating] = useState(false);
   const [viewingRegs, setViewingRegs] = useState<string | null>(null);
+
+  // Cropper states
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperSrc, setCropperSrc] = useState<string>('');
+  const [cropperTarget, setCropperTarget] = useState<'image' | 'thumbnail' | 'gallery' | 'resources' | 'videos'>('image');
+  const [cropperAspect, setCropperAspect] = useState<number>(16/9);
+
+  const handleFileSelect = (file: File, target: 'image' | 'thumbnail' | 'gallery' | 'resources' | 'videos') => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      handleUploadFile(file, target);
+      return;
+    }
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      setCropperSrc(reader.result as string);
+      setCropperTarget(target);
+      if (target === 'thumbnail') {
+        setCropperAspect(1);
+      } else {
+        setCropperAspect(16/9);
+      }
+      setCropperOpen(true);
+    });
+    reader.readAsDataURL(file);
+  };
 
   const handleMigrateWorkshops = async () => {
     if (migrating) return;
@@ -702,10 +729,10 @@ export function AdminWorkshops() {
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label>Cover Banner File</Label>
-                <Input
+                 <Input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => e.target.files?.[0] && handleUploadFile(e.target.files[0], 'image')}
+                  onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], 'image')}
                   className="mt-1 file:bg-gold/15 file:text-gold file:border-0 file:rounded-full file:px-3 file:py-1 file:text-xs"
                 />
                 {editingWs.image && (
@@ -714,10 +741,10 @@ export function AdminWorkshops() {
               </div>
               <div>
                 <Label>Thumbnail File</Label>
-                <Input
+                 <Input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => e.target.files?.[0] && handleUploadFile(e.target.files[0], 'thumbnail')}
+                  onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], 'thumbnail')}
                   className="mt-1 file:bg-gold/15 file:text-gold file:border-0 file:rounded-full file:px-3 file:py-1 file:text-xs"
                 />
                 {editingWs.thumbnail && (
@@ -729,10 +756,10 @@ export function AdminWorkshops() {
             {/* Gallery Uploads */}
             <div>
               <Label>Upload to Gallery</Label>
-              <Input
+               <Input
                 type="file"
                 accept="image/*"
-                onChange={(e) => e.target.files?.[0] && handleUploadFile(e.target.files[0], 'gallery')}
+                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], 'gallery')}
                 className="mt-1.5 file:bg-gold/15 file:text-gold file:border-0 file:rounded-full file:px-3 file:py-1 file:text-xs"
               />
               {editingWs.gallery && editingWs.gallery.length > 0 && (
@@ -1566,6 +1593,22 @@ export function AdminWorkshops() {
             </div>
           ))}
         </div>
+      )}
+
+      {cropperOpen && (
+        <ImageCropperModal
+          isOpen={cropperOpen}
+          onClose={() => {
+            setCropperOpen(false);
+            setCropperSrc('');
+          }}
+          imageSrc={cropperSrc}
+          aspect={cropperAspect}
+          onCropComplete={(croppedFile) => {
+            handleUploadFile(croppedFile, cropperTarget);
+          }}
+          title={cropperTarget === 'thumbnail' ? 'Crop Thumbnail (1:1)' : 'Crop Workshop Banner (16:9)'}
+        />
       )}
     </div>
   );

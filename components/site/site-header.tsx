@@ -19,8 +19,9 @@ const NAV = [
   // { href: '/', label: 'Home' },
   { href: '/about', label: 'Our Story' },
   { href: '/services', label: 'Services' },
+  { href: '/shop', label: 'Products' },
   { href: '/workshops', label: 'Workshops' },
-  { href: '/shop', label: 'Shop' },
+
   // { href: '/contact', label: 'Contact' },
 ];
 
@@ -332,7 +333,7 @@ export function SiteHeader() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -16, scale: 0.95 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="mt-2.5 rounded-3xl glass-strong p-5 shadow-glow border border-white/10 lg:hidden backdrop-blur-lg"
+                className="mt-2.5 rounded-3xl bg-white p-5 shadow-glow border border-black/5 lg:hidden backdrop-blur-md"
               >
                 <nav className="flex flex-col gap-1">
                   {NAV.map((item) => (
@@ -340,23 +341,25 @@ export function SiteHeader() {
                       key={item.href}
                       href={item.href}
                       className={cn(
-                        'rounded-2xl px-4 py-3 text-base font-medium transition-all',
+                        'rounded-2xl px-4 py-3 text-base font-bold transition-all flex items-center justify-between',
                         isActive(item.href)
-                          ? 'bg-white/10 text-foreground'
-                          : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+                          ? 'bg-gold/10 text-gold border border-gold/30 shadow-[0_0_15px_rgba(255,215,0,0.15)]'
+                          : 'text-black hover:bg-black/5 hover:text-black'
                       )}
                     >
-                      {item.label}
+                      <span className={cn(isActive(item.href) && 'drop-shadow-[0_0_1px_rgba(212,175,55,0.4)] font-extrabold')}>
+                        {item.label}
+                      </span>
                     </Link>
                   ))}
                   <Button asChild className="mt-4 rounded-full py-6 text-base bg-primary hover:bg-primary/80">
                     <Link href="/booking">Book a Session</Link>
                   </Button>
-                  <div className="mt-4 flex items-center justify-around gap-3 border-t border-white/5 pt-4 text-sm text-muted-foreground">
-                    <Link href="/shop/wishlist" className="inline-flex items-center gap-2 hover:text-foreground transition-colors">
+                  <div className="mt-4 flex items-center justify-around gap-3 border-t border-black/5 pt-4 text-sm font-bold text-black">
+                    <Link href="/shop/wishlist" className="inline-flex items-center gap-2 hover:text-gold transition-colors">
                       <Heart className="h-4.5 w-4.5" /> Wishlist
                     </Link>
-                    <Link href={user ? '/account' : '/auth/login'} className="inline-flex items-center gap-2 hover:text-foreground transition-colors">
+                    <Link href={user ? '/account' : '/auth/login'} className="inline-flex items-center gap-2 hover:text-gold transition-colors">
                       <User className="h-4.5 w-4.5" /> {user ? 'Account' : 'Sign in'}
                     </Link>
                   </div>

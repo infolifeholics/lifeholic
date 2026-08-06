@@ -81,11 +81,22 @@ export default function WorkshopsPage() {
 
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Gather in Community</p>
-          <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+          <p 
+            className="text-xs font-semibold uppercase tracking-[0.2em] text-white"
+            style={{ textShadow: '0 0 2px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}
+          >
+            Gather in Community
+          </p>
+          <h1 
+            className="font-display text-4xl font-semibold tracking-tight text-white sm:text-5xl"
+            style={{ textShadow: '0 0 3px rgba(0,0,0,1), 0 2px 8px rgba(0,0,0,1)' }}
+          >
             WORKSHOPS
           </h1>
-          <p className="text-sm sm:text-base text-black font-medium leading-relaxed">
+          <p 
+            className="text-sm sm:text-base text-white/90 font-semibold leading-relaxed"
+            style={{ textShadow: '0 0 2px rgba(0,0,0,1), 0 2px 5px rgba(0,0,0,1)' }}
+          >
             At Lifeholics, our workshops are designed to help you understand yourself on a deeper level while experiencing practical healing techniques that you can apply in your daily life. Each workshop focuses on a specific area of healing and personal transformation.
           </p>
         </div>

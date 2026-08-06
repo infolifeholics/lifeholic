@@ -41,7 +41,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <SmoothScroll>
               <PageTransition>
                 <CinematicVideoBg />
-                <CustomCursor />
                 <SoundToggle />
                 <FloatingPetals />
                 {children}
