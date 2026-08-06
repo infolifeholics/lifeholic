@@ -63,8 +63,9 @@ npm run typecheck
 Use these commands to upload or sync your latest changes to GitHub:
 ```bash
 git add .
-git commit -m "video upload failed fix"
-git push -u origin main
+git commit -m "fix: update products image upload refs to programmatic triggers for robust image replacement"
+git push
+
 ``` 
 
 ### Firebase Setup & Database Rules Deployment

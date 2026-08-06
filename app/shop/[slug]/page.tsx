@@ -112,7 +112,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               <span className="text-sm text-muted-foreground">≈ {formatPrice(product.price_usd, 'USD')}</span>
             </div>
 
-            <p className="mt-6 text-pretty text-base leading-relaxed text-muted-foreground">{product.description}</p>
+            <p className="mt-6 text-pretty text-base leading-relaxed text-black dark:text-neutral-200 font-medium">{product.description}</p>
 
             <ul className="mt-6 grid gap-2 sm:grid-cols-2">
               {product.highlights.map((h) => (
