@@ -67,7 +67,7 @@ export function PageLoader() {
               transition={{ duration: 0.8, delay: 0.85, ease: EASE }}
               className="text-xs uppercase tracking-[0.22em] text-muted-foreground"
             >
-              Spiritual Psychology &amp; Therapy
+              HOLISTIC HEALTH SERVICE
             </motion.p>
 
             {/* Progress bar */}

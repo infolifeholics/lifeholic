@@ -2,14 +2,17 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion';
+import { usePathname } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 
 const DEFAULT_VIDEO = 'https://cdn.prod.website-files.com/691c3d8b8165d353a2345b2d%2F691d841c9c6b35b63efb82bc_hero-bg-video_mp4.mp4';
 
 export function CinematicVideoBg() {
+  const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoSrc, setVideoSrc] = useState(DEFAULT_VIDEO);
+  const [fallbackImage, setFallbackImage] = useState('');
 
   // Track scroll for zoom and slight translation parallax
   const { scrollYProgress } = useScroll();
@@ -36,6 +39,18 @@ export function CinematicVideoBg() {
       .catch((err) => console.warn('Could not fetch custom bg video:', err));
   }, []);
 
+  // Listen to background image fallback in real-time
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'cms', 'global'), (snap) => {
+      if (snap.exists() && snap.data().background_image) {
+        setFallbackImage(snap.data().background_image);
+      } else {
+        setFallbackImage('');
+      }
+    }, (err) => console.warn('Could not fetch custom bg image:', err));
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     // Disable mouse parallax on touch devices
     const isTouch = window.matchMedia('(pointer: coarse)').matches;
@@ -53,6 +68,8 @@ export function CinematicVideoBg() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [mouseX, mouseY]);
 
+  const isVideoPage = pathname === '/' || pathname === '/about';
+
   return (
     <div className="pointer-events-none fixed inset-0 -z-20 overflow-hidden bg-background">
       {/* Parallax Container */}
@@ -65,16 +82,25 @@ export function CinematicVideoBg() {
           scale: scaleParallax,
         }}
       >
-        <video
-          key={videoSrc}
-          ref={videoRef}
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="h-full w-full object-cover select-none pointer-events-none"
-          src={videoSrc}
-        />
+        {isVideoPage ? (
+          <video
+            key={videoSrc}
+            ref={videoRef}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="h-full w-full object-cover select-none pointer-events-none"
+            src={videoSrc}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={fallbackImage || "https://images.pexels.com/photos/3280130/pexels-photo-3280130.jpeg?auto=compress&cs=tinysrgb&w=1200"}
+            alt="Page background"
+            className="h-full w-full object-cover select-none pointer-events-none brightness-[0.7] contrast-[1.02]"
+          />
+        )}
       </motion.div>
 
       {/* Ambient floating CSS particles (lightweight dust) */}

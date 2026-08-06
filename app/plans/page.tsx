@@ -258,7 +258,7 @@ export default function SomaticPlansPage() {
         return (
           <span 
             key={index} 
-            className="bg-gold/20 dark:bg-gold/15 text-amber-800 dark:text-gold px-1.5 py-0.5 rounded-md border border-gold/30 font-semibold inline-block mx-0.5"
+            className="text-gold font-bold"
           >
             {part}
           </span>
@@ -505,11 +505,8 @@ export default function SomaticPlansPage() {
                   </span>
                 </div>
                 <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground bg-gradient-to-r from-foreground via-foreground/90 to-gold/80 bg-clip-text text-transparent">
-                  Somatic Intelligence Report
+                  This what we figure out for you
                 </h1>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Based on your deep survey response · Compiled in real-time
-                </p>
                 {survey && (
                   <div className="flex flex-wrap gap-2.5 mt-4">
                     <span className="bg-rose-500/10 text-rose-500 text-xs px-3.5 py-1.5 rounded-full font-semibold border border-rose-500/20 shadow-[0_2px_8px_rgba(244,63,94,0.08)] uppercase tracking-wider">
@@ -522,22 +519,6 @@ export default function SomaticPlansPage() {
                     )}
                   </div>
                 )}
-              </div>
-              <div className="rounded-2xl bg-gradient-to-tr from-gold/20 via-gold/5 to-transparent border border-gold/30 px-6 py-5 max-w-md shadow-soft backdrop-blur-md relative overflow-hidden group/rec w-full md:w-auto transition-all duration-500 hover:border-gold hover:shadow-[0_8px_35px_rgba(218,165,32,0.3)] hover:scale-[1.03]">
-                {/* Background aura orb that expands on hover */}
-                <div className="absolute -top-6 -right-6 w-32 h-32 bg-gold/20 rounded-full blur-2xl transition-all duration-500 group-hover/rec:scale-150 group-hover/rec:bg-gold/30" />
-                
-                {/* Subtle light beam sweep effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/rec:translate-x-full transition-transform duration-1000 ease-out" />
-
-                <span className="text-xs font-bold text-gold uppercase tracking-widest block flex items-center gap-1.5 transition-colors duration-300 group-hover/rec:text-amber-400">
-                  <Sparkles className="h-4 w-4 animate-pulse transition-transform duration-500 group-hover/rec:rotate-180" />
-                  Recommended Plan
-                </span>
-                
-                <p className="text-sm text-foreground font-semibold mt-2.5 leading-relaxed relative z-10">
-                  We recommend <span className="text-gold text-base underline decoration-gold/40 decoration-2 underline-offset-4 font-bold bg-gold/10 px-2 py-0.5 rounded transition-all duration-300 group-hover/rec:bg-gold/20">{meta.recommendedLabel}</span> for your personal healing goals.
-                </p>
               </div>
             </div>
 
@@ -569,7 +550,7 @@ export default function SomaticPlansPage() {
                 <ShieldCheck className="h-4.5 w-4.5 text-gold" />
                 Somatic &amp; Energetic Insight:
               </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground italic font-medium pl-6 relative">
+              <p className="text-sm leading-relaxed text-foreground italic font-medium pl-6 relative">
                 <span className="absolute left-0 top-0 text-2xl text-gold/30 font-serif leading-none">“</span>
                 {highlightText(meta.patterns)}
               </p>

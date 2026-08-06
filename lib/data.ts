@@ -90,7 +90,7 @@ export async function getWorkshops(): Promise<Workshop[]> {
   const data = await getCollectionData<Workshop>('workshops');
   const now = new Date().getTime();
   return data
-    .filter((w) => new Date(w.date).getTime() >= now)
+    .filter((w) => w.status === 'published' && new Date(w.date).getTime() >= now)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
@@ -98,7 +98,7 @@ export async function getCompletedWorkshops(): Promise<Workshop[]> {
   const data = await getCollectionData<Workshop>('workshops');
   const now = new Date().getTime();
   return data
-    .filter((w) => new Date(w.date).getTime() < now)
+    .filter((w) => w.status !== 'draft' && w.status !== 'cancelled' && (w.status === 'completed' || new Date(w.date).getTime() < now))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 

@@ -35,15 +35,6 @@ export default async function ContactPage() {
             <ContactForm />
             <div className="space-y-6">
               <ContactInfo />
-              <div className="overflow-hidden rounded-3xl border border-border/60 shadow-soft">
-                <iframe
-                  title="Location map"
-                  src="https://www.google.com/maps?q=Pune,India&output=embed"
-                  className="h-64 w-full border-0"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
-              </div>
             </div>
           </div>
         </div>

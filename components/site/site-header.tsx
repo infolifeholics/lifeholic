@@ -17,11 +17,11 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 
 const NAV = [
   // { href: '/', label: 'Home' },
-  { href: '/about', label: 'About' },
+  { href: '/about', label: 'Our Story' },
   { href: '/services', label: 'Services' },
   { href: '/workshops', label: 'Workshops' },
   { href: '/shop', label: 'Shop' },
-  { href: '/contact', label: 'Contact' },
+  // { href: '/contact', label: 'Contact' },
 ];
 
 export function SiteHeader() {
@@ -162,8 +162,8 @@ export function SiteHeader() {
             className={cn(
               'flex items-center justify-between rounded-full px-5 py-3 transition-all duration-500 border glow-border',
               scrolled
-                ? 'glass-strong shadow-glow backdrop-blur-md bg-black/10 border-white/5'
-                : 'bg-transparent border-transparent'
+                ? 'bg-white shadow-glow backdrop-blur-md border-black/5'
+                : 'bg-white/90 backdrop-blur-md border-black/5'
             )}
           >
             <Link href="/" className="flex items-center transition-transform duration-300 hover:scale-105" aria-label="TheLifeHolics home">
@@ -311,9 +311,9 @@ export function SiteHeader() {
               >
                 <User className="h-[18px] w-[18px]" />
               </Link>
-              <Button asChild size="sm" className="ml-1 hidden rounded-full md:inline-flex bg-primary hover:bg-primary/80 transition-all hover:scale-105">
+              {/* <Button asChild size="sm" className="ml-1 hidden rounded-full md:inline-flex bg-primary hover:bg-primary/80 transition-all hover:scale-105">
                 <Link href="/booking">Book a Session</Link>
-              </Button>
+              </Button> */}
               <button
                 className="rounded-full p-2.5 text-black lg:hidden hover:bg-black/10 transition-colors"
                 aria-label="Toggle menu"

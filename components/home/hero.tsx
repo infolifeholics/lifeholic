@@ -632,17 +632,17 @@ export function HomeHero() {
 
   return (
     <section ref={ref} className={cn("relative min-h-screen flex flex-col items-center justify-center pt-28 pb-12 overflow-x-clip", isOpen ? "z-20" : "z-0")}>
-      <div className="mx-auto max-w-2xl w-full px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="mx-auto lg:mx-0 lg:ml-auto max-w-2xl w-full px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Interactive Search Bar Container */}
         <div ref={dropdownRef} className={cn("relative w-full transition-all duration-300", isOpen ? "z-[100]" : "z-20")}>
           {/* Outer Search Bar Wrapper */}
           <div
             onClick={() => setIsOpen(!isOpen)}
             className={cn(
-              "group relative flex items-center gap-4 rounded-2xl px-5 py-4 cursor-pointer",
+              "group relative flex items-center gap-4 rounded-2xl px-5 py-4 cursor-pointer backdrop-blur-md",
               "border-2 transition-all duration-500",
               isOpen
-                ? "bg-card border-[#FFD700] ring-4 ring-[#FFD700]/20 shadow-[0_0_35px_rgba(255,215,0,0.45)]"
+                ? "bg-card/85 border-[#FFD700] ring-4 ring-[#FFD700]/20 shadow-[0_0_35px_rgba(255,215,0,0.45)]"
                 : "bg-black/65 border-white/80 hover:border-[#FFD700] hover:shadow-[0_0_25px_rgba(255,215,0,0.35)]"
             )}
           >
@@ -650,8 +650,7 @@ export function HomeHero() {
               <Search className="h-5 w-5" />
             </div>
             <div className="flex-1 text-left">
-              <p className="text-[10px] font-medium text-white/70 uppercase tracking-wider">Explore healing areas</p>
-              <p className="text-xs sm:text-sm font-medium text-white mt-0.5 line-clamp-1">
+              <p className="text-xs sm:text-sm font-medium text-white line-clamp-1">
                 {totalSelectedCount > 0
                   ? `${totalSelectedCount} concerns selected`
                   : "Which area of your life feels most difficult these days?"}
@@ -679,7 +678,7 @@ export function HomeHero() {
                 setIsOpen(true);
                 setStep('not-sure');
               }}
-              className="group inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-5 py-2.5 text-xs font-semibold text-gold shadow-sm transition-all duration-200 hover:bg-gold hover:text-gold-foreground hover:shadow-md cursor-pointer"
+              className="group inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 backdrop-blur-md px-5 py-2.5 text-xs font-semibold text-gold shadow-sm transition-all duration-200 hover:bg-gold hover:text-gold-foreground hover:shadow-md cursor-pointer"
             >
               <span>✨</span>
               Not sure where to begin?

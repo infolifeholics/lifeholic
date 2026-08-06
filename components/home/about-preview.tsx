@@ -6,32 +6,29 @@ import { ArrowRight } from 'lucide-react';
 import { Reveal, RevealText, ScrollStory } from '@/components/site/reveal';
 import { FounderImage } from '@/components/site/founder-image';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const DEFAULT_FOUNDER_IMAGE = '/images/founder/photo.jpg';
 
 export function HomeAboutPreview() {
   const [founderImage, setFounderImage] = useState(DEFAULT_FOUNDER_IMAGE);
-  const [aboutText, setAboutText] = useState('');
+  const [founderImage2, setFounderImage2] = useState('https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=800');
 
   useEffect(() => {
-    const fetchAboutData = async () => {
-      try {
-        const docSnap = await getDoc(doc(db, 'cms', 'global'));
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.about_image) {
-            setFounderImage(data.about_image);
-          }
-          if (data.about_text) {
-            setAboutText(data.about_text);
-          }
+    const unsubscribe = onSnapshot(doc(db, 'cms', 'global'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.about_image) {
+          setFounderImage(data.about_image);
         }
-      } catch (err) {
-        console.error('Error fetching about CMS data:', err);
+        if (data.about_image_2) {
+          setFounderImage2(data.about_image_2);
+        }
       }
-    };
-    fetchAboutData();
+    }, (err) => {
+      console.error('Error fetching about CMS data:', err);
+    });
+    return () => unsubscribe();
   }, []);
 
   return (
@@ -57,19 +54,19 @@ export function HomeAboutPreview() {
                   <div className="flex-1 overflow-hidden rounded-3xl border border-border/60 shadow-soft">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=800"
+                      src={founderImage2}
                       alt="Calm healing space"
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <div className="overflow-hidden rounded-2xl glass-card glow-border p-5 shadow-glow backdrop-blur-md border border-white/10">
+                  {/* <div className="overflow-hidden rounded-2xl glass-card glow-border p-5 shadow-glow backdrop-blur-md border border-white/10">
                     <p className="font-display text-3xl font-medium text-foreground">9+ yrs</p>
                     <p className="mt-0.5 text-xs uppercase tracking-wider text-muted-foreground">of dedicated practice</p>
                     <div className="mt-3 h-px w-full bg-gradient-to-r from-gold/40 to-transparent" />
                     <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                       Clients across India &amp; 14 countries worldwide
                     </p>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
@@ -85,38 +82,50 @@ export function HomeAboutPreview() {
             <div>
               <Reveal>
                 <span className="inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  <span className="h-px w-6 bg-gold/70" /> About the practice
+                  <span className="h-px w-6 bg-gold/70" /> Our Story
                 </span>
               </Reveal>
 
               <RevealText
                 as="h2"
-                text="Therapy that remembers you are a soul, not a symptom"
+                text="Our Story"
                 className="mt-5 font-display text-4xl font-medium leading-[1.1] tracking-tight text-foreground sm:text-5xl text-balance"
               />
-              <Reveal delay={0.2}>
-                <p className="mt-6 text-pretty text-lg leading-relaxed text-muted-foreground">
-                  {aboutText || "I am a spiritual psychologist and therapist. My work holds the whole of you — mind, body, emotion and the quiet voice beneath them all. For nearly a decade I have sat with people through grief, anxiety, relationship pain and the tender search for meaning — and watched them come back to themselves."}
-                </p>
-              </Reveal>
-              <Reveal delay={0.3}>
-                <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground">
-                  No judgement. No rush. Just presence, and a path that is yours alone.
-                </p>
-              </Reveal>
-              <Reveal delay={0.4}>
-                <div className="mt-8 grid grid-cols-2 gap-3">
-                  {[
-                    ['Evidence-based', 'Rooted in established therapeutic practice.'],
-                    ['Soul-centred', 'Holding meaning, not just symptom-relief.'],
-                    ['Confidential', 'A space held with complete trust.'],
-                    ['Global', 'Clients across 14 countries and counting.'],
-                  ].map(([title, desc]) => (
-                    <div key={title} className="rounded-2xl glass-card glow-border p-4 shadow-soft hover:shadow-glow backdrop-blur-sm border border-white/5">
-                      <p className="font-medium text-foreground">{title}</p>
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{desc}</p>
-                    </div>
-                  ))}
+
+              <Reveal delay={0.25}>
+                <div className="mt-8 space-y-6 text-muted-foreground font-medium text-base sm:text-lg leading-relaxed max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
+                  <p>
+                    As I began my own journey of healing and self-discovery, I realized that many of our struggles—
+                    whether related to health, relationships, finances, or emotions—often have deeper roots than what
+                    we see on the surface.
+                  </p>
+                  <p>
+                    The more I explored these deeper emotional, energetic, and spiritual patterns, the more I started
+                    understanding myself. As I healed and applied these learnings in my own life, I began noticing
+                    meaningful changes—not just in how I felt, but in how I experienced life itself.
+                  </p>
+                  <p>
+                    LifeHolics began with a profound inner experience. On the night of 14th August 2019, I heard a
+                    female voice say, <strong className="text-gold font-bold">&ldquo;I&apos;m pregnant.&rdquo;</strong> Spiritually, pregnancy symbolizes the birth of something that needs
+                    to be nurtured with love and care. Within a few weeks, LifeHolics came into existence. Looking back, I
+                    now understand that it wasn&apos;t just the birth of a purpose—it was the birth of a purpose. Over the
+                    years, my own healing journey has taught me that real transformation begins from within, and this
+                    community is an extension of everything life and the Universe have helped me learn.
+                  </p>
+                  <p>
+                    Lifeholics was created with the intention of helping people gain clarity about their life&apos;s challenges,
+                    understand the deeper patterns influencing them, and begin a journey of healing and
+                    transformation.
+                  </p>
+                  <p>
+                    Our goal is not simply to solve problems, but to help you understand why they are happening, so you
+                    can create lasting change. We believe that when you understand yourself at a deeper level, you make
+                    different choices, experience healthier relationships, greater peace, and a more fulfilling life.
+                  </p>
+                  <p className="border-t border-white/10 pt-6 font-display text-xl sm:text-2xl font-semibold text-foreground leading-relaxed italic">
+                    &ldquo;If Lifeholics can help even one person understand themselves a little better and move towards the
+                    life they truly wish to live, then its purpose is being fulfilled.&rdquo;
+                  </p>
                 </div>
               </Reveal>
               <Reveal delay={0.5}>

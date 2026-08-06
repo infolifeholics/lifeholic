@@ -21,12 +21,16 @@ type CMSSection = {
   contact_email?: string;
   footer_text?: string;
   about_image?: string;
+  about_image_2?: string;
+  background_image?: string;
 };
 
 export function AdminCMS() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingImage2, setUploadingImage2] = useState(false);
+  const [uploadingImageBg, setUploadingImageBg] = useState(false);
   const [data, setData] = useState<CMSSection>({
     id: 'global',
     quote: 'Your quote here...',
@@ -38,14 +42,19 @@ export function AdminCMS() {
     contact_email: 'info@thelifeholics.com',
     footer_text: '© 2026 TheLifeHolics. All rights reserved.',
     about_image: '',
+    about_image_2: '',
+    background_image: '',
   });
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'about_image' | 'about_image_2' | 'background_image') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingImage(true);
-    const toastId = toast.loading('Uploading about image to Cloudinary...');
+    if (field === 'about_image') setUploadingImage(true);
+    else if (field === 'about_image_2') setUploadingImage2(true);
+    else setUploadingImageBg(true);
+    
+    const toastId = toast.loading('Uploading image to Cloudinary...');
 
     try {
       const formData = new FormData();
@@ -63,32 +72,36 @@ export function AdminCMS() {
       if (!newUrl) throw new Error('No URL returned');
 
       // Delete old image if it was uploaded to Cloudinary
-      if (data.about_image && data.about_image.includes('cloudinary.com')) {
+      const oldUrl = data[field];
+      if (oldUrl && oldUrl.includes('cloudinary.com')) {
         await fetch('/api/upload/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: data.about_image }),
+          body: JSON.stringify({ url: oldUrl }),
         });
       }
 
-      setData(prev => ({ ...prev, about_image: newUrl }));
-      toast.success('About image uploaded successfully!', { id: toastId });
+      setData(prev => ({ ...prev, [field]: newUrl }));
+      toast.success('Image uploaded successfully!', { id: toastId });
     } catch (err: any) {
       console.error(err);
       toast.error('Failed to upload image: ' + err.message, { id: toastId });
     } finally {
-      setUploadingImage(false);
+      if (field === 'about_image') setUploadingImage(false);
+      else if (field === 'about_image_2') setUploadingImage2(false);
+      else setUploadingImageBg(false);
     }
   };
 
-  const handleResetImage = async () => {
-    if (data.about_image && data.about_image.includes('cloudinary.com')) {
+  const handleResetImage = async (field: 'about_image' | 'about_image_2' | 'background_image') => {
+    const oldUrl = data[field];
+    if (oldUrl && oldUrl.includes('cloudinary.com')) {
       const toastId = toast.loading('Deleting custom image from Cloudinary...');
       try {
         await fetch('/api/upload/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: data.about_image }),
+          body: JSON.stringify({ url: oldUrl }),
         });
         toast.success('Image deleted from Cloudinary.', { id: toastId });
       } catch (err) {
@@ -96,7 +109,7 @@ export function AdminCMS() {
         toast.error('Failed to delete image from Cloudinary.', { id: toastId });
       }
     }
-    setData(prev => ({ ...prev, about_image: '' }));
+    setData(prev => ({ ...prev, [field]: '' }));
   };
 
   const fetchCMS = async () => {
@@ -155,7 +168,7 @@ export function AdminCMS() {
         {/* Hero Copy */}
         <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-4">
           <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5">
-            <Info className="h-4 w-4 text-gold" /> Hero Copy Details
+            <Info className="h-4 w-4 text-gold" /> Hero Copy & Global Background
           </h4>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
@@ -173,6 +186,77 @@ export function AdminCMS() {
                 onChange={(e) => setData({ ...data, hero_subtitle: e.target.value })}
                 className="mt-1.5 rounded-xl"
               />
+            </div>
+          </div>
+          
+          <div className="pt-2 border-t border-border/20 space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-1.5">
+              <ImageIcon className="h-4 w-4 text-gold" /> Global Fallback Background Image
+            </Label>
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="relative w-32 h-20 rounded-xl overflow-hidden border border-border/60 bg-muted">
+                {data.background_image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={data.background_image}
+                    alt="Background fallback"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src="https://images.pexels.com/photos/3280130/pexels-photo-3280130.jpeg?auto=compress&cs=tinysrgb&w=1200"
+                    alt="Default fallback background"
+                    className="w-full h-full object-cover opacity-60"
+                  />
+                )}
+                {!data.background_image && (
+                  <span className="absolute bottom-1 left-1 bg-background/80 text-[8px] font-bold px-1 py-0.5 rounded border border-border/30">
+                    DEFAULT
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2 flex-1 w-full">
+                <p className="text-xs text-muted-foreground">
+                  Upload a background image to show on all pages except the Home page and Our Story page (which will continue to show the background video).
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploadingImageBg}
+                    className="rounded-full gap-1.5 px-4 text-xs h-9 relative overflow-hidden"
+                  >
+                    {uploadingImageBg ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5" />
+                    )}
+                    <span>{data.background_image ? 'Replace Image' : 'Upload Image'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, 'background_image')}
+                      disabled={uploadingImageBg}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </Button>
+
+                  {data.background_image && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => handleResetImage('background_image')}
+                      className="rounded-full gap-1.5 px-4 text-xs h-9 hover:bg-rose-500/10 hover:text-rose-600 border border-transparent hover:border-rose-500/20"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Reset to Default</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -198,72 +282,147 @@ export function AdminCMS() {
               className="mt-1.5 rounded-xl min-h-[100px]"
             />
           </div>
-          <div className="pt-2 border-t border-border/20 space-y-3">
-            <Label className="text-sm font-semibold flex items-center gap-1.5">
-              <ImageIcon className="h-4 w-4 text-gold" /> About Section Founder Image
-            </Label>
-            
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="relative w-24 h-32 rounded-xl overflow-hidden border border-border/60 bg-muted">
-                {data.about_image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={data.about_image}
-                    alt="Founder portrait"
-                    className="w-full h-full object-cover object-top"
-                  />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src="/images/founder/photo.jpg"
-                    alt="Default founder portrait"
-                    className="w-full h-full object-cover object-top opacity-60"
-                  />
-                )}
-                {!data.about_image && (
-                  <span className="absolute bottom-1 left-1 bg-background/80 text-[8px] font-bold px-1 py-0.5 rounded border border-border/30">
-                    DEFAULT
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-2 flex-1 w-full">
-                <p className="text-xs text-muted-foreground">
-                  Replace the main founder image shown in the About section on the homepage. Defaults to the local asset if no custom image is uploaded.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={uploadingImage}
-                    className="rounded-full gap-1.5 px-4 text-xs h-9 relative overflow-hidden"
-                  >
-                    {uploadingImage ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Upload className="h-3.5 w-3.5" />
-                    )}
-                    <span>{data.about_image ? 'Replace Image' : 'Upload Image'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      disabled={uploadingImage}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
+          <div className="pt-2 border-t border-border/20 space-y-6">
+            {/* Image 1: Founder Portrait */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold flex items-center gap-1.5">
+                <ImageIcon className="h-4 w-4 text-gold" /> About Section Founder Image
+              </Label>
+              
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="relative w-24 h-32 rounded-xl overflow-hidden border border-border/60 bg-muted">
+                  {data.about_image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={data.about_image}
+                      alt="Founder portrait"
+                      className="w-full h-full object-cover object-top"
                     />
-                  </Button>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src="/images/founder/photo.jpg"
+                      alt="Default founder portrait"
+                      className="w-full h-full object-cover object-top opacity-60"
+                    />
+                  )}
+                  {!data.about_image && (
+                    <span className="absolute bottom-1 left-1 bg-background/80 text-[8px] font-bold px-1 py-0.5 rounded border border-border/30">
+                      DEFAULT
+                    </span>
+                  )}
+                </div>
 
-                  {data.about_image && (
+                <div className="space-y-2 flex-1 w-full">
+                  <p className="text-xs text-muted-foreground">
+                    Replace the main founder image shown in the About section on the homepage and about page.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
-                      variant="ghost"
-                      onClick={handleResetImage}
-                      className="rounded-full gap-1.5 px-4 text-xs h-9 hover:bg-rose-500/10 hover:text-rose-600 border border-transparent hover:border-rose-500/20"
+                      variant="outline"
+                      disabled={uploadingImage}
+                      className="rounded-full gap-1.5 px-4 text-xs h-9 relative overflow-hidden"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      <span>Reset to Default</span>
+                      {uploadingImage ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      <span>{data.about_image ? 'Replace Image' : 'Upload Image'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'about_image')}
+                        disabled={uploadingImage}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
                     </Button>
+
+                    {data.about_image && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => handleResetImage('about_image')}
+                        className="rounded-full gap-1.5 px-4 text-xs h-9 hover:bg-rose-500/10 hover:text-rose-600 border border-transparent hover:border-rose-500/20"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Reset to Default</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Image 2: Secondary Healing Space Image */}
+            <div className="space-y-3 pt-4 border-t border-border/20">
+              <Label className="text-sm font-semibold flex items-center gap-1.5">
+                <ImageIcon className="h-4 w-4 text-gold" /> About Section Secondary Image
+              </Label>
+              
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="relative w-24 h-32 rounded-xl overflow-hidden border border-border/60 bg-muted">
+                  {data.about_image_2 ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={data.about_image_2}
+                      alt="Secondary about image"
+                      className="w-full h-full object-cover object-top"
+                    />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=800"
+                      alt="Default secondary image"
+                      className="w-full h-full object-cover object-top opacity-60"
+                    />
                   )}
+                  {!data.about_image_2 && (
+                    <span className="absolute bottom-1 left-1 bg-background/80 text-[8px] font-bold px-1 py-0.5 rounded border border-border/30">
+                      DEFAULT
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-2 flex-1 w-full">
+                  <p className="text-xs text-muted-foreground">
+                    Replace the secondary session / space image shown in the About section on the homepage and about page.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={uploadingImage2}
+                      className="rounded-full gap-1.5 px-4 text-xs h-9 relative overflow-hidden"
+                    >
+                      {uploadingImage2 ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      <span>{data.about_image_2 ? 'Replace Image' : 'Upload Image'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, 'about_image_2')}
+                        disabled={uploadingImage2}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                    </Button>
+
+                    {data.about_image_2 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => handleResetImage('about_image_2')}
+                        className="rounded-full gap-1.5 px-4 text-xs h-9 hover:bg-rose-500/10 hover:text-rose-600 border border-transparent hover:border-rose-500/20"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Reset to Default</span>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

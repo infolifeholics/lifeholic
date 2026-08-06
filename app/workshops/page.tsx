@@ -36,7 +36,9 @@ export default function WorkshopsPage() {
     return workshops.map(w => {
       let calculatedStatus: 'upcoming' | 'current' | 'completed' = 'upcoming';
       
-      if (!w.date) {
+      if (w.status === 'completed') {
+        calculatedStatus = 'completed';
+      } else if (!w.date) {
         calculatedStatus = 'upcoming';
       } else {
         const start = w.date;
