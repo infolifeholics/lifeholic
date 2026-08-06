@@ -12,13 +12,13 @@ import { cn } from '@/lib/utils';
 
 const COLS = [
   {
-    title: 'Explore',
+    title: '',
     links: [
-      { href: '/', label: 'Home' },
-      { href: '/about', label: 'Our Story' },
-      { href: '/services', label: 'Services' },
-      { href: '/booking', label: 'Book a Session' },
-      { href: '/shop', label: 'Shop' },
+      { href: '/', label: '' },
+      { href: '/about', label: '' },
+      { href: '/services', label: '' },
+      { href: '/booking', label: '  ' },
+      { href: '/shop', label: '' },
     ],
   },
   {
@@ -36,8 +36,6 @@ const COLS = [
       { href: '/legal/privacy', label: 'Privacy Policy' },
       { href: '/legal/refund', label: 'Refund Policy' },
       { href: '/legal/terms', label: 'Terms of Service' },
-      { href: '/legal/shipping', label: 'Shipping' },
-      { href: '/legal/cookies', label: 'Cookie Policy' },
     ],
   },
 ];

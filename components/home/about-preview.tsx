@@ -41,12 +41,25 @@ export function HomeAboutPreview() {
             <Reveal className="relative">
               <div className="relative grid grid-cols-2 gap-4">
                 {/* Main founder portrait — tall card */}
-                <div className="col-span-1 aspect-[3/4] overflow-hidden rounded-3xl border border-border/60 shadow-float">
-                  <FounderImage
-                    src={founderImage}
-                    alt="TheLifeHolics founder"
-                    className="h-full w-full object-cover object-top"
-                  />
+                <div className="col-span-1 flex flex-col">
+                  {/* First Image */}
+                  <div className="aspect-[3/4] overflow-hidden rounded-3xl border border-border/60 shadow-float">
+                    <FounderImage
+                      src={founderImage}
+                      alt="TheLifeHolics founder"
+                      className="h-full w-full object-cover object-top"
+                    />
+                  </div>
+
+                  {/* Name Card Background */}
+                  <div className="mt-4 rounded-2xl bg-yellow-500/10 border border-primary/20 p-4 text-center shadow-soft">
+                    <h3 className="text-xl font-bold text-foreground">
+                      Megha Pahwa
+                    </h3>
+                    <p className="mt-1 text-sm font-medium text-muted-foreground">
+                      Spiritual Psychologist & Quantum Healer
+                    </p>
+                  </div>
                 </div>
 
                 {/* Secondary image — session / space photo offset down */}
@@ -59,14 +72,6 @@ export function HomeAboutPreview() {
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  {/* <div className="overflow-hidden rounded-2xl glass-card glow-border p-5 shadow-glow backdrop-blur-md border border-white/10">
-                    <p className="font-display text-3xl font-medium text-foreground">9+ yrs</p>
-                    <p className="mt-0.5 text-xs uppercase tracking-wider text-muted-foreground">of dedicated practice</p>
-                    <div className="mt-3 h-px w-full bg-gradient-to-r from-gold/40 to-transparent" />
-                    <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                      Clients across India &amp; 14 countries worldwide
-                    </p>
-                  </div> */}
                 </div>
               </div>
 

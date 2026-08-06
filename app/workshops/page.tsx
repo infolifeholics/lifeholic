@@ -13,10 +13,9 @@ import { Button } from '@/components/ui/button';
 export default function WorkshopsPage() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'current' | 'completed'>('all');
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'current' | 'completed'>('upcoming');
 
   const TABS = [
-    { id: 'all', label: 'All Workshops' },
     { id: 'upcoming', label: 'Upcoming Workshops' },
     { id: 'current', label: 'Current Workshops' },
     { id: 'completed', label: 'Completed Workshops' },
@@ -35,7 +34,7 @@ export default function WorkshopsPage() {
     const todayStr = new Date().toLocaleDateString('en-CA');
     return workshops.map(w => {
       let calculatedStatus: 'upcoming' | 'current' | 'completed' = 'upcoming';
-      
+
       if (w.status === 'completed') {
         calculatedStatus = 'completed';
       } else if (!w.date) {
@@ -43,7 +42,7 @@ export default function WorkshopsPage() {
       } else {
         const start = w.date;
         const end = w.end_date || w.date;
-        
+
         if (todayStr < start) {
           calculatedStatus = 'upcoming';
         } else if (todayStr >= start && todayStr <= end) {
@@ -52,7 +51,7 @@ export default function WorkshopsPage() {
           calculatedStatus = 'completed';
         }
       }
-      
+
       return {
         ...w,
         calculatedStatus
@@ -63,7 +62,6 @@ export default function WorkshopsPage() {
   const filteredWorkshops = useMemo(() => {
     return parsedWorkshops.filter(w => {
       if (w.status === 'draft' || w.status === 'cancelled') return false;
-      if (activeTab === 'all') return true;
       return w.calculatedStatus === activeTab;
     });
   }, [parsedWorkshops, activeTab]);
@@ -80,7 +78,7 @@ export default function WorkshopsPage() {
   return (
     <div className="min-h-screen bg-background-2/30 py-16 sm:py-24 text-left">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
-        
+
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Gather in Community</p>
@@ -101,8 +99,8 @@ export default function WorkshopsPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   "rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-all",
-                  activeTab === tab.id 
-                    ? "bg-gold text-gold-foreground shadow-sm" 
+                  activeTab === tab.id
+                    ? "bg-gold text-gold-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -120,7 +118,7 @@ export default function WorkshopsPage() {
               <p className="mt-1 text-xs text-muted-foreground">More Workshops Coming Soon. We’re continuously creating new workshops to support different aspects of healing, self-discovery, and personal growth.</p>
             </div>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
               {filteredWorkshops.map((w) => (
                 <WorkshopCard key={w.id} w={w} isCompleted={w.calculatedStatus === 'completed'} />
               ))}
@@ -140,7 +138,7 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
   return (
     <article className="group relative h-full overflow-hidden rounded-3xl border border-white/20 bg-white/40 backdrop-blur-md p-4 hover:border-gold/30 hover:shadow-soft transition-all duration-300 flex flex-col justify-between">
       <div className="space-y-4">
-        <div className="aspect-[16/10] overflow-hidden rounded-2xl relative border border-border/20">
+        <div className="aspect-[16/9] overflow-hidden rounded-2xl relative border border-border/20">
           <img src={w.image} alt={w.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-103" />
           <span className={cn(
             'absolute bottom-3 left-3 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-full',

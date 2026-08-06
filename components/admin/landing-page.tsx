@@ -4,27 +4,25 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, UploadCloud, Trash2, Video, X, Image as ImageIcon } from 'lucide-react';
+import { Loader2, UploadCloud, Video, X, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const DEFAULT_VIDEO = 'https://cdn.prod.website-files.com/691c3d8b8165d353a2345b2d%2F691d841c9c6b35b63efb82bc_hero-bg-video_mp4.mp4';
 const DEFAULT_FOUNDER_IMAGE = '/images/founder/photo.jpg';
-const DEFAULT_GALLERY = [
-  'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=700',
-  'https://images.pexels.com/photos/4202325/pexels-photo-4202325.jpeg?auto=compress&cs=tinysrgb&w=700',
-  'https://images.pexels.com/photos/3823039/pexels-photo-3823039.jpeg?auto=compress&cs=tinysrgb&w=700',
-  'https://images.pexels.com/photos/3771115/pexels-photo-3771115.jpeg?auto=compress&cs=tinysrgb&w=700',
-];
+const DEFAULT_FOUNDER_IMAGE_2 = 'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=800';
+const DEFAULT_BG_IMAGE = 'https://images.pexels.com/photos/3280130/pexels-photo-3280130.jpeg?auto=compress&cs=tinysrgb&w=1200';
 
 export function AdminLandingPage() {
   const [videoUrl, setVideoUrl] = useState('');
   const [founderImage, setFounderImage] = useState(DEFAULT_FOUNDER_IMAGE);
-  const [gallery, setGallery] = useState<string[]>([]);
+  const [founderImage2, setFounderImage2] = useState(DEFAULT_FOUNDER_IMAGE_2);
+  const [bgImage, setBgImage] = useState(DEFAULT_BG_IMAGE);
   const [loading, setLoading] = useState(true);
 
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadingFounder, setUploadingFounder] = useState(false);
-  const [uploadingGalleryIdx, setUploadingGalleryIdx] = useState<number | null>(null);
+  const [uploadingFounder2, setUploadingFounder2] = useState(false);
+  const [uploadingBgImage, setUploadingBgImage] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -40,18 +38,8 @@ export function AdminLandingPage() {
       const globalDoc = await getDoc(doc(db, 'cms', 'global'));
       if (globalDoc.exists()) {
         setFounderImage(globalDoc.data().about_image || DEFAULT_FOUNDER_IMAGE);
-      }
-
-      // 3. Fetch About Gallery items
-      const galleryDoc = await getDoc(doc(db, 'settings', 'about_gallery'));
-      if (galleryDoc.exists()) {
-        const items = galleryDoc.data().items || [];
-        const populated = Array.from({ length: 4 }, (_, i) => {
-          return (items[i]?.url || DEFAULT_GALLERY[i]) as string;
-        });
-        setGallery(populated);
-      } else {
-        setGallery(DEFAULT_GALLERY);
+        setFounderImage2(globalDoc.data().about_image_2 || DEFAULT_FOUNDER_IMAGE_2);
+        setBgImage(globalDoc.data().background_image || DEFAULT_BG_IMAGE);
       }
     } catch (err: any) {
       console.error('Error fetching CMS data:', err);
@@ -215,68 +203,115 @@ export function AdminLandingPage() {
     }
   };
 
-  const handleGalleryReplace = async (index: number, file: File) => {
+  const handleFounder2Upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingGalleryIdx(index);
-    const toastId = toast.loading(`Uploading image for Slot ${index + 1}...`);
+    setUploadingFounder2(true);
+    const toastId = toast.loading('Uploading story secondary image...');
 
     try {
       const { url } = await uploadToCloudinaryDirect(file, false);
 
-      const oldUrl = gallery[index];
-      if (oldUrl && oldUrl.includes('cloudinary.com')) {
+      if (founderImage2 && founderImage2.includes('cloudinary.com')) {
         await fetch('/api/upload/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: oldUrl }),
+          body: JSON.stringify({ url: founderImage2 }),
         });
       }
 
-      const updated = [...gallery];
-      updated[index] = url;
+      await setDoc(doc(db, 'cms', 'global'), {
+        about_image_2: url,
+      }, { merge: true });
 
-      const itemsPayload = updated.map((u) => ({ url: u, type: 'image' }));
-      await setDoc(doc(db, 'settings', 'about_gallery'), {
-        items: itemsPayload,
-      });
-
-      setGallery(updated);
-      toast.success(`Slot ${index + 1} updated successfully!`, { id: toastId });
+      setFounderImage2(url);
+      toast.success('Story secondary image updated!', { id: toastId });
     } catch (err: any) {
       toast.error('Upload failed: ' + err.message, { id: toastId });
     } finally {
-      setUploadingGalleryIdx(null);
+      setUploadingFounder2(false);
     }
   };
 
-  const handleDeleteGalleryItem = async (index: number) => {
-    const itemUrl = gallery[index];
-    if (itemUrl === DEFAULT_GALLERY[index]) return;
-
-    const confirm = window.confirm(`Are you sure you want to restore the default image for Slot ${index + 1}?`);
+  const handleDeleteFounder2 = async () => {
+    if (founderImage2 === DEFAULT_FOUNDER_IMAGE_2) return;
+    const confirm = window.confirm('Are you sure you want to restore the default story secondary image?');
     if (!confirm) return;
 
-    const toastId = toast.loading(`Restoring Slot ${index + 1} to default...`);
+    const toastId = toast.loading('Restoring default image...');
     try {
-      if (itemUrl.includes('cloudinary.com')) {
+      if (founderImage2.includes('cloudinary.com')) {
         await fetch('/api/upload/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: itemUrl }),
+          body: JSON.stringify({ url: founderImage2 }),
         });
       }
 
-      const updated = [...gallery];
-      updated[index] = DEFAULT_GALLERY[index];
+      await setDoc(doc(db, 'cms', 'global'), {
+        about_image_2: '',
+      }, { merge: true });
 
-      const itemsPayload = updated.map((u) => ({ url: u, type: 'image' }));
-      await setDoc(doc(db, 'settings', 'about_gallery'), {
-        items: itemsPayload,
-      });
+      setFounderImage2(DEFAULT_FOUNDER_IMAGE_2);
+      toast.success('Default image restored.', { id: toastId });
+    } catch (err: any) {
+      toast.error('Failed: ' + err.message, { id: toastId });
+    }
+  };
 
-      setGallery(updated);
-      toast.success(`Slot ${index + 1} restored to default.`, { id: toastId });
+  const handleBgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingBgImage(true);
+    const toastId = toast.loading('Uploading global background image...');
+
+    try {
+      const { url } = await uploadToCloudinaryDirect(file, false);
+
+      if (bgImage && bgImage.includes('cloudinary.com')) {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: bgImage }),
+        });
+      }
+
+      await setDoc(doc(db, 'cms', 'global'), {
+        background_image: url,
+      }, { merge: true });
+
+      setBgImage(url);
+      toast.success('Global background image updated!', { id: toastId });
+    } catch (err: any) {
+      toast.error('Upload failed: ' + err.message, { id: toastId });
+    } finally {
+      setUploadingBgImage(false);
+    }
+  };
+
+  const handleDeleteBgImage = async () => {
+    if (bgImage === DEFAULT_BG_IMAGE) return;
+    const confirm = window.confirm('Are you sure you want to restore the default background image?');
+    if (!confirm) return;
+
+    const toastId = toast.loading('Restoring default background image...');
+    try {
+      if (bgImage.includes('cloudinary.com')) {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: bgImage }),
+        });
+      }
+
+      await setDoc(doc(db, 'cms', 'global'), {
+        background_image: '',
+      }, { merge: true });
+
+      setBgImage(DEFAULT_BG_IMAGE);
+      toast.success('Default background image restored.', { id: toastId });
     } catch (err: any) {
       toast.error('Failed: ' + err.message, { id: toastId });
     }
@@ -362,21 +397,137 @@ export function AdminLandingPage() {
         </div>
       </div>
 
-      {/* SECTION: About Page Main Portrait */}
+      {/* SECTION: About Page Story Images */}
+      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-soft space-y-6">
+        <div>
+          <h2 className="font-display text-xl font-medium text-foreground">About Page Story Pictures</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage the two main pictures shown on the About/Story page in real-time.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Image 1: Main Portrait */}
+          <div className="p-4 rounded-2xl border border-border/40 bg-secondary/10 space-y-4">
+            <div className="flex items-center justify-between border-b border-border/20 pb-2">
+              <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <ImageIcon className="h-4 w-4 text-gold" /> 1. Main Portrait (Top)
+              </span>
+              {founderImage !== DEFAULT_FOUNDER_IMAGE && (
+                <button
+                  onClick={handleDeleteFounder}
+                  className="p-1 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all"
+                  title="Restore default portrait"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            
+            <div className="flex gap-4 items-start">
+              <div className="relative aspect-[3/4] w-24 overflow-hidden rounded-xl border border-border/40 bg-card">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={founderImage}
+                  alt="Founder Profile"
+                  className="h-full w-full object-cover object-top animate-fade-in"
+                />
+                {uploadingFounder && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+                    <Loader2 className="h-4 w-4 animate-spin text-gold" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <p className="text-xs text-muted-foreground">This is the main profile photo shown first on the About page.</p>
+                <label className="block w-full">
+                  <input type="file" accept="image/*" disabled={uploadingFounder} onChange={handleFounderUpload} className="hidden" id="portrait-input-1" />
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full rounded-full cursor-pointer flex items-center justify-center gap-1.5 h-9 text-xs"
+                    disabled={uploadingFounder}
+                    onClick={() => document.getElementById('portrait-input-1')?.click()}
+                  >
+                    <span>
+                      <UploadCloud className="h-3.5 w-3.5 text-muted-foreground" />
+                      Replace Image 1
+                    </span>
+                  </Button>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Image 2: Secondary Image */}
+          <div className="p-4 rounded-2xl border border-border/40 bg-secondary/10 space-y-4">
+            <div className="flex items-center justify-between border-b border-border/20 pb-2">
+              <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <ImageIcon className="h-4 w-4 text-gold" /> 2. Secondary Image (Bottom)
+              </span>
+              {founderImage2 !== DEFAULT_FOUNDER_IMAGE_2 && (
+                <button
+                  onClick={handleDeleteFounder2}
+                  className="p-1 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all"
+                  title="Restore default image"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            
+            <div className="flex gap-4 items-start">
+              <div className="relative aspect-[3/4] w-24 overflow-hidden rounded-xl border border-border/40 bg-card">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={founderImage2}
+                  alt="Story Image 2"
+                  className="h-full w-full object-cover animate-fade-in"
+                />
+                {uploadingFounder2 && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+                    <Loader2 className="h-4 w-4 animate-spin text-gold" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <p className="text-xs text-muted-foreground">This is the session or space photo shown second on the About page.</p>
+                <label className="block w-full">
+                  <input type="file" accept="image/*" disabled={uploadingFounder2} onChange={handleFounder2Upload} className="hidden" id="portrait-input-2" />
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full rounded-full cursor-pointer flex items-center justify-center gap-1.5 h-9 text-xs"
+                    disabled={uploadingFounder2}
+                    onClick={() => document.getElementById('portrait-input-2')?.click()}
+                  >
+                    <span>
+                      <UploadCloud className="h-3.5 w-3.5 text-muted-foreground" />
+                      Replace Image 2
+                    </span>
+                  </Button>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION: Global Fallback Background Image */}
       <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-soft space-y-6">
         <div className="flex items-center justify-between border-b border-border/30 pb-4">
           <div className="flex items-center gap-3">
             <ImageIcon className="h-6 w-6 text-gold" />
             <div>
-              <h2 className="font-display text-xl font-medium text-foreground">About Main Portrait</h2>
-              <p className="text-sm text-muted-foreground">Manage the main profile photo shown on the About page.</p>
+              <h2 className="font-display text-xl font-medium text-foreground">Global Background Image</h2>
+              <p className="text-sm text-muted-foreground">Manage the background image shown on pages other than Home and Our Story.</p>
             </div>
           </div>
-          {founderImage !== DEFAULT_FOUNDER_IMAGE && (
+          {bgImage !== DEFAULT_BG_IMAGE && (
             <button
-              onClick={handleDeleteFounder}
+              onClick={handleDeleteBgImage}
               className="p-1.5 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all"
-              title="Restore default portrait"
+              title="Restore default background image"
             >
               <X className="h-4 w-4" />
             </button>
@@ -384,14 +535,14 @@ export function AdminLandingPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-[1.5fr_2fr] items-start">
-          <div className="relative aspect-[3/4] max-w-[240px] w-full overflow-hidden rounded-2xl border border-border/40 bg-card">
+          <div className="relative aspect-[16/9] max-w-[320px] w-full overflow-hidden rounded-2xl border border-border/40 bg-card">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={founderImage}
-              alt="Founder Profile"
-              className="h-full w-full object-cover object-top"
+              src={bgImage}
+              alt="Global Background"
+              className="h-full w-full object-cover rounded-xl"
             />
-            {uploadingFounder && (
+            {uploadingBgImage && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
                 <Loader2 className="h-8 w-8 animate-spin text-gold" />
                 <span className="mt-2 text-xs font-medium text-foreground">Uploading...</span>
@@ -401,104 +552,28 @@ export function AdminLandingPage() {
 
           <div className="space-y-4">
             <div className="p-4 bg-secondary/30 rounded-2xl border border-border/30">
-              <span className="text-xs font-semibold text-muted-foreground block">Portrait Source</span>
+              <span className="text-xs font-semibold text-muted-foreground block">Background Source</span>
               <p className="text-[11px] text-foreground font-mono mt-1 break-all bg-card/60 p-2 rounded-lg border border-border/20">
-                {founderImage === DEFAULT_FOUNDER_IMAGE ? 'Default Founder Portrait' : founderImage}
+                {bgImage === DEFAULT_BG_IMAGE ? 'Default Background' : bgImage}
               </p>
             </div>
 
             <label className="block w-full">
-              <input type="file" accept="image/*" disabled={uploadingFounder} onChange={handleFounderUpload} className="hidden" id="portrait-input" />
+              <input type="file" accept="image/*" disabled={uploadingBgImage} onChange={handleBgImageUpload} className="hidden" id="bg-image-input" />
               <Button
                 asChild
                 variant="outline"
                 className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2 h-11"
-                disabled={uploadingFounder}
-                onClick={() => document.getElementById('portrait-input')?.click()}
+                disabled={uploadingBgImage}
+                onClick={() => document.getElementById('bg-image-input')?.click()}
               >
                 <span>
                   <UploadCloud className="h-4 w-4 text-muted-foreground" />
-                  Replace Portrait
+                  Replace Background Image
                 </span>
               </Button>
             </label>
           </div>
-        </div>
-      </div>
-
-      {/* SECTION: About Page Bottom Gallery (4 Slots) */}
-      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-soft space-y-6">
-        <div>
-          <h2 className="font-display text-xl font-medium text-foreground">About Page Gallery (4 Pictures)</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Replace the 4 custom pictures shown at the bottom of the About page.
-          </p>
-        </div>
-
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {gallery.map((imgUrl, idx) => {
-            const isCustom = imgUrl !== DEFAULT_GALLERY[idx];
-            return (
-              <div
-                key={idx}
-                className="relative overflow-hidden rounded-2xl border border-border/80 bg-background-2/40 p-4 transition-all hover:border-border"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Slot {idx + 1} {isCustom && <span className="text-[10px] text-gold font-bold ml-1">(custom)</span>}
-                  </span>
-                  {isCustom && (
-                    <button
-                      onClick={() => handleDeleteGalleryItem(idx)}
-                      className="p-1 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all"
-                      title="Restore default image"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-border/40 bg-card flex flex-col items-center justify-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imgUrl}
-                    alt={`Gallery Slot ${idx + 1}`}
-                    className="h-full w-full object-cover"
-                  />
-                  {uploadingGalleryIdx === idx && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-                      <Loader2 className="h-6 w-6 animate-spin text-gold" />
-                      <span className="mt-2 text-xs font-medium text-foreground">Uploading...</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    disabled={uploadingGalleryIdx !== null}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleGalleryReplace(idx, file);
-                    }}
-                    className="hidden"
-                    id={`replace-gallery-${idx}`}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2 text-xs"
-                    disabled={uploadingGalleryIdx !== null}
-                    onClick={() => document.getElementById(`replace-gallery-${idx}`)?.click()}
-                  >
-                    <UploadCloud className="h-3.5 w-3.5 text-muted-foreground" />
-                    Replace Image
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
 

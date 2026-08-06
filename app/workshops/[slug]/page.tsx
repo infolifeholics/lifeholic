@@ -280,7 +280,7 @@ export default function WorkshopDetailsPage() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
         
         {/* Hero banner */}
-        <div className="relative rounded-3xl overflow-hidden aspect-[21/9] border border-border/40 shadow-soft">
+        <div className="relative rounded-3xl overflow-hidden aspect-[16/7] md:aspect-[21/7] max-h-[380px] border border-border/40 shadow-soft">
           <img src={ws.image} alt={ws.title} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
           <div className="absolute bottom-6 left-6 right-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
