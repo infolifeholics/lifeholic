@@ -306,10 +306,13 @@ export default function WorkshopDetailsPage() {
           <div className="lg:col-span-8 space-y-10">
             
             {/* Description */}
-            <div className="space-y-4">
-              <h2 className="font-display text-xl font-semibold text-foreground">About this somatic Experience</h2>
+            <div 
+              className="space-y-4 rounded-[2rem] border border-white/10 backdrop-blur-md p-6 sm:p-8 text-white/95"
+              style={{ backgroundColor: 'rgba(18, 15, 14, 0.75)' }}
+            >
+              <h2 className="font-display text-xl font-semibold text-white">About this somatic Experience</h2>
               <div 
-                className="text-sm leading-relaxed text-muted-foreground space-y-4"
+                className="text-sm leading-relaxed text-white/90 font-medium space-y-4"
                 dangerouslySetInnerHTML={{ __html: ws.description }}
               />
             </div>

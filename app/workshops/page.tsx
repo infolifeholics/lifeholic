@@ -80,30 +80,25 @@ export default function WorkshopsPage() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
 
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-4">
-          <p 
-            className="text-xs font-semibold uppercase tracking-[0.2em] text-white"
-            style={{ textShadow: '0 0 2px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}
-          >
-            Gather in Community
-          </p>
-          <h1 
-            className="font-display text-4xl font-semibold tracking-tight text-white sm:text-5xl"
-            style={{ textShadow: '0 0 3px rgba(0,0,0,1), 0 2px 8px rgba(0,0,0,1)' }}
-          >
+        <div 
+          className="text-center max-w-3xl mx-auto space-y-4 rounded-[2rem] border border-white/10 backdrop-blur-md p-8 text-white/95"
+          style={{ backgroundColor: 'rgba(18, 15, 14, 0.75)' }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Gather in Community</p>
+          <h1 className="font-display text-4xl font-semibold tracking-tight text-white sm:text-5xl">
             WORKSHOPS
           </h1>
-          <p 
-            className="text-sm sm:text-base text-white/90 font-semibold leading-relaxed"
-            style={{ textShadow: '0 0 2px rgba(0,0,0,1), 0 2px 5px rgba(0,0,0,1)' }}
-          >
+          <p className="text-sm sm:text-base text-white/80 leading-relaxed font-medium">
             At Lifeholics, our workshops are designed to help you understand yourself on a deeper level while experiencing practical healing techniques that you can apply in your daily life. Each workshop focuses on a specific area of healing and personal transformation.
           </p>
         </div>
 
         {/* Tab selection */}
-        <div className="flex justify-center border-b border-border/40 pb-px">
-          <div className="flex flex-wrap bg-secondary/60 p-1 rounded-3xl border border-border/40 items-center justify-center gap-1.5">
+        <div className="flex justify-center border-b border-white/10 pb-px">
+          <div 
+            className="flex flex-wrap p-1 rounded-full border border-white/10 items-center justify-center gap-1.5 backdrop-blur-md"
+            style={{ backgroundColor: 'rgba(18, 15, 14, 0.75)' }}
+          >
             {TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -111,8 +106,8 @@ export default function WorkshopsPage() {
                 className={cn(
                   "rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-all",
                   activeTab === tab.id
-                    ? "bg-gold text-gold-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-gold text-gold-foreground"
+                    : "text-white/70 hover:text-white"
                 )}
               >
                 {tab.label}
@@ -147,7 +142,7 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
   const pct = Math.round((w.seats_booked / w.seats_total) * 100);
 
   return (
-    <article className="group relative h-full overflow-hidden rounded-3xl border border-white/20 bg-white/40 backdrop-blur-md p-4 hover:border-gold/30 hover:shadow-soft transition-all duration-300 flex flex-col justify-between">
+    <article className="group relative h-full overflow-hidden rounded-3xl border border-white/20 bg-white/40 backdrop-blur-md p-4 hover:border-gold/30 transition-all duration-300 flex flex-col justify-between">
       <div className="space-y-4">
         <div className="aspect-[16/9] overflow-hidden rounded-2xl relative border border-border/20">
           <img src={w.image} alt={w.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-103" />
@@ -190,10 +185,14 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
         )}
 
         <div className="flex justify-between items-center pt-1">
-          <div>
-            <p className="text-[9px] text-muted-foreground uppercase">Exchange</p>
-            <p className="text-sm font-bold text-foreground">{formatPrice(w.price_inr, 'INR')}</p>
-          </div>
+          {!isCompleted ? (
+            <div>
+              <p className="text-[9px] text-muted-foreground uppercase">Exchange</p>
+              <p className="text-sm font-bold text-foreground">{formatPrice(w.price_inr, 'INR')}</p>
+            </div>
+          ) : (
+            <div />
+          )}
           <Link href={`/workshops/${w.slug}`}>
             <Button size="sm" className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground">
               {isCompleted ? 'View Memories' : 'Details'}

@@ -44,8 +44,7 @@ export function WishlistView({ products }: { products: Product[] }) {
                 <div className="absolute right-3 top-3"><ProductWishlistButton productId={p.id} /></div>
               </div>
               <div className="p-5">
-                <StarRating rating={p.rating} size={12} />
-                <h3 className="mt-2 font-display text-lg font-medium text-foreground">{p.name}</h3>
+                <h3 className="font-display text-lg font-medium text-foreground">{p.name}</h3>
                 <p className="mt-1 text-sm font-medium text-foreground">{formatPrice(p.price_inr, 'INR')}</p>
               </div>
             </article>

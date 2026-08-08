@@ -343,11 +343,11 @@ export function SiteHeader() {
                       className={cn(
                         'rounded-2xl px-4 py-3 text-base font-bold transition-all flex items-center justify-between',
                         isActive(item.href)
-                          ? 'bg-gold/10 text-gold border border-gold/30 shadow-[0_0_15px_rgba(255,215,0,0.15)]'
+                          ? 'bg-gold/10 text-gold border border-gold/30'
                           : 'text-black hover:bg-black/5 hover:text-black'
                       )}
                     >
-                      <span className={cn(isActive(item.href) && 'drop-shadow-[0_0_1px_rgba(212,175,55,0.4)] font-extrabold')}>
+                      <span className={cn(isActive(item.href) && 'font-extrabold')}>
                         {item.label}
                       </span>
                     </Link>

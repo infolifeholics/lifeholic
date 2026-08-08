@@ -68,15 +68,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const gallery = product.gallery && product.gallery.length ? product.gallery : [product.image];
 
   return (
-    <div className="pt-28 relative min-h-screen">
-      {/* White glassmorphism backdrop blur on top of background video */}
-      <div className="fixed inset-0 -z-10 bg-white/20 backdrop-blur-[4px] dark:bg-black/40 dark:backdrop-blur-[4px]" />
-
+    <div className="relative bg-background/30 backdrop-blur-[2px] z-10 min-h-screen pt-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <nav className="flex items-center gap-2 text-xs text-muted-foreground" aria-label="Breadcrumb">
-          <Link href="/shop" className="hover:text-foreground">Shop</Link>
+        <nav className="flex items-center gap-2 text-xs text-white/60" aria-label="Breadcrumb">
+          <Link href="/shop" className="hover:text-white">Shop</Link>
           <span>/</span>
-          <span className="text-foreground">{product.name}</span>
+          <span className="text-white/90">{product.name}</span>
         </nav>
 
         <div className="mt-6 grid gap-10 lg:grid-cols-2 lg:gap-16">
@@ -84,9 +81,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <ProductGallery gallery={gallery} productName={product.name} productId={product.id} />
 
           {/* Info */}
-          <div>
+          <div
+            className="backdrop-blur-md border border-white/10 p-6 sm:p-8 rounded-[2rem] text-white/95 h-fit"
+            style={{ backgroundColor: 'rgba(18, 15, 14, 0.8)' }}
+          >
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-white/90">
                 {product.category}
               </span>
               {onSale && (
@@ -95,32 +95,25 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 </span>
               )}
             </div>
-            <h1 className="mt-3 font-display text-4xl font-medium leading-tight tracking-tight text-foreground sm:text-5xl">
+            <h1 className="mt-3 font-display text-4xl font-medium leading-tight tracking-tight text-white sm:text-5xl">
               {product.name}
             </h1>
-            <p className="mt-3 text-pretty text-lg text-muted-foreground">{product.tagline}</p>
-
-            <div className="mt-4 flex items-center gap-3">
-              <StarRating rating={product.rating} size={16} />
-              <span className="text-sm text-muted-foreground">
-                {product.rating.toFixed(1)} · {product.reviews_count} reviews
-              </span>
-            </div>
+            <p className="mt-3 text-pretty text-lg text-white/80">{product.tagline}</p>
 
             <div className="mt-6 flex items-center gap-3">
-              <span className="font-display text-3xl font-medium text-foreground">{formatPrice(product.price_inr, 'INR')}</span>
+              <span className="font-display text-3xl font-medium text-gold">{formatPrice(product.price_inr, 'INR')}</span>
               {onSale && (
-                <span className="text-lg text-muted-foreground line-through">{formatPrice(product.compare_at_inr as number, 'INR')}</span>
+                <span className="text-lg text-white/50 line-through">{formatPrice(product.compare_at_inr as number, 'INR')}</span>
               )}
-              <span className="text-sm text-muted-foreground">≈ {formatPrice(product.price_usd, 'USD')}</span>
+              <span className="text-sm text-white/70">≈ {formatPrice(product.price_usd, 'USD')}</span>
             </div>
 
-            <p className="mt-6 text-pretty text-base leading-relaxed text-black dark:text-neutral-200 font-medium">{product.description}</p>
+            <p className="mt-6 text-pretty text-base leading-relaxed text-white/90 font-medium">{product.description}</p>
 
             <ul className="mt-6 grid gap-2 sm:grid-cols-2">
               {product.highlights.map((h) => (
-                <li key={h} className="flex items-start gap-2 text-sm text-foreground">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" /> {h}
+                <li key={h} className="flex items-start gap-2 text-sm text-white/90">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /> {h}
                 </li>
               ))}
             </ul>
@@ -139,7 +132,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                   >
                     Buy on Amazon
                   </a>
-                  <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider bg-secondary/50 px-3.5 py-2 rounded-full whitespace-nowrap self-start sm:self-center">
+                  <span className="text-xs text-white/70 font-semibold uppercase tracking-wider bg-white/10 px-3.5 py-2 rounded-full whitespace-nowrap self-start sm:self-center">
                     From Amazon
                   </span>
                 </div>
@@ -159,20 +152,16 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               )}
             </div>
 
-            <div className="mt-6 grid grid-cols-3 gap-3 text-xs">
-              <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 bg-card/50 p-3 text-center">
+            {/* <div className="mt-6 grid grid-cols-2 gap-3 text-xs">
+              <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-white/10 bg-white/5 p-3 text-center">
                 {product.type === 'digital' ? <Download className="h-4 w-4 text-gold" /> : <Truck className="h-4 w-4 text-gold" />}
-                <span className="text-muted-foreground">{product.type === 'digital' ? 'Instant access' : 'Ships in 2–4 days'}</span>
+                <span className="text-white/80">{product.type === 'digital' ? 'Instant access' : 'Ships in 2–4 days'}</span>
               </div>
-              <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 bg-card/50 p-3 text-center">
+              <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-white/10 bg-white/5 p-3 text-center">
                 <ShieldCheck className="h-4 w-4 text-gold" />
-                <span className="text-muted-foreground">Secure checkout</span>
+                <span className="text-white/80">Secure checkout</span>
               </div>
-              <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 bg-card/50 p-3 text-center">
-                <Star className="h-4 w-4 text-gold" />
-                <span className="text-muted-foreground">{product.rating.toFixed(1)} avg rating</span>
-              </div>
-            </div>
+            </div> */}
           </div>
         </div>
 

@@ -349,6 +349,7 @@ export function HomeHero() {
   // Search Dropdown States
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<'categories' | 'subcategories' | 'checklist' | 'not-sure'>('categories');
+  const [notSureSubStep, setNotSureSubStep] = useState<'text' | 'options'>('text');
   const [activeCategory, setActiveCategory] = useState<CategoryKey | null>(null);
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>(() => {
@@ -548,7 +549,11 @@ export function HomeHero() {
       setActiveCategory(null);
       setActiveSub(null);
     } else if (step === 'not-sure') {
-      setStep('categories');
+      if (notSureSubStep === 'options') {
+        setNotSureSubStep('text');
+      } else {
+        setStep('categories');
+      }
     }
   };
 
@@ -621,14 +626,14 @@ export function HomeHero() {
               if (!isOpen) setIsOpen(true);
             }}
             className={cn(
-              "group relative flex items-center gap-4 rounded-2xl px-5 py-4 cursor-pointer backdrop-blur-md",
+              "group relative flex items-center gap-4 rounded-full px-6 py-4 cursor-pointer backdrop-blur-md",
               "border-2 transition-all duration-500",
               isOpen
-                ? "bg-card/85 border-[#FFD700] ring-4 ring-[#FFD700]/20 shadow-[0_0_35px_rgba(255,215,0,0.45)]"
-                : "bg-black/65 border-white/80 hover:border-[#FFD700] hover:shadow-[0_0_25px_rgba(255,215,0,0.35)]"
+                ? "bg-black/90 border-gold/60 ring-2 ring-gold/20"
+                : "bg-black/80 border-white/20 hover:border-gold/50"
             )}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold/20 text-gold transition-transform group-hover:scale-105">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/20 text-gold transition-transform group-hover:scale-105">
               <Search className="h-5 w-5" />
             </div>
             <div className="flex-1 text-left">
@@ -674,8 +679,9 @@ export function HomeHero() {
               onClick={() => {
                 setIsOpen(true);
                 setStep('not-sure');
+                setNotSureSubStep('text');
               }}
-              className="group inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 backdrop-blur-md px-5 py-2.5 text-xs font-semibold text-gold shadow-sm transition-all duration-200 hover:bg-gold hover:text-gold-foreground hover:shadow-md cursor-pointer"
+              className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/80 backdrop-blur-md px-5 py-2.5 text-xs font-semibold text-white transition-all duration-200 hover:bg-gold hover:text-gold-foreground cursor-pointer"
             >
               <span>✨</span>
               Not sure where to begin?
@@ -813,33 +819,46 @@ export function HomeHero() {
                         transition={{ duration: 0.2 }}
                         className="space-y-4 text-left p-1"
                       >
-                        <div className="space-y-3 bg-gold/5 border border-gold/15 p-4 rounded-xl">
-                          <h4 className="font-semibold text-sm text-gold">Not sure which category to choose?</h4>
-                          <p className="text-xs text-foreground/80 leading-relaxed font-medium">
-                            Pause for a moment and take a deep breath.<br />
-                            Think about the one problem that has been troubling you the most lately.<br /><br />
-                            Now see which area it is connected to the most:
-                          </p>
-                        </div>
-
-                        <div className="space-y-2 pt-1">
-                          {Object.keys(dynamicCategories).map((key) => {
-                            const cat = dynamicCategories[key];
-                            return (
+                        {notSureSubStep === 'text' ? (
+                          <>
+                            <div className="space-y-3 bg-gold/5 border border-gold/15 p-4 rounded-xl">
+                              <h4 className="font-semibold text-sm text-gold">Not sure which category to choose?</h4>
+                              <p className="text-xs text-foreground/80 leading-relaxed font-medium">
+                                Pause for a moment and take a deep breath.<br />
+                                Think about the one problem that has been troubling you the most lately.<br /><br />
+                                Now see which area it is connected to the most:
+                              </p>
+                            </div>
+                            <div className="pt-2">
                               <button
-                                key={key}
-                                onClick={() => {
-                                  setActiveCategory(key as any);
-                                  setStep('subcategories');
-                                }}
-                                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 transition-all text-left text-xs font-semibold text-foreground group"
+                                type="button"
+                                onClick={() => setNotSureSubStep('options')}
+                                className="w-full py-3 px-5 rounded-full bg-gold hover:bg-gold-hover text-gold-foreground font-semibold text-xs tracking-wider uppercase transition-colors text-center cursor-pointer"
                               >
-                                <span>{cat.label}</span>
-                                <ChevronRight className="h-4 w-4 text-gold transition-transform group-hover:translate-x-0.5" />
+                                Continue
                               </button>
-                            );
-                          })}
-                        </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="space-y-2 pt-1">
+                            {Object.keys(dynamicCategories).map((key) => {
+                              const cat = dynamicCategories[key];
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={() => {
+                                    setActiveCategory(key as any);
+                                    setStep('subcategories');
+                                  }}
+                                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-border/50 bg-card/40 hover:bg-muted/60 transition-all text-left text-xs font-semibold text-foreground group"
+                                >
+                                  <span>{cat.label}</span>
+                                  <ChevronRight className="h-4 w-4 text-gold transition-transform group-hover:translate-x-0.5" />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </motion.div>
                     )}
 
@@ -1106,7 +1125,7 @@ export function HomeHero() {
                         transition={{ duration: 0.3 }}
                         className="flex flex-col items-center justify-center text-center"
                       >
-                        <Sparkles className="h-7 w-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.7)] animate-pulse mb-1.5" />
+                        <Sparkles className="h-7 w-7 text-white animate-pulse mb-1.5" />
                         <span className="text-2xl font-bold text-white tracking-widest font-sans select-none tabular-nums">
                           {Math.floor(analysisProgress)}%
                         </span>

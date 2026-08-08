@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 
 export function SoundToggle() {
   const [playing, setPlaying] = useState(false);
-  const [customMusicUrl, setCustomMusicUrl] = useState<string | null>(null);
+  const [customMusicUrl, setCustomMusicUrl] = useState<string | null>('/liecio-calming-rain-257596.mp3');
   const audioCtxRef = useRef<AudioContext | null>(null);
   const windVolumeRef = useRef<GainNode | null>(null);
   const intervalRef = useRef<any>(null);

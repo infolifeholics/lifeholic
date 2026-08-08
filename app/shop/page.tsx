@@ -13,10 +13,7 @@ export const metadata: Metadata = {
 export default async function ShopPage() {
   const products = await getProducts();
   return (
-    <div className="pt-32 sm:pt-40 relative min-h-screen">
-      {/* White glassmorphism backdrop blur on top of background video */}
-      <div className="fixed inset-0 -z-10 bg-white/20 backdrop-blur-[4px] dark:bg-black/40 dark:backdrop-blur-[4px]" />
-
+    <div className="relative bg-background/30 backdrop-blur-[2px] z-10 min-h-screen pt-32 sm:pt-40">
       <section className="py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeading

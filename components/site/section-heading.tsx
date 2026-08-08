@@ -16,31 +16,22 @@ export function SectionHeading({
   return (
     <div
       className={cn(
-        'max-w-2xl',
+        'max-w-2xl glass p-6 sm:p-8 rounded-3xl border border-white/20',
         align === 'center' ? 'mx-auto text-center' : 'text-left',
         className
       )}
     >
       {eyebrow && (
-        <span 
-          className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-white"
-          style={{ textShadow: '0 0 2px rgba(0,0,0,1), 0 2px 4px rgba(0,0,0,1)' }}
-        >
-          <span className="h-px w-6 bg-white/80" />
+        <span className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
+          <span className="h-px w-6 bg-gold/70" />
           {eyebrow}
         </span>
       )}
-      <h2 
-        className="mt-4 font-display text-4xl font-semibold leading-[1.1] tracking-tight text-white sm:text-5xl text-balance"
-        style={{ textShadow: '0 0 3px rgba(0,0,0,1), 0 2px 8px rgba(0,0,0,1)' }}
-      >
+      <h2 className="mt-4 font-display text-4xl font-medium leading-[1.1] tracking-tight text-foreground sm:text-5xl text-balance">
         {title}
       </h2>
       {description && (
-        <p 
-          className="mt-5 text-pretty text-base font-semibold leading-relaxed text-white/90 sm:text-lg"
-          style={{ textShadow: '0 0 2px rgba(0,0,0,1), 0 2px 5px rgba(0,0,0,1)' }}
-        >
+        <p className="mt-5 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
           {description}
         </p>
       )}

@@ -236,61 +236,61 @@ export function HomeInstagram() {
                             transition={{ duration: 0.6, ease: 'easeOut' }}
                             className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"
                           >
-                            <Heart className="h-20 w-20 text-white fill-white drop-shadow-[0_0_20px_rgba(244,63,94,0.8)]" />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* Like Counter & Button Block */}
-                    <div className="mt-3 flex items-center justify-between w-full px-4 text-xs text-muted-foreground">
-                      <button
-                        onClick={(e) => handleLike(item.id, e)}
-                        className="flex items-center gap-1.5 hover:text-rose-500 transition-colors group/btn py-1"
-                      >
-                        <Heart className="h-4 w-4 transition-transform group-hover/btn:scale-125 group-active/btn:scale-95 duration-200" />
-                        <span className="font-semibold text-foreground">{item.likes.toLocaleString()} likes</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleShare(item)}
-                        className="flex items-center gap-1 hover:text-gold transition-colors group/share py-1 text-muted-foreground"
-                        title="Share Post"
-                      >
-                        <Share2 className="h-3.5 w-3.5 transition-transform group-hover/share:scale-110" />
-                        <span>Share</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Reveal>
-        )}
-
-        {/* Global floating hearts layer */}
-        <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-          <AnimatePresence>
-            {floatingHearts.map((h) => (
-              <motion.span
-                key={h.id}
-                initial={{ opacity: 1, scale: h.scale, x: h.startX, y: h.startY, rotate: h.rotate }}
-                animate={{
-                  opacity: [1, 0.9, 0],
-                  y: h.startY - 400,
-                  x: h.startX + (Math.random() - 0.5) * 150,
-                  rotate: h.rotate + (Math.random() - 0.5) * 95
-                }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: h.duration, ease: 'easeOut' }}
-                className="absolute pointer-events-none"
-                style={{ color: h.color }}
-              >
-                <Heart className="h-8 w-8 fill-current drop-shadow-[0_2px_12px_rgba(0,0,0,0.4)]" />
-              </motion.span>
-            ))}
-          </AnimatePresence>
-        </div>
+                             <Heart className="h-20 w-20 text-white fill-white" />
+                           </motion.div>
+                         )}
+                       </AnimatePresence>
+                     </div>
+ 
+                     {/* Like Counter & Button Block */}
+                     <div className="mt-3 flex items-center justify-between w-full px-4 text-xs text-muted-foreground">
+                       <button
+                         onClick={(e) => handleLike(item.id, e)}
+                         className="flex items-center gap-1.5 hover:text-rose-500 transition-colors group/btn py-1"
+                       >
+                         <Heart className="h-4 w-4 transition-transform group-hover/btn:scale-125 group-active/btn:scale-95 duration-200" />
+                         <span className="font-semibold text-foreground">{item.likes.toLocaleString()} likes</span>
+                       </button>
+ 
+                       <button
+                         onClick={() => handleShare(item)}
+                         className="flex items-center gap-1 hover:text-gold transition-colors group/share py-1 text-muted-foreground"
+                         title="Share Post"
+                       >
+                         <Share2 className="h-3.5 w-3.5 transition-transform group-hover/share:scale-110" />
+                         <span>Share</span>
+                       </button>
+                     </div>
+                   </div>
+                 );
+               })}
+             </div>
+           </Reveal>
+         )}
+ 
+         {/* Global floating hearts layer */}
+         <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+           <AnimatePresence>
+             {floatingHearts.map((h) => (
+               <motion.span
+                 key={h.id}
+                 initial={{ opacity: 1, scale: h.scale, x: h.startX, y: h.startY, rotate: h.rotate }}
+                 animate={{
+                   opacity: [1, 0.9, 0],
+                   y: h.startY - 400,
+                   x: h.startX + (Math.random() - 0.5) * 150,
+                   rotate: h.rotate + (Math.random() - 0.5) * 95
+                 }}
+                 exit={{ opacity: 0 }}
+                 transition={{ duration: h.duration, ease: 'easeOut' }}
+                 className="absolute pointer-events-none"
+                 style={{ color: h.color }}
+               >
+                 <Heart className="h-8 w-8 fill-current" />
+               </motion.span>
+             ))}
+           </AnimatePresence>
+         </div>
 
         <div className="mt-12 text-center">
           <Link

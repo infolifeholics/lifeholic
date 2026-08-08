@@ -57,11 +57,7 @@ export function HomeProducts({ products }: { products: Product[] }) {
                       </span>
                     </div>
                     <div className="p-5">
-                      <div className="flex items-center justify-between gap-2">
-                        <StarRating rating={p.rating} size={12} />
-                        <span className="text-xs text-muted-foreground">{p.reviews_count}</span>
-                      </div>
-                      <h3 className="mt-2 font-display text-lg font-medium leading-snug text-foreground">
+                      <h3 className="mt-1 font-display text-lg font-medium leading-snug text-foreground">
                         {p.name}
                       </h3>
                       <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{p.tagline}</p>

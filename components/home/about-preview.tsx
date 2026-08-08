@@ -86,7 +86,7 @@ export function HomeAboutPreview() {
             {/* Copy column */}
             <div>
               <Reveal>
-                <span className="inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-black">
                   <span className="h-px w-6 bg-gold/70" /> Our Story
                 </span>
               </Reveal>
@@ -94,11 +94,11 @@ export function HomeAboutPreview() {
               <RevealText
                 as="h2"
                 text="Our Story"
-                className="mt-5 font-display text-4xl font-medium leading-[1.1] tracking-tight text-foreground sm:text-5xl text-balance"
+                className="mt-5 font-display text-4xl font-semibold leading-[1.1] tracking-tight text-black sm:text-5xl text-balance"
               />
 
               <Reveal delay={0.25}>
-                <div className="mt-8 space-y-6 text-muted-foreground font-medium text-base sm:text-lg leading-relaxed max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="mt-8 space-y-6 text-black/90 font-medium text-base sm:text-lg leading-relaxed max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
                   <p>
                     As I began my own journey of healing and self-discovery, I realized that many of our struggles—
                     whether related to health, relationships, finances, or emotions—often have deeper roots than what
@@ -127,7 +127,7 @@ export function HomeAboutPreview() {
                     can create lasting change. We believe that when you understand yourself at a deeper level, you make
                     different choices, experience healthier relationships, greater peace, and a more fulfilling life.
                   </p>
-                  <p className="border-t border-white/10 pt-6 font-display text-xl sm:text-2xl font-semibold text-foreground leading-relaxed italic">
+                  <p className="border-t border-white/10 pt-6 font-display text-xl sm:text-2xl font-semibold text-black leading-relaxed italic">
                     &ldquo;If Lifeholics can help even one person understand themselves a little better and move towards the
                     life they truly wish to live, then its purpose is being fulfilled.&rdquo;
                   </p>
@@ -136,7 +136,7 @@ export function HomeAboutPreview() {
               <Reveal delay={0.5}>
                 <Link
                   href="/about"
-                  className="group mt-9 inline-flex items-center gap-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                  className="group mt-9 inline-flex items-center gap-2 text-sm font-semibold text-black underline-offset-4 hover:underline"
                 >
                   Read the full story
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
