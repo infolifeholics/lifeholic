@@ -581,8 +581,13 @@ export default function SomaticPlansPage() {
                       {(() => {
                         const planSess = planServices?.[planKey]?.sessions || (planKey === 'essential' ? 1 : planKey === 'premium' ? 4 : 8);
                         return (
-                          <div className="mt-2 text-xs font-semibold text-gold">
-                            1 × {planSess} {planSess === 1 ? 'Session' : 'Sessions'}
+                          <div className="mt-2">
+                            <span 
+                              className="inline-flex items-center gap-1 text-xs text-gold font-semibold"
+                              style={{ backgroundColor: '#121212', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(212, 175, 55, 0.3)' }}
+                            >
+                              1 × {planSess} {planSess === 1 ? 'Session' : 'Sessions'}
+                            </span>
                           </div>
                         );
                       })()}
