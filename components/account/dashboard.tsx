@@ -178,27 +178,30 @@ export function AccountDashboard() {
     } catch (e) { }
   }, []);
 
-  const [activeSomaticPackage, setActiveSomaticPackage] = useState<any>(null);
+  const [userPackages, setUserPackages] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
 
     // Fetch user somatic packages
-    const packageDocRef = doc(db, 'somatic_packages', user.id);
-    const unsubPackage = onSnapshot(packageDocRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        // Check if expired
+    const qPackages = query(
+      collection(db, 'somatic_packages'),
+      where('user_id', '==', user.id)
+    );
+    const unsubPackage = onSnapshot(qPackages, (snap) => {
+      const list = snap.docs.map(doc => {
+        const data = doc.data();
         const nowTime = Date.now();
         const expiryTime = new Date(data.expiry_date).getTime();
         if (nowTime > expiryTime && data.status === 'active') {
-          // Auto-mark as expired
-          setDoc(packageDocRef, { status: 'expired' }, { merge: true }).catch(console.error);
+          setDoc(doc.ref, { status: 'expired' }, { merge: true }).catch(console.error);
+          data.status = 'expired';
         }
-        setActiveSomaticPackage({ id: snap.id, ...data });
-      } else {
-        setActiveSomaticPackage(null);
-      }
+        return { id: doc.id, ...data };
+      });
+      setUserPackages(list);
+    }, (err) => {
+      console.error('Error fetching user packages:', err);
     });
 
     const qOrders = query(
@@ -638,101 +641,114 @@ export function AccountDashboard() {
           </div>
         </div>
 
-        {/* 4. SOMATIC PROGRAM TRACKER CARD */}
-        {activeSomaticPackage && (
-          <div className="rounded-3xl border border-gold/30 bg-gradient-to-r from-card to-secondary/30 p-6 shadow-glow mb-8 text-left">
-            <div className="flex justify-between items-center mb-4 border-b border-border/20 pb-3">
-              <div>
-                <h3 className="font-display font-medium text-lg text-foreground flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-gold" /> 4-Week Somatic Transformation Program
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Validity: {new Date(activeSomaticPackage.purchase_date).toLocaleDateString()} – {new Date(activeSomaticPackage.expiry_date).toLocaleDateString()}{' '}
-                  ({activeSomaticPackage.status === 'expired' ? <span className="text-destructive font-bold">Expired</span> : <span className="text-gold font-bold">Active</span>})
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs text-muted-foreground">Sessions Booked: {activeSomaticPackage.booking_ids?.length || 1}/4</span>
-              </div>
-            </div>
+        {/* 4. PROGRAM & SERVICE TRACKER CARDS */}
+        {userPackages.map((pkg) => {
+          const isSomaticPkg = pkg.package_type === 'somatic_plan' || !pkg.package_type;
+          const totalSessions = pkg.total_sessions || 4;
+          const completedSessions = pkg.completed_sessions || 0;
+          const remainingSessions = pkg.remaining_sessions || 0;
+          const stepArray = Array.from({ length: totalSessions }, (_, i) => i + 1);
 
-            {/* Stages Step Tracker */}
-            <div className="grid gap-3 sm:grid-cols-4 mt-6">
-              {[1, 2, 3, 4].map((stepNum) => {
-                // Determine stage state based on package status & session bookings
-                const linkedBookingId = activeSomaticPackage.booking_ids?.[stepNum - 1];
-                let stepStatus: 'completed' | 'booked' | 'available' | 'locked' = 'locked';
-                let bookingDateStr = '';
+          return (
+            <div key={pkg.id} className="rounded-3xl border border-gold/30 bg-gradient-to-r from-card to-secondary/30 p-6 shadow-glow mb-8 text-left animate-fade-in">
+              <div className="flex justify-between items-center mb-4 border-b border-border/20 pb-3 flex-wrap gap-2">
+                <div>
+                  <h3 className="font-display font-medium text-lg text-gold flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-gold" /> {pkg.package_name || (isSomaticPkg ? 'Somatic Transformation Program' : 'Healing Service Package')}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                    Validity: {new Date(pkg.purchase_date).toLocaleDateString()} – {new Date(pkg.expiry_date).toLocaleDateString()}{' '}
+                    ({pkg.status === 'expired' ? <span className="text-destructive font-bold">Expired</span> : <span className="text-gold font-bold">Active</span>})
+                  </p>
+                </div>
+                <div className="text-right flex flex-col items-end">
+                  <span className="text-xs font-semibold text-gold">1 × {totalSessions} {totalSessions === 1 ? 'Session' : 'Sessions'}</span>
+                  <span className="text-xs text-muted-foreground mt-0.5">{completedSessions} / {totalSessions} Completed</span>
+                  <span className="text-[10px] text-muted-foreground mt-0.5">{remainingSessions} {remainingSessions === 1 ? 'Session' : 'Sessions'} Remaining</span>
+                </div>
+              </div>
 
-                if (linkedBookingId) {
-                  const bDetails = bookings.find(b => b.id === linkedBookingId);
-                  if (bDetails) {
-                    if (bDetails.status === 'completed') {
-                      stepStatus = 'completed';
-                    } else if (bDetails.status === 'cancelled' || bDetails.status === 'rejected') {
-                      stepStatus = 'available'; // can be rebooked
+              {/* Stages Step Tracker */}
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 mt-6">
+                {stepArray.map((stepNum) => {
+                  const linkedBookingId = pkg.booking_ids?.[stepNum - 1];
+                  let stepStatus: 'completed' | 'booked' | 'available' | 'locked' = 'locked';
+                  let bookingDateStr = '';
+
+                  if (linkedBookingId) {
+                    const bDetails = bookings.find(b => b.id === linkedBookingId);
+                    if (bDetails) {
+                      if (bDetails.status === 'completed') {
+                        stepStatus = 'completed';
+                      } else if (bDetails.status === 'cancelled' || bDetails.status === 'rejected') {
+                        stepStatus = 'available';
+                      } else {
+                        stepStatus = 'booked';
+                        bookingDateStr = new Date(bDetails.start_time).toLocaleDateString();
+                      }
                     } else {
                       stepStatus = 'booked';
-                      bookingDateStr = new Date(bDetails.start_time).toLocaleDateString();
                     }
                   } else {
-                    stepStatus = 'booked';
-                  }
-                } else {
-                  // If it's not booked yet, check if the previous one is completed
-                  if (stepNum === 1) {
-                    stepStatus = 'available';
-                  } else {
-                    const prevBookingId = activeSomaticPackage.booking_ids?.[stepNum - 2];
-                    if (prevBookingId) {
-                      const prevB = bookings.find(b => b.id === prevBookingId);
-                      if (prevB && prevB.status === 'completed') {
-                        stepStatus = 'available';
+                    if (stepNum === 1) {
+                      stepStatus = 'available';
+                    } else {
+                      const prevBookingId = pkg.booking_ids?.[stepNum - 2];
+                      if (prevBookingId) {
+                        const prevB = bookings.find(b => b.id === prevBookingId);
+                        if (prevB && prevB.status === 'completed') {
+                          stepStatus = 'available';
+                        } else {
+                          stepStatus = 'locked';
+                        }
                       } else {
                         stepStatus = 'locked';
                       }
-                    } else {
-                      stepStatus = 'locked';
                     }
                   }
-                }
 
-                // If package is expired and not completed, force locked/expired status
-                if (activeSomaticPackage.status === 'expired' && stepStatus !== 'completed') {
-                  stepStatus = 'locked';
-                }
+                  if (pkg.status === 'expired' && stepStatus !== 'completed') {
+                    stepStatus = 'locked';
+                  }
 
-                return (
-                  <div key={stepNum} className={cn(
-                    "p-4 rounded-2xl border text-center transition-all",
-                    stepStatus === 'completed' && "bg-emerald-500/5 border-emerald-500/20 text-emerald-400",
-                    stepStatus === 'booked' && "bg-amber-500/5 border-gold/30 text-gold",
-                    stepStatus === 'available' && "bg-card border-border/60 text-foreground hover:border-gold/30 cursor-pointer",
-                    stepStatus === 'locked' && "bg-secondary/40 border-border/20 text-muted-foreground opacity-60"
-                  )}>
-                    <div className="flex justify-center mb-2">
-                      {stepStatus === 'completed' && <CheckCircle2 className="h-5 w-5 text-emerald-400" />}
-                      {stepStatus === 'booked' && <CalendarDays className="h-5 w-5 text-gold" />}
-                      {stepStatus === 'available' && <Clock className="h-5 w-5 text-foreground" />}
-                      {stepStatus === 'locked' && <Lock className="h-5 w-5 text-muted-foreground" />}
+                  // Determine booking URL
+                  let bookingUrl = `/booking/somatic?plan=${pkg.plan_key || 'premium'}`;
+                  if (!isSomaticPkg) {
+                    bookingUrl = `/booking?service=${pkg.service_id}`;
+                  }
+
+                  return (
+                    <div key={stepNum} className={cn(
+                      "p-4 rounded-2xl border text-center transition-all",
+                      stepStatus === 'completed' && "bg-emerald-500/5 border-emerald-500/20 text-emerald-400",
+                      stepStatus === 'booked' && "bg-amber-500/5 border-gold/30 text-gold",
+                      stepStatus === 'available' && "bg-card border-border/60 text-foreground hover:border-gold/30 cursor-pointer",
+                      stepStatus === 'locked' && "bg-secondary/40 border-border/20 text-muted-foreground opacity-60"
+                    )}>
+                      <div className="flex justify-center mb-2">
+                        {stepStatus === 'completed' && <CheckCircle2 className="h-5 w-5 text-emerald-400" />}
+                        {stepStatus === 'booked' && <CalendarDays className="h-5 w-5 text-gold" />}
+                        {stepStatus === 'available' && <Clock className="h-5 w-5 text-foreground" />}
+                        {stepStatus === 'locked' && <Lock className="h-5 w-5 text-muted-foreground" />}
+                      </div>
+                      <span className="block text-xs font-bold uppercase tracking-wider">Session {stepNum}</span>
+                      <span className="block text-[10px] mt-1 capitalize">
+                        {stepStatus === 'completed' && '✅ Completed'}
+                        {stepStatus === 'booked' && `📅 Booked (${bookingDateStr})`}
+                        {stepStatus === 'available' && (
+                          <Link href={bookingUrl} className="hover:underline text-gold font-semibold">
+                            ⏳ Book Now
+                          </Link>
+                        )}
+                        {stepStatus === 'locked' && '🔒 Locked'}
+                      </span>
                     </div>
-                    <span className="block text-xs font-bold uppercase tracking-wider">Session {stepNum}</span>
-                    <span className="block text-[10px] mt-1 capitalize">
-                      {stepStatus === 'completed' && '✅ Completed'}
-                      {stepStatus === 'booked' && `📅 Booked (${bookingDateStr})`}
-                      {stepStatus === 'available' && (
-                        <Link href="/booking/somatic?plan=premium" className="hover:underline text-gold font-semibold">
-                          ⏳ Book Now
-                        </Link>
-                      )}
-                      {stepStatus === 'locked' && '🔒 Locked'}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })}
 
         {/* 5. NAVIGATION TABS (INSTAGRAM INSPIRED) */}
         <div>

@@ -32,6 +32,11 @@ type BookingRow = {
   reschedule_request?: { requested_by: string; proposed_start_time: string; proposed_end_time: string; status: string; timestamp: string } | null;
   healer_id?: string | null;
   healer_name?: string | null;
+  is_somatic_plan?: boolean | null;
+  somatic_plan_name?: string | null;
+  service_id?: string | null;
+  user_id?: string | null;
+  session_number?: number | null;
 };
 
 export function AdminTodaysBookings() {
@@ -45,6 +50,7 @@ export function AdminTodaysBookings() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [healers, setHealers] = useState<any[]>([]);
   const [healerFilter, setHealerFilter] = useState('all');
+  const [packages, setPackages] = useState<any[]>([]);
   
   // Default target date is today's date in IST (YYYY-MM-DD)
   const todayIstStr = new Intl.DateTimeFormat('en-CA', {
@@ -78,7 +84,14 @@ export function AdminTodaysBookings() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    const unsubscribePackages = onSnapshot(collection(db, 'somatic_packages'), (snap) => {
+      setPackages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribePackages();
+    };
   }, []);
 
   const updateStatus = async (id: string, newStatus: string) => {
@@ -106,6 +119,74 @@ export function AdminTodaysBookings() {
         status_timeline: updatedTimeline,
         updated_at: new Date().toISOString()
       }, { merge: true });
+
+      // If booking belongs to a package, update package counters
+      if (b && b.user_id) {
+        try {
+          const { getDocs, query, collection, where, getDoc } = await import('firebase/firestore');
+          let packageRef = null;
+          let pkgSnap = null;
+          
+          if (b.is_somatic_plan) {
+            const docRef = doc(db, 'somatic_packages', b.user_id);
+            const snap = await getDoc(docRef);
+            if (snap.exists() && (snap.data().is_somatic_plan || snap.data().package_type === 'somatic_plan' || !snap.data().package_type)) {
+              packageRef = docRef;
+              pkgSnap = snap;
+            }
+          }
+          
+          if (!packageRef) {
+            const q = query(
+              collection(db, 'somatic_packages'),
+              where('user_id', '==', b.user_id)
+            );
+            const snaps = await getDocs(q);
+            for (const d of snaps.docs) {
+              const data = d.data();
+              if (b.is_somatic_plan && (data.package_type === 'somatic_plan' || data.is_somatic_plan || !data.package_type)) {
+                packageRef = d.ref;
+                pkgSnap = d;
+                break;
+              } else if (!b.is_somatic_plan && data.service_id === b.service_id) {
+                packageRef = d.ref;
+                pkgSnap = d;
+                break;
+              }
+            }
+          }
+
+          if (packageRef && pkgSnap && pkgSnap.exists()) {
+            const pkgData = pkgSnap.data();
+            const totalSess = pkgData.total_sessions || 4;
+            
+            let bookingIds = pkgData.booking_ids || [];
+            if (newStatus === 'cancelled' || newStatus === 'rejected') {
+              bookingIds = bookingIds.filter((bid: string) => bid !== b.id);
+            }
+            const totalBooked = bookingIds.length;
+            
+            let completedCount = pkgData.completed_sessions || 0;
+            if (newStatus === 'completed') {
+              completedCount = Math.min(totalSess, completedCount + 1);
+            } else if (b.status === 'completed' && newStatus !== 'completed') {
+              completedCount = Math.max(0, completedCount - 1);
+            }
+            
+            const pkgStatus = completedCount >= totalSess ? 'completed' : pkgData.status;
+
+            await setDoc(packageRef, {
+              booking_ids: bookingIds,
+              completed_sessions: completedCount,
+              remaining_sessions: Math.max(0, totalSess - totalBooked),
+              status: pkgStatus,
+              updated_at: new Date().toISOString()
+            }, { merge: true });
+          }
+        } catch (err) {
+          console.error('[Dashboard] Failed to sync package state:', err);
+        }
+      }
 
       if (b && (newStatus === 'cancelled' || newStatus === 'rejected')) {
         const { deleteDoc } = await import('firebase/firestore');
@@ -403,6 +484,27 @@ export function AdminTodaysBookings() {
                         <Clock className="h-3 w-3" />
                         {formatInTz(b.start_time, 'Asia/Kolkata', { timeStyle: 'short' })} – {formatInTz(b.end_time, 'Asia/Kolkata', { timeStyle: 'short' })} (IST)
                       </p>
+                      {(() => {
+                        const pkg = packages.find(p => {
+                          if (b.is_somatic_plan) {
+                            return p.user_id === b.user_id && (p.package_type === 'somatic_plan' || p.is_somatic_plan || !p.package_type);
+                          } else {
+                            return p.user_id === b.user_id && p.service_id === b.service_id;
+                          }
+                        });
+                        if (pkg) {
+                          return (
+                            <div className="mt-2 text-[10px] text-muted-foreground bg-gold/5 border border-gold/10 rounded-xl p-2 space-y-0.5 max-w-[220px]">
+                              <p className="font-semibold text-gold">{pkg.package_name || (b.is_somatic_plan ? 'Somatic Program' : 'Service Package')}</p>
+                              <p className="font-semibold">1 × {pkg.total_sessions} {pkg.total_sessions === 1 ? 'Session' : 'Sessions'}</p>
+                              {b.session_number && <p className="font-bold text-foreground">Current Session: Session {b.session_number}</p>}
+                              <p>Progress: {pkg.completed_sessions || 0} / {pkg.total_sessions} Completed</p>
+                              <p>Remaining: {pkg.remaining_sessions || 0} {pkg.remaining_sessions === 1 ? 'Session' : 'Sessions'}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                       {b.healer_name && (
                         <p className="text-[10px] text-gold mt-1 font-semibold uppercase tracking-wider">
                           Healer: {b.healer_name}

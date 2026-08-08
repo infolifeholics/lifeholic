@@ -17,6 +17,7 @@ export type Service = {
   featured: boolean;
   sort_order: number;
   active?: boolean;
+  included_sessions?: number;
 };
 
 export type Product = {

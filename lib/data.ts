@@ -2,7 +2,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
 import seedData from './seed-data.json';
 import type { Service, Product, Testimonial, Workshop, BlogPost, Faq, Availability } from '@/lib/types';
-import { unstable_noStore as noStore } from 'next/cache';
+import { unstable_cache } from 'next/cache';
 
 // Check if we are running in build environment with dummy config
 const isDummyConfig =
@@ -10,52 +10,44 @@ const isDummyConfig =
   !process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
   !process.env.FIREBASE_API_KEY;
 
-// In-memory cache for Firestore queries to speed up page loads and avoid excessive API calls
-const cache: Record<string, { data: any; timestamp: number }> = {};
-const CACHE_TTL = 10 * 1000; // 10 sec cache lifetime
+// Cache the Firestore queries globally for server components using next/cache
+const getCachedCollectionData = unstable_cache(
+  async (colName: string) => {
+    const defaults = (seedData as any)[colName] || [];
 
-// Helper to auto-seed a collection from seed-data.json if it is empty
+    if (isDummyConfig) {
+      return defaults;
+    }
+
+    try {
+      const colRef = collection(db, colName);
+      let snap;
+      if (colName === 'products') {
+        const q = query(colRef, where('is_active', '==', true));
+        snap = await getDocs(q);
+      } else {
+        snap = await getDocs(colRef);
+      }
+      if (snap.empty) {
+        return defaults;
+      }
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      return data;
+    } catch (e: any) {
+      if (e.code === 'permission-denied') {
+        console.info(`[Info] Database reads/writes are securely restricted for collection "${colName}". Using local defaults.`);
+      } else {
+        console.error(`Error loading collection ${colName}:`, e);
+      }
+      return defaults;
+    }
+  },
+  ['firestore-collections'],
+  { revalidate: 60, tags: ['firestore-collections'] }
+);
+
 async function getCollectionData<T>(colName: string): Promise<T[]> {
-  noStore();
-  const defaults = (seedData as any)[colName] || [];
-
-  if (isDummyConfig) {
-    return defaults as T[];
-  }
-
-  // Return cached data if valid
-  const cached = cache[colName];
-  const now = Date.now();
-  if (cached && (now - cached.timestamp < CACHE_TTL)) {
-    return cached.data as T[];
-  }
-
-  try {
-    const colRef = collection(db, colName);
-    let snap;
-    if (colName === 'products') {
-      const q = query(colRef, where('is_active', '==', true));
-      snap = await getDocs(q);
-    } else {
-      snap = await getDocs(colRef);
-    }
-    if (snap.empty) {
-      console.log(`Firestore collection "${colName}" is empty. Using local defaults.`);
-      cache[colName] = { data: defaults, timestamp: Date.now() };
-      return defaults as T[];
-    }
-    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as T[];
-
-    cache[colName] = { data, timestamp: Date.now() };
-    return data;
-  } catch (e: any) {
-    if (e.code === 'permission-denied') {
-      console.info(`[Info] Database reads/writes are securely restricted for collection "${colName}". Using local defaults.`);
-    } else {
-      console.error(`Error loading collection ${colName}:`, e);
-    }
-    return defaults as T[];
-  }
+  return getCachedCollectionData(colName) as Promise<T[]>;
 }
 
 export async function getServices(): Promise<Service[]> {

@@ -26,16 +26,19 @@ type SomaticPlanSettings = {
   essential_price_inr: number;
   essential_short: string;
   essential_benefits: string;
+  essential_sessions: number;
 
   premium_title: string;
   premium_price_inr: number;
   premium_short: string;
   premium_benefits: string;
+  premium_sessions: number;
 
   elite_title: string;
   elite_price_inr: number;
   elite_short: string;
   elite_benefits: string;
+  elite_sessions: number;
 };
 
 const DEFAULT_SOMATIC_PLAN_SETTINGS: SomaticPlanSettings = {
@@ -43,16 +46,19 @@ const DEFAULT_SOMATIC_PLAN_SETTINGS: SomaticPlanSettings = {
   essential_price_inr: 2500,
   essential_short: 'A starting point for somatic exploration and short release sessions.',
   essential_benefits: '1 targeted somatic clarity session (30m)\nCustomized diagnostic profiling\nActionable home practices guide\nEmail-only support channel',
+  essential_sessions: 1,
 
   premium_title: 'Somatic Premium',
   premium_price_inr: 8500,
   premium_short: 'Our most popular plan with comprehensive somatic care.',
   premium_benefits: '4 private somatic therapy sessions (60m)\nCustom daily somatic practices outline\nDirect WhatsApp guidance support\nWeekly progress check-in chats\nFree access to mindfulness archives',
+  premium_sessions: 4,
 
   elite_title: 'Somatic Elite',
   elite_price_inr: 15000,
   elite_short: 'Premium high-touch support for total somatic transformation.',
   elite_benefits: '8 private somatic therapy sessions (60m)\n24/7 priority messaging with head healer\nPersonalized lifestyle & posture coaching\nBi-weekly home visits (selected locations)\nSomatic program certificate upon completion',
+  elite_sessions: 8,
 };
 
 const DEFAULT_CATEGORIES: Category[] = [
@@ -253,18 +259,21 @@ export function AdminSearchOptions() {
             essential_benefits: Array.isArray(data.essential_benefits) 
               ? data.essential_benefits.join('\n') 
               : (data.essential_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.essential_benefits),
+            essential_sessions: data.essential_sessions ?? DEFAULT_SOMATIC_PLAN_SETTINGS.essential_sessions,
             premium_title: data.premium_title || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_title,
             premium_price_inr: data.premium_price_inr ?? DEFAULT_SOMATIC_PLAN_SETTINGS.premium_price_inr,
             premium_short: data.premium_short || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_short,
             premium_benefits: Array.isArray(data.premium_benefits) 
               ? data.premium_benefits.join('\n') 
               : (data.premium_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_benefits),
+            premium_sessions: data.premium_sessions ?? DEFAULT_SOMATIC_PLAN_SETTINGS.premium_sessions,
             elite_title: data.elite_title || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_title,
             elite_price_inr: data.elite_price_inr ?? DEFAULT_SOMATIC_PLAN_SETTINGS.elite_price_inr,
             elite_short: data.elite_short || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_short,
             elite_benefits: Array.isArray(data.elite_benefits) 
               ? data.elite_benefits.join('\n') 
               : (data.elite_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_benefits),
+            elite_sessions: data.elite_sessions ?? DEFAULT_SOMATIC_PLAN_SETTINGS.elite_sessions,
           });
         }
       } catch (err: any) {
@@ -289,14 +298,17 @@ export function AdminSearchOptions() {
         essential_price_inr: Number(somaticSettings.essential_price_inr || 0),
         essential_short: somaticSettings.essential_short,
         essential_benefits: somaticSettings.essential_benefits.split('\n').map(b => b.trim()).filter(Boolean),
+        essential_sessions: Number(somaticSettings.essential_sessions ?? 1),
         premium_title: somaticSettings.premium_title,
         premium_price_inr: Number(somaticSettings.premium_price_inr || 0),
         premium_short: somaticSettings.premium_short,
         premium_benefits: somaticSettings.premium_benefits.split('\n').map(b => b.trim()).filter(Boolean),
+        premium_sessions: Number(somaticSettings.premium_sessions ?? 4),
         elite_title: somaticSettings.elite_title,
         elite_price_inr: Number(somaticSettings.elite_price_inr || 0),
         elite_short: somaticSettings.elite_short,
         elite_benefits: somaticSettings.elite_benefits.split('\n').map(b => b.trim()).filter(Boolean),
+        elite_sessions: Number(somaticSettings.elite_sessions ?? 8),
       };
       await setDoc(doc(db, 'settings', 'somatic_plans'), finalSomaticPlans, { merge: true });
 
@@ -724,6 +736,15 @@ export function AdminSearchOptions() {
                 />
               </div>
               <div>
+                <Label className="text-xs">Included Sessions</Label>
+                <Input
+                  type="number"
+                  value={somaticSettings.essential_sessions}
+                  onChange={(e) => setSomaticSettings({ ...somaticSettings, essential_sessions: parseInt(e.target.value) || 1 })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
                 <Label className="text-xs">Short Description</Label>
                 <Input
                   value={somaticSettings.essential_short}
@@ -765,6 +786,15 @@ export function AdminSearchOptions() {
                 />
               </div>
               <div>
+                <Label className="text-xs">Included Sessions</Label>
+                <Input
+                  type="number"
+                  value={somaticSettings.premium_sessions}
+                  onChange={(e) => setSomaticSettings({ ...somaticSettings, premium_sessions: parseInt(e.target.value) || 1 })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
                 <Label className="text-xs">Short Description</Label>
                 <Input
                   value={somaticSettings.premium_short}
@@ -802,6 +832,15 @@ export function AdminSearchOptions() {
                   type="number"
                   value={somaticSettings.elite_price_inr}
                   onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_price_inr: parseInt(e.target.value) || 0 })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Included Sessions</Label>
+                <Input
+                  type="number"
+                  value={somaticSettings.elite_sessions}
+                  onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_sessions: parseInt(e.target.value) || 1 })}
                   className="mt-1"
                 />
               </div>

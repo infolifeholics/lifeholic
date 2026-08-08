@@ -45,6 +45,8 @@ type BookingRow = {
   healer_id?: string | null;
   healer_name?: string | null;
   user_id?: string | null;
+  service_id?: string | null;
+  session_number?: number | null;
 };
 
 export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (section: any) => void } = {}) {
@@ -68,6 +70,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
   const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
   const [healers, setHealers] = useState<any[]>([]);
   const [healerFilter, setHealerFilter] = useState<string>('all');
+  const [packages, setPackages] = useState<any[]>([]);
 
   // Revenue Modal & Date Filters State
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
@@ -133,6 +136,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
     let unsubscribeProfiles: (() => void) | null = null;
     let unsubscribeBookings: (() => void) | null = null;
     let unsubscribeSlots: (() => void) | null = null;
+    let unsubscribePackages: (() => void) | null = null;
     const profilesMap: Record<string, any> = {};
     let membersCount = 0;
     let slotsCount = 0;
@@ -207,6 +211,10 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
       });
     });
 
+    unsubscribePackages = onSnapshot(collection(db, 'somatic_packages'), (snap) => {
+      setPackages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
     const q = query(collection(db, 'bookings'), orderBy('start_time', 'desc'));
     unsubscribeBookings = onSnapshot(q, (snap) => {
       const rows = snap.docs.map((d) => {
@@ -231,6 +239,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
       if (unsubscribeProfiles) unsubscribeProfiles();
       if (unsubscribeBookings) unsubscribeBookings();
       if (unsubscribeSlots) unsubscribeSlots();
+      if (unsubscribePackages) unsubscribePackages();
     };
   }, []);
 
@@ -258,34 +267,71 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
         updated_at: new Date().toISOString() 
       }, { merge: true });
 
-      // If somatic session is marked as completed, update packages counters
-      if (b.is_somatic_plan && b.user_id) {
+      // If booking belongs to a package, update package counters
+      if (b.user_id) {
         try {
-          const { getDoc } = await import('firebase/firestore');
-          const packageRef = doc(db, 'somatic_packages', b.user_id);
-          const pkgSnap = await getDoc(packageRef);
-          if (pkgSnap.exists()) {
+          const { getDocs, query, collection, where, getDoc } = await import('firebase/firestore');
+          let packageRef = null;
+          let pkgSnap = null;
+          
+          if (b.is_somatic_plan) {
+            const docRef = doc(db, 'somatic_packages', b.user_id);
+            const snap = await getDoc(docRef);
+            if (snap.exists() && (snap.data().is_somatic_plan || snap.data().package_type === 'somatic_plan' || !snap.data().package_type)) {
+              packageRef = docRef;
+              pkgSnap = snap;
+            }
+          }
+          
+          if (!packageRef) {
+            const q = query(
+              collection(db, 'somatic_packages'),
+              where('user_id', '==', b.user_id)
+            );
+            const snaps = await getDocs(q);
+            for (const d of snaps.docs) {
+              const data = d.data();
+              if (b.is_somatic_plan && (data.package_type === 'somatic_plan' || data.is_somatic_plan || !data.package_type)) {
+                packageRef = d.ref;
+                pkgSnap = d;
+                break;
+              } else if (!b.is_somatic_plan && data.service_id === b.service_id) {
+                packageRef = d.ref;
+                pkgSnap = d;
+                break;
+              }
+            }
+          }
+
+          if (packageRef && pkgSnap && pkgSnap.exists()) {
             const pkgData = pkgSnap.data();
-            const totalBooked = (pkgData.booking_ids || []).length;
+            const totalSess = pkgData.total_sessions || 4;
+            
+            let bookingIds = pkgData.booking_ids || [];
+            if (status === 'cancelled' || status === 'rejected') {
+              bookingIds = bookingIds.filter((id: string) => id !== b.id);
+            }
+            const totalBooked = bookingIds.length;
             
             let completedCount = pkgData.completed_sessions || 0;
             if (status === 'completed') {
-              completedCount = Math.min(4, completedCount + 1);
+              completedCount = Math.min(totalSess, completedCount + 1);
             } else if (b.status === 'completed' && status !== 'completed') {
               completedCount = Math.max(0, completedCount - 1);
             }
             
-            const pkgStatus = completedCount >= 4 ? 'completed' : pkgData.status;
+            const pkgStatus = completedCount >= totalSess ? 'completed' : pkgData.status;
 
             await setDoc(packageRef, {
+              booking_ids: bookingIds,
               completed_sessions: completedCount,
-              remaining_sessions: Math.max(0, 4 - totalBooked),
+              remaining_sessions: Math.max(0, totalSess - totalBooked),
               status: pkgStatus,
               updated_at: new Date().toISOString()
             }, { merge: true });
           }
         } catch (err) {
-          console.error('[Dashboard] Failed to sync somatic package state:', err);
+          console.error('[Dashboard] Failed to sync package state:', err);
         }
       }
 
@@ -717,6 +763,27 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                             )}
                           </div>
                           {b.subcategory && <p className="text-xs text-muted-foreground">{b.category} &gt; {b.subcategory}</p>}
+                          {(() => {
+                            const pkg = packages.find(p => {
+                              if (b.is_somatic_plan) {
+                                return p.user_id === b.user_id && (p.package_type === 'somatic_plan' || p.is_somatic_plan || !p.package_type);
+                              } else {
+                                return p.user_id === b.user_id && p.service_id === b.service_id;
+                              }
+                            });
+                            if (pkg) {
+                              return (
+                                <div className="mt-2 text-[10px] text-muted-foreground bg-gold/5 border border-gold/10 rounded-xl p-2 space-y-0.5">
+                                  <p className="font-semibold text-gold">{pkg.package_name || (b.is_somatic_plan ? 'Somatic Program' : 'Service Package')}</p>
+                                  <p className="font-semibold">1 × {pkg.total_sessions} {pkg.total_sessions === 1 ? 'Session' : 'Sessions'}</p>
+                                  {b.session_number && <p className="font-bold text-foreground">Current Session: Session {b.session_number}</p>}
+                                  <p>Progress: {pkg.completed_sessions || 0} / {pkg.total_sessions} Completed</p>
+                                  <p>Remaining: {pkg.remaining_sessions || 0} {pkg.remaining_sessions === 1 ? 'Session' : 'Sessions'}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                           {b.healer_name && (
                             <p className="text-[10px] text-gold mt-1 font-semibold uppercase tracking-wider">
                               Healer: {b.healer_name}

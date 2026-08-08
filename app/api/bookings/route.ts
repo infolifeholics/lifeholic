@@ -191,6 +191,9 @@ export async function POST(req: Request) {
     const timeStr = formatterTime.format(start); // HH:MM
     const weekday = getIstWeekday(dateStr);
 
+    let activePkg: any = null;
+    let activePkgId: string | null = null;
+
     // 2. Prevent same user booking same slot twice
     if (user_id) {
       const userClashSnap = await getDocs(
@@ -205,40 +208,69 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'You have already booked this session slot.' }, { status: 400 });
       }
 
-      // Check Somatic Package booking validation rules
-      if (isSomatic) {
-        try {
-          const packageDoc = await getDoc(doc(db, 'somatic_packages', user_id));
-          if (packageDoc.exists()) {
-            const pkg = packageDoc.data();
-            const nowTime = Date.now();
-            const expiryTime = new Date(pkg.expiry_date).getTime();
-
-            if (nowTime > expiryTime || pkg.status === 'expired') {
-              return NextResponse.json({ error: 'Your Somatic Program package has expired after 31 days.' }, { status: 400 });
+      // Fetch active Somatic Package or Service Package if user is logged in
+      try {
+        // 1. Try legacy/somatic direct doc ID fetch
+        const legacyDoc = await getDoc(doc(db, 'somatic_packages', user_id));
+          if (legacyDoc.exists()) {
+            const data = legacyDoc.data();
+            if (data.status === 'active' && (isSomatic || data.package_type === 'somatic_plan' || data.is_somatic_plan)) {
+              activePkg = data;
+              activePkgId = legacyDoc.id;
             }
+          }
 
-            if (pkg.remaining_sessions <= 0 || pkg.status === 'completed') {
-              return NextResponse.json({ error: 'All 4 sessions for this package have already been completed or booked.' }, { status: 400 });
-            }
-
-            // Get last session status check
-            if (pkg.booking_ids && pkg.booking_ids.length > 0) {
-              const lastBookingId = pkg.booking_ids[pkg.booking_ids.length - 1];
-              const lastBookingSnap = await getDoc(doc(db, 'bookings', lastBookingId));
-              if (lastBookingSnap.exists()) {
-                const lastB = lastBookingSnap.data();
-                if (lastB.status !== 'completed' && lastB.status !== 'cancelled' && lastB.status !== 'rejected') {
-                  return NextResponse.json({ error: 'Your current session must be marked as Completed before booking the next slot.' }, { status: 400 });
-                }
+          // 2. Query all active packages for this user
+          if (!activePkg) {
+            const qPkg = query(
+              collection(db, 'somatic_packages'),
+              where('user_id', '==', user_id),
+              where('status', '==', 'active')
+            );
+            const pkgSnap = await getDocs(qPkg);
+            for (const d of pkgSnap.docs) {
+              const data = d.data();
+              if (isSomatic && (data.package_type === 'somatic_plan' || data.is_somatic_plan)) {
+                activePkg = data;
+                activePkgId = d.id;
+                break;
+              } else if (!isSomatic && data.service_id === serviceId) {
+                activePkg = data;
+                activePkgId = d.id;
+                break;
               }
             }
           }
-        } catch (e) {
-          console.error('Error validating somatic program rules:', e);
+        } catch (err) {
+          console.error('Error querying somatic_packages:', err);
         }
       }
-    }
+
+      // Check Somatic/Service Package booking validation rules
+      if (activePkg) {
+        const nowTime = Date.now();
+        const expiryTime = new Date(activePkg.expiry_date).getTime();
+
+        if (nowTime > expiryTime || activePkg.status === 'expired') {
+          return NextResponse.json({ error: 'Your program package has expired.' }, { status: 400 });
+        }
+
+        if (activePkg.remaining_sessions <= 0) {
+          return NextResponse.json({ error: `All ${activePkg.total_sessions} sessions for this package have already been completed or booked.` }, { status: 400 });
+        }
+
+        // Get last session status check
+        if (activePkg.booking_ids && activePkg.booking_ids.length > 0) {
+          const lastBookingId = activePkg.booking_ids[activePkg.booking_ids.length - 1];
+          const lastBookingSnap = await getDoc(doc(db, 'bookings', lastBookingId));
+          if (lastBookingSnap.exists()) {
+            const lastB = lastBookingSnap.data();
+            if (lastB.status !== 'completed' && lastB.status !== 'cancelled' && lastB.status !== 'rejected') {
+              return NextResponse.json({ error: 'Your current session must be marked as Completed before booking the next slot.' }, { status: 400 });
+            }
+          }
+        }
+      }
 
     // 3. Retrieve references for slot configuration and holidays to verify inside transaction
     const slotsRef = collection(db, 'session_slots');
@@ -293,8 +325,9 @@ export async function POST(req: Request) {
           }
         }
 
-        const initialStatus = body.status || 'pending';
-        const initialPaymentStatus = body.payment_status || 'unpaid';
+        const isSubsequentBooking = activePkg ? true : false;
+        const initialStatus = isSubsequentBooking ? 'confirmed' : (body.status || 'pending');
+        const initialPaymentStatus = isSubsequentBooking ? 'paid' : (body.payment_status || 'unpaid');
 
         // Fetch global settings inside the transaction to follow correct order (reads before writes)
         const globalSettingsRef = doc(db, 'settings', 'global');
@@ -312,7 +345,7 @@ export async function POST(req: Request) {
         // Check if we need to create a Razorpay Order
         let pgOrderId = null;
         const finalCurrency = currency || 'INR';
-        const finalAmount = amount ?? 0;
+        const finalAmount = isSubsequentBooking ? 0 : (amount ?? 0);
         if (finalAmount > 0) {
           try {
             const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
@@ -342,10 +375,10 @@ export async function POST(req: Request) {
         }
 
         // Check somatic package number tracking if user is booking a subsequent session
-        let sessionNumber = 1;
+        let sessionNumber = null;
         let packageSnapForUpdate: any = null;
-        if (isSomatic && user_id) {
-          const packageRef = doc(db, 'somatic_packages', user_id);
+        if (activePkgId && user_id) {
+          const packageRef = doc(db, 'somatic_packages', activePkgId);
           const packageSnap = await transaction.get(packageRef);
           if (packageSnap.exists()) {
             packageSnapForUpdate = packageSnap;
@@ -353,6 +386,10 @@ export async function POST(req: Request) {
             const currentBookingCount = (pkgData.booking_ids || []).length;
             sessionNumber = currentBookingCount + 1;
           }
+        } else if (isSomatic) {
+          sessionNumber = 1;
+        } else if (service && (service.included_sessions || 1) > 1) {
+          sessionNumber = 1;
         }
 
         const insert: any = {
@@ -380,7 +417,7 @@ export async function POST(req: Request) {
           summary: summary || null,
           meeting_link: meetingLink,
           order_id: pgOrderId || null,
-          session_number: isSomatic ? sessionNumber : null,
+          session_number: sessionNumber,
           status_timeline: [
             {
               status: initialStatus,
@@ -414,13 +451,16 @@ export async function POST(req: Request) {
         });
 
         // Write update to somatic package booking list inside the same transaction
-        if (isSomatic && user_id && packageSnapForUpdate && packageSnapForUpdate.exists()) {
-          const packageRef = doc(db, 'somatic_packages', user_id);
+        if (activePkgId && user_id && packageSnapForUpdate && packageSnapForUpdate.exists()) {
+          const packageRef = doc(db, 'somatic_packages', activePkgId);
           const pkgData = packageSnapForUpdate.data();
           const currentBookingIds = pkgData.booking_ids || [];
+          const totalSess = pkgData.total_sessions || 4;
+          const nextBookingIds = [...currentBookingIds, newBookingId];
+          const nextRemaining = Math.max(0, totalSess - nextBookingIds.length);
           transaction.update(packageRef, {
-            booking_ids: [...currentBookingIds, newBookingId],
-            remaining_sessions: Math.max(0, 4 - sessionNumber),
+            booking_ids: nextBookingIds,
+            remaining_sessions: nextRemaining,
             updated_at: new Date().toISOString()
           });
         }

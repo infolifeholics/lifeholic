@@ -298,19 +298,22 @@ export default function SomaticPlansPage() {
               title: data.essential_title || 'Personal Healing & Clarity Session',
               price_inr: data.essential_price_inr || 4444,
               short: data.essential_short || '30 Minutes | ₹4,444',
-              benefits: data.essential_benefits || []
+              benefits: data.essential_benefits || [],
+              sessions: data.essential_sessions ?? 1
             },
             premium: {
               title: data.premium_title || '4-Week Deep Transformation Program',
               price_inr: data.premium_price_inr || 11000,
               short: data.premium_short || '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
-              benefits: data.premium_benefits || []
+              benefits: data.premium_benefits || [],
+              sessions: data.premium_sessions ?? 4
             },
             elite: {
               title: data.elite_title || 'Ancestral Healing Session',
               price_inr: data.elite_price_inr || 21000,
               short: data.elite_short || '90 Minutes | ₹21,000',
-              benefits: data.elite_benefits || []
+              benefits: data.elite_benefits || [],
+              sessions: data.elite_sessions ?? 8
             }
           });
         } else {
@@ -319,19 +322,22 @@ export default function SomaticPlansPage() {
               title: 'Personal Healing & Clarity Session',
               price_inr: 4444,
               short: '30 Minutes | ₹4,444',
-              benefits: []
+              benefits: [],
+              sessions: 1
             },
             premium: {
               title: '4-Week Deep Transformation Program',
               price_inr: 11000,
               short: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
-              benefits: []
+              benefits: [],
+              sessions: 4
             },
             elite: {
               title: 'Ancestral Healing Session',
               price_inr: 21000,
               short: '90 Minutes | ₹21,000',
-              benefits: []
+              benefits: [],
+              sessions: 8
             }
           });
         }
@@ -572,6 +578,14 @@ export default function SomaticPlansPage() {
                         {formatPrice(priceVal, currency)}
                       </span>
                       <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : 'session/program'}</span>
+                      {(() => {
+                        const planSess = planServices?.[planKey]?.sessions || (planKey === 'essential' ? 1 : planKey === 'premium' ? 4 : 8);
+                        return (
+                          <div className="mt-2 text-xs font-semibold text-gold">
+                            1 × {planSess} {planSess === 1 ? 'Session' : 'Sessions'}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <ul className="mt-8 space-y-4 text-sm text-muted-foreground border-t border-border/20 pt-6">

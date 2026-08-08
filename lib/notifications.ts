@@ -110,13 +110,14 @@ export async function triggerBookingNotification(
       console.error('Error fetching global settings for meet link:', e);
     }
 
+    const sessionSuffix = bookingData.session_number ? ` (Session ${bookingData.session_number})` : '';
     const vars = {
       memberName: client_name,
       sessionDate: dateStr,
       sessionTime: timeStr,
       bookingId: bookingId,
       bookingStatus: eventType === 'created' ? 'pending' : (eventType === 'meeting_updated' ? 'rescheduled' : eventType),
-      actionDetails: service_title,
+      actionDetails: `${service_title}${sessionSuffix}`,
       meetLink: bookingData.meeting_link || defaultMeetLink,
     };
 

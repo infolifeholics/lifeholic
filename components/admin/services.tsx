@@ -73,6 +73,7 @@ export function AdminServices() {
       featured: true,
       sort_order: nextOrder,
       active: true,
+      included_sessions: 1,
     } as any);
   };
 
@@ -146,6 +147,7 @@ export function AdminServices() {
         benefits: editingService.benefits?.filter(Boolean) || [],
         process: editingService.process?.filter(Boolean) || [],
         active: editingService.active !== false,
+        included_sessions: Number(editingService.included_sessions ?? 1),
       };
 
       await setDoc(doc(db, 'services', id), finalServiceObj, { merge: true });
@@ -219,6 +221,17 @@ export function AdminServices() {
                 type="number"
                 value={editingService.duration_minutes || ''}
                 onChange={(e) => setEditingService({ ...editingService, duration_minutes: Number(e.target.value) })}
+                required
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label htmlFor="s-included-sessions">Included Sessions *</Label>
+              <Input
+                id="s-included-sessions"
+                type="number"
+                value={editingService.included_sessions ?? 1}
+                onChange={(e) => setEditingService({ ...editingService, included_sessions: Number(e.target.value) || 1 })}
                 required
                 className="mt-1.5"
               />

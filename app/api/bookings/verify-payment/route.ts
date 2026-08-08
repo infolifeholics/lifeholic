@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection } from 'firebase/firestore';
 import { triggerBookingNotification } from '@/lib/notifications';
 
 export async function POST(req: Request) {
@@ -85,15 +85,64 @@ export async function POST(req: Request) {
 
     await setDoc(bookingRef, updatedBooking, { merge: true });
 
-    // Handle 4-Week Deep Transformation Program Initialization
-    if (b.is_somatic_plan && b.user_id) {
+    // Handle package initialization for somatic plans OR multi-session services
+    const isSomatic = b.is_somatic_plan === true;
+    const isService = !isSomatic && b.service_id && !b.service_id.startsWith('somatic_');
+    
+    let totalSessions = 1;
+    let packageName = isSomatic ? (b.somatic_plan_name || 'Somatic Plan') : (b.service_title || 'Service Plan');
+    let packageType: 'somatic_plan' | 'service' = isSomatic ? 'somatic_plan' : 'service';
+    
+    if (isSomatic && b.user_id) {
+      try {
+        const somaticDocRef = doc(db, 'settings', 'somatic_plans');
+        const somaticSnap = await getDoc(somaticDocRef);
+        let key = 'premium';
+        const planNameLower = (b.somatic_plan_name || '').toLowerCase();
+        if (planNameLower.includes('essential') || planNameLower.includes('clarity')) {
+          key = 'essential';
+        } else if (planNameLower.includes('elite') || planNameLower.includes('ancestral')) {
+          key = 'elite';
+        }
+        if (somaticSnap.exists()) {
+          const sData = somaticSnap.data();
+          totalSessions = sData[`${key}_sessions`] ?? (key === 'essential' ? 1 : key === 'premium' ? 4 : 8);
+        } else {
+          totalSessions = key === 'essential' ? 1 : key === 'premium' ? 4 : 8;
+        }
+      } catch (err) {
+        console.error('Error fetching somatic plans settings:', err);
+        totalSessions = 4; // fallback
+      }
+    } else if (isService && b.user_id) {
+      try {
+        const serviceDocRef = doc(db, 'services', b.service_id);
+        const serviceSnap = await getDoc(serviceDocRef);
+        if (serviceSnap.exists()) {
+          const sData = serviceSnap.data();
+          totalSessions = sData.included_sessions || 1;
+          packageName = sData.title || packageName;
+        }
+      } catch (err) {
+        console.error('Error fetching service details:', err);
+      }
+    }
+
+    if (totalSessions > 1 && b.user_id) {
       try {
         const purchaseDate = new Date();
         const expiryDate = new Date();
         expiryDate.setDate(purchaseDate.getDate() + 31); // 31 days validity
         
-        // We set document ID as the user_id (one active somatic program at a time)
-        const packageDocRef = doc(db, 'somatic_packages', b.user_id);
+        let packageDocRef;
+        if (isSomatic) {
+          // Use user_id as doc ID for somatic plans to retain backward compatibility
+          packageDocRef = doc(db, 'somatic_packages', b.user_id);
+        } else {
+          // Create new unique document for services
+          packageDocRef = doc(collection(db, 'somatic_packages'));
+        }
+
         await setDoc(packageDocRef, {
           user_id: b.user_id,
           client_name: b.client_name,
@@ -101,9 +150,13 @@ export async function POST(req: Request) {
           purchase_date: purchaseDate.toISOString(),
           expiry_date: expiryDate.toISOString(),
           status: 'active',
-          total_sessions: 4,
+          package_type: packageType,
+          package_name: packageName,
+          service_id: isSomatic ? null : b.service_id,
+          plan_key: isSomatic ? (packageName.toLowerCase().includes('essential') ? 'essential' : packageName.toLowerCase().includes('elite') ? 'elite' : 'premium') : null,
+          total_sessions: totalSessions,
           completed_sessions: 0,
-          remaining_sessions: 4,
+          remaining_sessions: totalSessions,
           booking_ids: [booking_id] // First session ID linked
         }, { merge: true });
         
@@ -112,7 +165,7 @@ export async function POST(req: Request) {
           session_number: 1
         }, { merge: true });
       } catch (err) {
-        console.error('[VerifyPayment] Error initializing somatic package:', err);
+        console.error('[VerifyPayment] Error initializing package:', err);
       }
     }
 

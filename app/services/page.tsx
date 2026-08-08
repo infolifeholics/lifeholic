@@ -46,12 +46,18 @@ export default async function ServicesPage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent sm:bg-gradient-to-r" />
                     </div>
                     <div className="flex flex-1 flex-col p-6 sm:p-7">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                           {s.category}
                         </span>
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" /> {s.duration_minutes} min
+                        </span>
+                        <span 
+                          className="inline-flex items-center gap-1 text-xs text-gold font-semibold"
+                          style={{ backgroundColor: '#121212', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(212, 175, 55, 0.3)' }}
+                        >
+                          1 × {s.included_sessions || 1} {(s.included_sessions || 1) === 1 ? 'Session' : 'Sessions'}
                         </span>
                       </div>
                       <h3 className="mt-3 font-display text-2xl font-medium text-foreground">{s.title}</h3>

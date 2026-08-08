@@ -13,11 +13,10 @@ import { Button } from '@/components/ui/button';
 export default function WorkshopsPage() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'current' | 'completed'>('upcoming');
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'completed'>('upcoming');
 
   const TABS = [
     { id: 'upcoming', label: 'Upcoming Workshops' },
-    { id: 'current', label: 'Current Workshops' },
     { id: 'completed', label: 'Completed Workshops' },
   ] as const;
 
@@ -33,7 +32,7 @@ export default function WorkshopsPage() {
   const parsedWorkshops = useMemo(() => {
     const todayStr = new Date().toLocaleDateString('en-CA');
     return workshops.map(w => {
-      let calculatedStatus: 'upcoming' | 'current' | 'completed' = 'upcoming';
+      let calculatedStatus: 'upcoming' | 'completed' = 'upcoming';
 
       if (w.status === 'completed') {
         calculatedStatus = 'completed';
@@ -43,10 +42,8 @@ export default function WorkshopsPage() {
         const start = w.date;
         const end = w.end_date || w.date;
 
-        if (todayStr < start) {
+        if (todayStr <= end) {
           calculatedStatus = 'upcoming';
-        } else if (todayStr >= start && todayStr <= end) {
-          calculatedStatus = 'current';
         } else {
           calculatedStatus = 'completed';
         }

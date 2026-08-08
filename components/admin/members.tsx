@@ -50,7 +50,7 @@ export function AdminMembers() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedMemberOrders, setSelectedMemberOrders] = useState<Order[]>([]);
   const [selectedMemberBookings, setSelectedMemberBookings] = useState<Booking[]>([]);
-  const [selectedMemberPackage, setSelectedMemberPackage] = useState<any>(null);
+  const [selectedMemberPackages, setSelectedMemberPackages] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [sendingPass, setSendingPass] = useState(false);
   const [sentPass, setSentPass] = useState(false);
@@ -60,12 +60,11 @@ export function AdminMembers() {
   }, []);
 
   const fetchMembers = async () => {
-    setLoading(true);
     try {
       const snap = await getDocs(collection(db, 'profiles'));
       setMembers(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Member));
-    } catch (err) {
-      toast.error('Failed to load members.');
+    } catch (err: any) {
+      toast.error('Failed to load members: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -73,8 +72,8 @@ export function AdminMembers() {
 
   const loadMemberDetails = async (member: Member) => {
     setSelectedMember(member);
-    setSentPass(false);
     setLoadingDetails(true);
+    setSentPass(false);
     try {
       // Fetch Orders for user
       const qOrders = query(collection(db, 'orders'), where('user_id', '==', member.id));
@@ -91,14 +90,11 @@ export function AdminMembers() {
       
       setSelectedMemberBookings(sortedBookings);
 
-      // Fetch active Somatic Package
-      const pkgRef = doc(db, 'somatic_packages', member.id);
-      const pkgSnap = await getDoc(pkgRef);
-      if (pkgSnap.exists()) {
-        setSelectedMemberPackage(pkgSnap.data());
-      } else {
-        setSelectedMemberPackage(null);
-      }
+      // Fetch user packages
+      const { query: queryPkg, collection: colPkg, where: wherePkg, getDocs: getDocsPkg } = await import('firebase/firestore');
+      const qPackages = queryPkg(colPkg(db, 'somatic_packages'), wherePkg('user_id', '==', member.id));
+      const snapPackages = await getDocsPkg(qPackages);
+      setSelectedMemberPackages(snapPackages.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (err) {
       toast.error('Could not load member details.');
     } finally {
@@ -239,34 +235,90 @@ export function AdminMembers() {
                   )}
                 </div>
 
-                {/* Somatic Package Info */}
-                {selectedMemberPackage && (
-                  <div className="rounded-3xl border border-gold/30 bg-gradient-to-r from-card to-secondary/30 p-6 shadow-glow">
-                    <h3 className="font-display text-lg font-medium text-foreground mb-3 flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-gold" /> Active Somatic Package Info
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <p className="text-muted-foreground">Purchase Date</p>
-                        <p className="font-semibold text-foreground">{new Date(selectedMemberPackage.purchase_date).toLocaleDateString()}</p>
+                {/* Program & Service Packages Info */}
+                {selectedMemberPackages.map((pkg) => {
+                  const isSomatic = pkg.package_type === 'somatic_plan' || !pkg.package_type;
+                  const totalSess = pkg.total_sessions || 4;
+                  const completedSess = pkg.completed_sessions || 0;
+                  const remainingSess = pkg.remaining_sessions || 0;
+                  const sessionArray = Array.from({ length: totalSess }, (_, i) => i + 1);
+
+                  return (
+                    <div key={pkg.id} className="rounded-3xl border border-gold/30 bg-gradient-to-r from-card to-secondary/30 p-6 shadow-glow mb-4 text-left">
+                      <h3 className="font-display text-lg font-medium text-foreground mb-3 flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-gold" /> {pkg.package_name || (isSomatic ? 'Active Somatic Package' : 'Active Service Package')}
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4 text-xs mb-4">
+                        <div>
+                          <p className="text-muted-foreground">Purchase Date</p>
+                          <p className="font-semibold text-foreground">{new Date(pkg.purchase_date).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Expiry Date (31 days)</p>
+                          <p className="font-semibold text-foreground">{new Date(pkg.expiry_date).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Sessions Progress</p>
+                          <p className="font-semibold text-foreground">
+                            {completedSess} Completed · {remainingSess} Remaining
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Package Status</p>
+                          <p className="font-semibold text-gold uppercase tracking-wider">{pkg.status}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Expiry Date (31 days)</p>
-                        <p className="font-semibold text-foreground">{new Date(selectedMemberPackage.expiry_date).toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Sessions Status</p>
-                        <p className="font-semibold text-foreground">
-                          {selectedMemberPackage.completed_sessions} Completed · {selectedMemberPackage.remaining_sessions} Remaining
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Package Status</p>
-                        <p className="font-semibold text-gold uppercase tracking-wider">{selectedMemberPackage.status}</p>
+
+                      {/* Sessions Checklist */}
+                      <div className="pt-3 border-t border-border/20 space-y-1.5 text-xs">
+                        <p className="font-semibold text-muted-foreground">Sessions Checklist:</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                          {sessionArray.map((num) => {
+                            const linkedBookingId = pkg.booking_ids?.[num - 1];
+                            let statusText = 'Available';
+                            let icon = '○';
+                            
+                            if (linkedBookingId) {
+                              const b = selectedMemberBookings.find(item => item.id === linkedBookingId);
+                              if (b) {
+                                if (b.status === 'completed') {
+                                  statusText = 'Completed';
+                                  icon = '✓';
+                                } else if (b.status === 'cancelled' || b.status === 'rejected') {
+                                  statusText = 'Available';
+                                  icon = '○';
+                                } else {
+                                  statusText = 'Booked';
+                                  icon = '●';
+                                }
+                              } else {
+                                statusText = 'Booked';
+                                icon = '●';
+                              }
+                            } else {
+                              if (num > 1) {
+                                const prevBookingId = pkg.booking_ids?.[num - 2];
+                                const prevB = prevBookingId ? selectedMemberBookings.find(item => item.id === prevBookingId) : null;
+                                if (!prevB || prevB.status !== 'completed') {
+                                  statusText = 'Locked';
+                                  icon = '🔒';
+                                }
+                              }
+                            }
+
+                            return (
+                              <div key={num} className="flex items-center gap-1.5 py-0.5">
+                                <span className="font-semibold text-gold">{icon}</span>
+                                <span className="font-medium text-foreground">Session {num}</span>
+                                <span className="text-[10px] text-muted-foreground">({statusText})</span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })}
 
                 {/* Bookings/Sessions List */}
                 <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
