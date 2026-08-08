@@ -82,7 +82,7 @@ export function SiteFooter() {
                 { Icon: Mail, href: `mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'hello@thelifeholics.com'}`, label: 'Email' },
                 {
                   Icon: Youtube,
-                  href: process.env.NEXT_PUBLIC_YOUTUBE_URL || 'https://www.youtube.com/@yourchannel',
+                  href: process.env.NEXT_PUBLIC_YOUTUBE_URL || 'https://youtube.com/@thelifeholics?si=klROE04Ogf1VArJY',
                   label: 'YouTube',
                 },
               ].map(({ Icon, href, label }) => (
