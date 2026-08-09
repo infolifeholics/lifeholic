@@ -21,15 +21,15 @@ const COLS = [
       { href: '/shop', label: '' },
     ],
   },
-  {
-    title: 'Resources',
-    links: [
-      { href: '/contact', label: 'Contact' },
-      { href: '/faq', label: 'FAQ' },
-      { href: '/account', label: 'My Account' },
-      // { href: '/admin', label: 'Admin' },
-    ],
-  },
+  // {
+  //   title: '',
+  //   links: [
+  //     { href: '/contact', label: '' },
+  //     { href: '/faq', label: '' },
+  //     { href: '/account', label: '' },
+  //     // { href: '/admin', label: 'Admin' },
+  //   ],
+  // },
   {
     title: 'Legal',
     links: [
@@ -100,8 +100,8 @@ export function SiteFooter() {
             </div>
           </div>
 
-          {COLS.map((col) => (
-            <div key={col.title}>
+          {COLS.map((col, idx) => (
+            <div key={idx}>
               <h4 className="font-display text-lg font-medium text-white">{col.title}</h4>
               <ul className="mt-4 space-y-3">
                 {col.links.map((l) => (

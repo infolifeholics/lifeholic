@@ -586,7 +586,7 @@ export default function SomaticPlansPage() {
                       <span className="font-display text-4xl font-semibold text-gold">
                         {formatPrice(priceVal, currency)}
                       </span>
-                      <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : 'session/program'}</span>
+                      <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : 'session'}</span>
                       {(() => {
                         const planSess = planServices?.[planKey]?.sessions || (planKey === 'essential' ? 1 : planKey === 'premium' ? 4 : 8);
                         const planDuration = planServices?.[planKey]?.duration || (planKey === 'elite' ? 90 : 30);
