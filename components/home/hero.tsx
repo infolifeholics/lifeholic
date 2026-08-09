@@ -282,7 +282,7 @@ export function HomeHero() {
   const [showPromoPopup, setShowPromoPopup] = useState(false);
 
   useEffect(() => {
-    function withTimeout<T>(promise: Promise<T>, ms: number = 1800): Promise<T> {
+    function withTimeout<T>(promise: Promise<T>, ms: number = 10000): Promise<T> {
       return Promise.race([
         promise,
         new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
@@ -414,7 +414,7 @@ export function HomeHero() {
 
   useEffect(() => {
     const colRef = collection(db, 'landing_images');
-    function withTimeout<T>(promise: Promise<T>, ms: number = 1800): Promise<T> {
+    function withTimeout<T>(promise: Promise<T>, ms: number = 10000): Promise<T> {
       return Promise.race([
         promise,
         new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))

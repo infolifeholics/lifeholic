@@ -21,15 +21,15 @@ const COLS = [
       { href: '/shop', label: '' },
     ],
   },
-  // {
-  //   title: '',
-  //   links: [
-  //     { href: '/contact', label: '' },
-  //     { href: '/faq', label: '' },
-  //     { href: '/account', label: '' },
-  //     // { href: '/admin', label: 'Admin' },
-  //   ],
-  // },
+  {
+    title: '',
+    links: [
+      { href: '/contact', label: '' },
+      { href: '/faq', label: '' },
+      { href: '/account', label: '' },
+      // { href: '/admin', label: 'Admin' },
+    ],
+  },
   {
     title: 'Legal',
     links: [

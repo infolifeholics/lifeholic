@@ -33,11 +33,11 @@ const getCachedCollectionData = unstable_cache(
         }
       };
 
-      // Set a 1.5 seconds timeout for fetching from Firestore
+      // Set a 10 seconds timeout for fetching from Firestore
       const snap = await Promise.race([
         fetchDocs(),
         new Promise<any>((_, reject) =>
-          setTimeout(() => reject(new Error('Firestore connection timeout')), 1500)
+          setTimeout(() => reject(new Error('Firestore connection timeout')), 10000)
         ),
       ]);
 
