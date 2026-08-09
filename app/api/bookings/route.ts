@@ -246,15 +246,19 @@ export async function POST(req: Request) {
         }
       }
 
-      // Check Somatic/Service Package booking validation rules
       if (activePkg) {
         const nowTime = Date.now();
         const expiryTime = new Date(activePkg.expiry_date).getTime();
 
+        // 1. Check owner
+        if (activePkg.user_id !== user_id) {
+          return NextResponse.json({ error: 'Unauthorized package access.' }, { status: 403 });
+        }
+        // 2. Check expiration
         if (nowTime > expiryTime || activePkg.status === 'expired') {
           return NextResponse.json({ error: 'Your program package has expired.' }, { status: 400 });
         }
-
+        // 3. Check remaining sessions
         if (activePkg.remaining_sessions <= 0) {
           return NextResponse.json({ error: `All ${activePkg.total_sessions} sessions for this package have already been completed or booked.` }, { status: 400 });
         }

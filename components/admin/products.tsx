@@ -91,6 +91,7 @@ export function AdminProducts() {
           migratedCount++;
         }
       }
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success(`Successfully migrated ${migratedCount} products!`, { id: toastId });
       fetchProducts();
     } catch (err: any) {
@@ -279,6 +280,7 @@ export function AdminProducts() {
       };
 
       await setDoc(doc(db, 'products', id), payload, { merge: true });
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success('Product saved successfully!', { id: toastId });
       setEditingProduct(null);
       fetchProducts();
@@ -291,6 +293,7 @@ export function AdminProducts() {
   const toggleActiveStatus = async (p: Product) => {
     try {
       await setDoc(doc(db, 'products', p.id), { is_active: !p.is_active }, { merge: true });
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success(p.is_active ? 'Product disabled.' : 'Product enabled!');
       fetchProducts();
     } catch (e) {
@@ -315,6 +318,7 @@ export function AdminProducts() {
       }
 
       await deleteDoc(doc(db, 'products', p.id));
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success('Product and associated images deleted successfully.', { id: toastId });
       fetchProducts();
     } catch (e: any) {

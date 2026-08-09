@@ -658,13 +658,21 @@ export function AccountDashboard() {
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5 font-medium">
                     Validity: {new Date(pkg.purchase_date).toLocaleDateString()} – {new Date(pkg.expiry_date).toLocaleDateString()}{' '}
-                    ({pkg.status === 'expired' ? <span className="text-destructive font-bold">Expired</span> : <span className="text-gold font-bold">Active</span>})
+                    ({(pkg.status === 'expired' || new Date().getTime() > new Date(pkg.expiry_date).getTime()) ? <span className="text-destructive font-bold">Expired</span> : (pkg.status === 'completed' || completedSessions >= totalSessions) ? <span className="text-emerald-400 font-bold">Completed</span> : <span className="text-gold font-bold">Active</span>})
                   </p>
                 </div>
                 <div className="text-right flex flex-col items-end">
-                  <span className="text-xs font-semibold text-gold">1 × {totalSessions} {totalSessions === 1 ? 'Session' : 'Sessions'}</span>
-                  <span className="text-xs text-muted-foreground mt-0.5">{completedSessions} / {totalSessions} Completed</span>
-                  <span className="text-[10px] text-muted-foreground mt-0.5">{remainingSessions} {remainingSessions === 1 ? 'Session' : 'Sessions'} Remaining</span>
+                  <span className="text-xs font-semibold text-gold" style={{ backgroundColor: '#121212', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(212, 175, 55, 0.3)' }}>
+                    30 Mins × {totalSessions} {totalSessions === 1 ? 'Session' : 'Sessions'}
+                  </span>
+                  <span className="text-xs text-muted-foreground mt-1.5">{completedSessions} / {totalSessions} Completed</span>
+                  {(pkg.status === 'expired' || new Date().getTime() > new Date(pkg.expiry_date).getTime()) ? (
+                    <span className="text-[10px] font-bold text-destructive mt-0.5">
+                      {isSomaticPkg ? 'Plan has expired' : 'Package has expired'}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground mt-0.5">{remainingSessions} {remainingSessions === 1 ? 'Session' : 'Sessions'} Remaining</span>
+                  )}
                 </div>
               </div>
 
@@ -707,7 +715,8 @@ export function AccountDashboard() {
                     }
                   }
 
-                  if (pkg.status === 'expired' && stepStatus !== 'completed') {
+                  const isExpired = pkg.status === 'expired' || new Date().getTime() > new Date(pkg.expiry_date).getTime();
+                  if (isExpired && stepStatus !== 'completed') {
                     stepStatus = 'locked';
                   }
 
@@ -740,7 +749,9 @@ export function AccountDashboard() {
                             ⏳ Book Now
                           </Link>
                         )}
-                        {stepStatus === 'locked' && '🔒 Locked'}
+                        {stepStatus === 'locked' && (
+                          isExpired ? (isSomaticPkg ? '🔒 Plan Expired' : '🔒 Package Expired') : '🔒 Locked'
+                        )}
                       </span>
                     </div>
                   );

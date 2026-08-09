@@ -148,5 +148,9 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+    match /community_applications/{document} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.is_admin == true;
+    }
   }
 }

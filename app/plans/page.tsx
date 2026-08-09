@@ -299,21 +299,24 @@ export default function SomaticPlansPage() {
               price_inr: data.essential_price_inr || 4444,
               short: data.essential_short || '30 Minutes | ₹4,444',
               benefits: data.essential_benefits || [],
-              sessions: data.essential_sessions ?? 1
+              sessions: data.essential_sessions ?? 1,
+              duration: data.essential_duration_minutes ?? 30
             },
             premium: {
               title: data.premium_title || '4-Week Deep Transformation Program',
               price_inr: data.premium_price_inr || 11000,
               short: data.premium_short || '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
               benefits: data.premium_benefits || [],
-              sessions: data.premium_sessions ?? 4
+              sessions: data.premium_sessions ?? 4,
+              duration: data.premium_duration_minutes ?? 30
             },
             elite: {
               title: data.elite_title || 'Ancestral Healing Session',
               price_inr: data.elite_price_inr || 21000,
               short: data.elite_short || '90 Minutes | ₹21,000',
               benefits: data.elite_benefits || [],
-              sessions: data.elite_sessions ?? 8
+              sessions: data.elite_sessions ?? 8,
+              duration: data.elite_duration_minutes ?? 90
             }
           });
         } else {
@@ -323,21 +326,24 @@ export default function SomaticPlansPage() {
               price_inr: 4444,
               short: '30 Minutes | ₹4,444',
               benefits: [],
-              sessions: 1
+              sessions: 1,
+              duration: 30
             },
             premium: {
               title: '4-Week Deep Transformation Program',
               price_inr: 11000,
               short: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
               benefits: [],
-              sessions: 4
+              sessions: 4,
+              duration: 30
             },
             elite: {
               title: 'Ancestral Healing Session',
               price_inr: 21000,
               short: '90 Minutes | ₹21,000',
               benefits: [],
-              sessions: 8
+              sessions: 8,
+              duration: 90
             }
           });
         }
@@ -498,7 +504,7 @@ export default function SomaticPlansPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
                 <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground bg-gradient-to-r from-foreground via-foreground/90 to-gold/80 bg-clip-text text-transparent">
-                  This what we figure out for you
+                  This is what we figured out for you ):
                 </h1>
               </div>
             </div>
@@ -542,7 +548,9 @@ export default function SomaticPlansPage() {
               const priceVal = formatPlanPrice(prices[planKey]);
               const cardTitle = planServices?.[planKey]?.title || meta.plansText[planKey].title;
               const cardShort = planServices?.[planKey]?.short || meta.plansText[planKey].description;
-              const benefitsList = meta.plansText[planKey].benefits;
+              const benefitsList = (planServices?.[planKey]?.benefits && planServices[planKey].benefits.length > 0)
+                ? planServices[planKey].benefits
+                : meta.plansText[planKey].benefits;
 
               const isRecommended = planKey === 'premium' || (isB2 && planKey === 'elite');
 
@@ -580,13 +588,14 @@ export default function SomaticPlansPage() {
                       <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : 'session/program'}</span>
                       {(() => {
                         const planSess = planServices?.[planKey]?.sessions || (planKey === 'essential' ? 1 : planKey === 'premium' ? 4 : 8);
+                        const planDuration = planServices?.[planKey]?.duration || (planKey === 'elite' ? 90 : 30);
                         return (
                           <div className="mt-2">
-                            <span 
+                            <span
                               className="inline-flex items-center gap-1 text-xs text-gold font-semibold"
                               style={{ backgroundColor: '#121212', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(212, 175, 55, 0.3)' }}
                             >
-                              1 × {planSess} {planSess === 1 ? 'Session' : 'Sessions'}
+                              {planDuration} Mins × {planSess} {planSess === 1 ? 'Session' : 'Sessions'}
                             </span>
                           </div>
                         );

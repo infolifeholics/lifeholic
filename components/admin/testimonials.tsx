@@ -65,6 +65,7 @@ export function AdminTestimonials() {
         ...editingTestimonial,
         id,
       }, { merge: true });
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
 
       toast.success('Testimonial saved successfully!', { id: toastId });
       setEditingTestimonial(null);
@@ -77,6 +78,7 @@ export function AdminTestimonials() {
   const togglePin = async (t: Testimonial) => {
     try {
       await setDoc(doc(db, 'testimonials', t.id), { pinned: !t.pinned }, { merge: true });
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success(t.pinned ? 'Testimonial unpinned.' : 'Testimonial pinned to top!');
       fetchTestimonials();
     } catch (e) {
@@ -87,6 +89,7 @@ export function AdminTestimonials() {
   const toggleFeatured = async (t: Testimonial) => {
     try {
       await setDoc(doc(db, 'testimonials', t.id), { featured: !t.featured }, { merge: true });
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success(t.featured ? 'Testimonial hidden.' : 'Testimonial set to active!');
       fetchTestimonials();
     } catch (e) {
@@ -98,6 +101,7 @@ export function AdminTestimonials() {
     if (!confirm('Delete this testimonial permanently?')) return;
     try {
       await deleteDoc(doc(db, 'testimonials', id));
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success('Testimonial deleted successfully.');
       fetchTestimonials();
     } catch (e) {

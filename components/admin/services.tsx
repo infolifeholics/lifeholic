@@ -151,6 +151,7 @@ export function AdminServices() {
       };
 
       await setDoc(doc(db, 'services', id), finalServiceObj, { merge: true });
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success('Service saved successfully!', { id: toastId });
       setEditingService(null);
       fetchServices();
@@ -164,6 +165,7 @@ export function AdminServices() {
     const toastId = toast.loading('Deleting service...');
     try {
       await deleteDoc(doc(db, 'services', id));
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success('Service deleted successfully.', { id: toastId });
       fetchServices();
     } catch (err: any) {

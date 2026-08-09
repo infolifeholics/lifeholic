@@ -243,29 +243,48 @@ export function AdminMembers() {
                   const remainingSess = pkg.remaining_sessions || 0;
                   const sessionArray = Array.from({ length: totalSess }, (_, i) => i + 1);
 
+                  const isExpired = pkg.status === 'expired' || new Date().getTime() > new Date(pkg.expiry_date).getTime();
+
                   return (
                     <div key={pkg.id} className="rounded-3xl border border-gold/30 bg-gradient-to-r from-card to-secondary/30 p-6 shadow-glow mb-4 text-left">
                       <h3 className="font-display text-lg font-medium text-foreground mb-3 flex items-center gap-2">
                         <Activity className="h-5 w-5 text-gold" /> {pkg.package_name || (isSomatic ? 'Active Somatic Package' : 'Active Service Package')}
                       </h3>
+                      <p className="text-xs font-semibold text-gold mb-4">
+                        30 Mins × {totalSess} {totalSess === 1 ? 'Session' : 'Sessions'}
+                      </p>
                       <div className="grid grid-cols-2 gap-4 text-xs mb-4">
                         <div>
-                          <p className="text-muted-foreground">Purchase Date</p>
-                          <p className="font-semibold text-foreground">{new Date(pkg.purchase_date).toLocaleDateString()}</p>
+                          <p className="text-muted-foreground">Start Date</p>
+                          <p className="font-semibold text-foreground">
+                            {pkg.start_date ? new Date(pkg.start_date).toLocaleDateString() : new Date(pkg.purchase_date).toLocaleDateString()}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Expiry Date (31 days)</p>
+                          <p className="text-muted-foreground">Expiry Date</p>
                           <p className="font-semibold text-foreground">{new Date(pkg.expiry_date).toLocaleDateString()}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Sessions Progress</p>
                           <p className="font-semibold text-foreground">
-                            {completedSess} Completed · {remainingSess} Remaining
+                            Completed: {completedSess} / {totalSess}
                           </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Package Status</p>
-                          <p className="font-semibold text-gold uppercase tracking-wider">{pkg.status}</p>
+                          <p className="text-muted-foreground">Remaining</p>
+                          <p className="font-semibold text-foreground">
+                            {isExpired ? (isSomatic ? 'Plan has expired' : 'Package has expired') : remainingSess}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-muted-foreground">Status</p>
+                          <p className={`font-semibold uppercase tracking-wider ${
+                            isExpired ? 'text-destructive' : 
+                            (pkg.status === 'completed' || completedSess >= totalSess) ? 'text-emerald-400' : 'text-gold'
+                          }`}>
+                            {isExpired ? 'Expired' : 
+                             (pkg.status === 'completed' || completedSess >= totalSess) ? 'Completed' : 'Active'}
+                          </p>
                         </div>
                       </div>
 

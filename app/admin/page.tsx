@@ -44,6 +44,7 @@ import { AdminTodaysBookings } from '@/components/admin/todays-bookings';
 import { AdminSlotsManagement } from '@/components/admin/slots-management';
 import { AdminSearchOptions } from '@/components/admin/search-options';
 import { AlertTriangle, HelpCircle } from 'lucide-react';
+import { AdminCommunityApplications } from '@/components/admin/community-applications';
 
 const NAV = [
   // { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -59,6 +60,7 @@ const NAV = [
   { id: 'orders', label: 'Orders', icon: Package },
   { id: 'members', label: 'Members', icon: Users },
   { id: 'messages', label: 'Messages & Contact', icon: Inbox },
+  { id: 'community', label: 'Community Applications', icon: Users },
   { id: 'landing_page', label: 'Landing Page Assets', icon: ImageIcon },
   { id: 'search_options', label: 'Somatic Search Options', icon: HelpCircle },
   { id: 'testimonials', label: 'Testimonials', icon: Heart },
@@ -157,6 +159,7 @@ function AdminShell() {
             {section === 'orders' && <AdminOrders />}
             {section === 'members' && <AdminMembers />}
             {section === 'messages' && <AdminMessages />}
+            {section === 'community' && <AdminCommunityApplications />}
             {section === 'landing_page' && <AdminLandingPage />}
             {section === 'search_options' && <AdminSearchOptions />}
             {section === 'testimonials' && <AdminTestimonials />}

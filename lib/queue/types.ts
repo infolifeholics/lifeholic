@@ -11,7 +11,9 @@ export type NotificationType =
   | 'certificate_generated'
   | 'rec_letter_generated'
   | 'password_reset'
-  | 'admin_alert';
+  | 'admin_alert'
+  | 'community_admin_alert'
+  | 'community_user_confirmation';
 
 export interface NotificationJob {
   /** Unique idempotency key — used to prevent duplicate sends */

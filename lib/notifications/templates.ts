@@ -304,6 +304,40 @@ export const EMAIL_TEMPLATES = {
     `;
     return getBaseHtml(vars.actionDetails || 'Special Promo Offer', content, vars);
   },
+
+  community_admin_alert: (vars: TemplateVars) => {
+    const content = `
+      <h2>New Lifeholics Community Application</h2>
+      <p>Hello Admin,</p>
+      <p>A new application to join the Lifeholics Exclusive Community has been submitted.</p>
+      <div class="details-box">
+        <div class="details-row"><span class="label">Name:</span><span class="value">${vars.memberName || 'N/A'}</span></div>
+        <div class="details-row"><span class="label">Email:</span><span class="value">${vars.clientEmail || 'N/A'}</span></div>
+        <div class="details-row"><span class="label">Phone:</span><span class="value">${vars.clientPhone || 'N/A'}</span></div>
+        <div class="details-row" style="margin-top: 15px;"><span class="label" style="display: block; width: 100%; margin-bottom: 5px; font-weight: bold;">Application Message:</span><div class="value" style="white-space: pre-wrap; background: #f9f9f9; padding: 10px; border-radius: 4px; border-left: 3px solid #d4af37; margin-top: 5px;">${vars.actionDetails || 'N/A'}</div></div>
+        <div class="details-row" style="margin-top: 15px;"><span class="label">Status:</span><span class="value" style="font-weight: bold; color: #d4af37;">Pending</span></div>
+        <div class="details-row"><span class="label">Submitted At:</span><span class="value">${vars.sessionDate || 'N/A'}</span></div>
+      </div>
+      <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/admin" class="btn">Open Admin Portal</a>
+    `;
+    return getBaseHtml('New Community Application', content, vars);
+  },
+
+  community_user_confirmation: (vars: TemplateVars) => {
+    const content = `
+      <h2>Thank You for Your Interest in the Lifeholics Community</h2>
+      <p>Hi ${vars.memberName},</p>
+      <p>Thank you for your interest in joining the Lifeholics Exclusive Community.</p>
+      <p>We have successfully received your application.</p>
+      <p>Our team will personally review your application and get back to you after reviewing it.</p>
+      <div class="details-box">
+        <div class="details-row"><span class="label">Application Status:</span><span class="value" style="font-weight: bold; color: #d4af37;">Pending</span></div>
+      </div>
+      <p>We look forward to connecting with you.</p>
+      <p style="margin-top: 20px; font-weight: bold; color: #d4af37;">— The Lifeholics Team</p>
+    `;
+    return getBaseHtml('Thank You for Your Interest in the Lifeholics Community', content, vars);
+  },
 };
 
 export const WHATSAPP_TEMPLATES = {
@@ -344,5 +378,11 @@ export const WHATSAPP_TEMPLATES = {
   },
   promo_offer: (vars: TemplateVars) => {
     return `Hello! Get ${vars.bookingStatus} off on your next session at TheLifeHolics using coupon code: ${vars.bookingId}. Book here: ${process.env.NEXT_PUBLIC_SITE_URL}/booking`;
+  },
+  community_admin_alert: (vars: TemplateVars) => {
+    return `New Lifeholics Community Application\n\nName: ${vars.memberName}\nEmail: ${vars.clientEmail || 'N/A'}\nPhone: ${vars.clientPhone || 'N/A'}\n\nReason:\n${vars.actionDetails}\n\nStatus: Pending`;
+  },
+  community_user_confirmation: (vars: TemplateVars) => {
+    return `Hi ${vars.memberName},\n\nThank you for applying to join the Lifeholics Exclusive Community.\n\nYour application has been successfully received and is currently under review.\n\nOur team will personally review your application and get back to you soon.\n\nStatus: Pending\n\n— The Lifeholics Team`;
   },
 };

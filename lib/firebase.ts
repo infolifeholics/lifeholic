@@ -1,7 +1,7 @@
 import './env-check';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY || 'AIzaSyDummyKeyForBuildPhaseOnly',
@@ -17,7 +17,9 @@ import { getFunctions } from 'firebase/functions';
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
 export const googleProvider = new GoogleAuthProvider();

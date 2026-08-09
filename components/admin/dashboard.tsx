@@ -775,10 +775,11 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                               return (
                                 <div className="mt-2 text-[10px] text-muted-foreground bg-gold/5 border border-gold/10 rounded-xl p-2 space-y-0.5">
                                   <p className="font-semibold text-gold">{pkg.package_name || (b.is_somatic_plan ? 'Somatic Program' : 'Service Package')}</p>
-                                  <p className="font-semibold">1 × {pkg.total_sessions} {pkg.total_sessions === 1 ? 'Session' : 'Sessions'}</p>
-                                  {b.session_number && <p className="font-bold text-foreground">Current Session: Session {b.session_number}</p>}
-                                  <p>Progress: {pkg.completed_sessions || 0} / {pkg.total_sessions} Completed</p>
-                                  <p>Remaining: {pkg.remaining_sessions || 0} {pkg.remaining_sessions === 1 ? 'Session' : 'Sessions'}</p>
+                                  <p className="font-semibold text-foreground">30 Mins × {pkg.total_sessions} {pkg.total_sessions === 1 ? 'Session' : 'Sessions'}</p>
+                                  {b.session_number && <p className="font-bold text-foreground">Session {b.session_number} of {pkg.total_sessions}</p>}
+                                  <p>Completed: {pkg.completed_sessions || 0}</p>
+                                  <p>Remaining: {pkg.remaining_sessions || 0}</p>
+                                  <p>Valid Until: {new Date(pkg.expiry_date).toLocaleDateString()}</p>
                                 </div>
                               );
                             }

@@ -112,7 +112,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
                   </div>
                   <div className="flex items-center justify-between border-b border-border/50 pb-3">
                     <dt className="inline-flex items-center gap-2 text-black/80 font-semibold"><Sparkles className="h-4 w-4" /> Sessions</dt>
-                    <dd className="font-bold text-black">1 × {service.included_sessions || 1} {(service.included_sessions || 1) === 1 ? 'Session' : 'Sessions'}</dd>
+                    <dd className="font-bold text-black">{service.duration_minutes} Mins × {service.included_sessions || 1} {(service.included_sessions || 1) === 1 ? 'Session' : 'Sessions'}</dd>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2.5 py-1 text-xs text-black/80 font-semibold">

@@ -128,11 +128,11 @@ export async function POST(req: Request) {
       }
     }
 
-    if (totalSessions > 1 && b.user_id) {
+    if (totalSessions >= 1 && b.user_id) {
       try {
         const purchaseDate = new Date();
         const expiryDate = new Date();
-        expiryDate.setDate(purchaseDate.getDate() + 31); // 31 days validity
+        expiryDate.setDate(purchaseDate.getDate() + 30); // 30 days validity
         
         let packageDocRef;
         if (isSomatic) {
@@ -149,6 +149,8 @@ export async function POST(req: Request) {
           client_email: b.client_email,
           purchase_date: purchaseDate.toISOString(),
           expiry_date: expiryDate.toISOString(),
+          start_date: purchaseDate.toISOString(),
+          validity_days: 30,
           status: 'active',
           package_type: packageType,
           package_name: packageName,

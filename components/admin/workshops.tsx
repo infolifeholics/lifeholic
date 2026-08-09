@@ -211,6 +211,7 @@ export function AdminWorkshops() {
         }, { merge: true });
       }
 
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success('Workshop saved successfully!', { id: toastId });
       setEditingWs(null);
       fetchAllData();
@@ -232,6 +233,7 @@ export function AdminWorkshops() {
         status: 'draft',
       };
       await setDoc(doc(db, 'workshops', id), dup);
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success('Workshop duplicated!', { id: toastId });
     } catch (err: any) {
       toast.error('Failed to duplicate: ' + err.message, { id: toastId });
@@ -264,6 +266,7 @@ export function AdminWorkshops() {
       }
 
       await deleteDoc(doc(db, 'workshops', id));
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
       toast.success('Workshop and associated media purged successfully!', { id: toastId });
     } catch (e) {
       toast.error('Failed to fully delete workshop and media.', { id: toastId });

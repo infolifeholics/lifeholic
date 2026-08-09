@@ -27,18 +27,21 @@ type SomaticPlanSettings = {
   essential_short: string;
   essential_benefits: string;
   essential_sessions: number;
+  essential_duration_minutes: number;
 
   premium_title: string;
   premium_price_inr: number;
   premium_short: string;
   premium_benefits: string;
   premium_sessions: number;
+  premium_duration_minutes: number;
 
   elite_title: string;
   elite_price_inr: number;
   elite_short: string;
   elite_benefits: string;
   elite_sessions: number;
+  elite_duration_minutes: number;
 };
 
 const DEFAULT_SOMATIC_PLAN_SETTINGS: SomaticPlanSettings = {
@@ -47,18 +50,21 @@ const DEFAULT_SOMATIC_PLAN_SETTINGS: SomaticPlanSettings = {
   essential_short: 'A starting point for somatic exploration and short release sessions.',
   essential_benefits: '1 targeted somatic clarity session (30m)\nCustomized diagnostic profiling\nActionable home practices guide\nEmail-only support channel',
   essential_sessions: 1,
+  essential_duration_minutes: 30,
 
   premium_title: 'Somatic Premium',
   premium_price_inr: 8500,
   premium_short: 'Our most popular plan with comprehensive somatic care.',
   premium_benefits: '4 private somatic therapy sessions (60m)\nCustom daily somatic practices outline\nDirect WhatsApp guidance support\nWeekly progress check-in chats\nFree access to mindfulness archives',
   premium_sessions: 4,
+  premium_duration_minutes: 30,
 
   elite_title: 'Somatic Elite',
   elite_price_inr: 15000,
   elite_short: 'Premium high-touch support for total somatic transformation.',
   elite_benefits: '8 private somatic therapy sessions (60m)\n24/7 priority messaging with head healer\nPersonalized lifestyle & posture coaching\nBi-weekly home visits (selected locations)\nSomatic program certificate upon completion',
   elite_sessions: 8,
+  elite_duration_minutes: 90,
 };
 
 const DEFAULT_CATEGORIES: Category[] = [
@@ -260,6 +266,7 @@ export function AdminSearchOptions() {
               ? data.essential_benefits.join('\n') 
               : (data.essential_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.essential_benefits),
             essential_sessions: data.essential_sessions ?? DEFAULT_SOMATIC_PLAN_SETTINGS.essential_sessions,
+            essential_duration_minutes: data.essential_duration_minutes ?? DEFAULT_SOMATIC_PLAN_SETTINGS.essential_duration_minutes,
             premium_title: data.premium_title || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_title,
             premium_price_inr: data.premium_price_inr ?? DEFAULT_SOMATIC_PLAN_SETTINGS.premium_price_inr,
             premium_short: data.premium_short || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_short,
@@ -267,6 +274,7 @@ export function AdminSearchOptions() {
               ? data.premium_benefits.join('\n') 
               : (data.premium_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.premium_benefits),
             premium_sessions: data.premium_sessions ?? DEFAULT_SOMATIC_PLAN_SETTINGS.premium_sessions,
+            premium_duration_minutes: data.premium_duration_minutes ?? DEFAULT_SOMATIC_PLAN_SETTINGS.premium_duration_minutes,
             elite_title: data.elite_title || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_title,
             elite_price_inr: data.elite_price_inr ?? DEFAULT_SOMATIC_PLAN_SETTINGS.elite_price_inr,
             elite_short: data.elite_short || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_short,
@@ -274,6 +282,7 @@ export function AdminSearchOptions() {
               ? data.elite_benefits.join('\n') 
               : (data.elite_benefits || DEFAULT_SOMATIC_PLAN_SETTINGS.elite_benefits),
             elite_sessions: data.elite_sessions ?? DEFAULT_SOMATIC_PLAN_SETTINGS.elite_sessions,
+            elite_duration_minutes: data.elite_duration_minutes ?? DEFAULT_SOMATIC_PLAN_SETTINGS.elite_duration_minutes,
           });
         }
       } catch (err: any) {
@@ -299,18 +308,22 @@ export function AdminSearchOptions() {
         essential_short: somaticSettings.essential_short,
         essential_benefits: somaticSettings.essential_benefits.split('\n').map(b => b.trim()).filter(Boolean),
         essential_sessions: Number(somaticSettings.essential_sessions ?? 1),
+        essential_duration_minutes: Number(somaticSettings.essential_duration_minutes ?? 30),
         premium_title: somaticSettings.premium_title,
         premium_price_inr: Number(somaticSettings.premium_price_inr || 0),
         premium_short: somaticSettings.premium_short,
         premium_benefits: somaticSettings.premium_benefits.split('\n').map(b => b.trim()).filter(Boolean),
         premium_sessions: Number(somaticSettings.premium_sessions ?? 4),
+        premium_duration_minutes: Number(somaticSettings.premium_duration_minutes ?? 30),
         elite_title: somaticSettings.elite_title,
         elite_price_inr: Number(somaticSettings.elite_price_inr || 0),
         elite_short: somaticSettings.elite_short,
         elite_benefits: somaticSettings.elite_benefits.split('\n').map(b => b.trim()).filter(Boolean),
         elite_sessions: Number(somaticSettings.elite_sessions ?? 8),
+        elite_duration_minutes: Number(somaticSettings.elite_duration_minutes ?? 90),
       };
       await setDoc(doc(db, 'settings', 'somatic_plans'), finalSomaticPlans, { merge: true });
+      await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});
 
       toast.success('All configurations saved successfully!', { id: toastId });
     } catch (err: any) {
@@ -745,6 +758,15 @@ export function AdminSearchOptions() {
                 />
               </div>
               <div>
+                <Label className="text-xs">Session Duration (Minutes)</Label>
+                <Input
+                  type="number"
+                  value={somaticSettings.essential_duration_minutes}
+                  onChange={(e) => setSomaticSettings({ ...somaticSettings, essential_duration_minutes: parseInt(e.target.value) || 30 })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
                 <Label className="text-xs">Short Description</Label>
                 <Input
                   value={somaticSettings.essential_short}
@@ -795,6 +817,15 @@ export function AdminSearchOptions() {
                 />
               </div>
               <div>
+                <Label className="text-xs">Session Duration (Minutes)</Label>
+                <Input
+                  type="number"
+                  value={somaticSettings.premium_duration_minutes}
+                  onChange={(e) => setSomaticSettings({ ...somaticSettings, premium_duration_minutes: parseInt(e.target.value) || 30 })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
                 <Label className="text-xs">Short Description</Label>
                 <Input
                   value={somaticSettings.premium_short}
@@ -841,6 +872,15 @@ export function AdminSearchOptions() {
                   type="number"
                   value={somaticSettings.elite_sessions}
                   onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_sessions: parseInt(e.target.value) || 1 })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Session Duration (Minutes)</Label>
+                <Input
+                  type="number"
+                  value={somaticSettings.elite_duration_minutes}
+                  onChange={(e) => setSomaticSettings({ ...somaticSettings, elite_duration_minutes: parseInt(e.target.value) || 90 })}
                   className="mt-1"
                 />
               </div>

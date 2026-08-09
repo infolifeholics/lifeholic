@@ -17,6 +17,8 @@ const EMAIL_SUBJECTS: Record<string, string> = {
   rec_letter_generated: 'Your Recommendation Letter is Ready',
   password_reset: 'Password Reset Request',
   admin_alert: 'Admin System Notification',
+  community_admin_alert: 'New Lifeholics Community Application',
+  community_user_confirmation: 'Thank You for Your Interest in the Lifeholics Community',
 };
 
 /**

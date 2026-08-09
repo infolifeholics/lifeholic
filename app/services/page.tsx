@@ -57,7 +57,7 @@ export default async function ServicesPage() {
                           className="inline-flex items-center gap-1 text-xs text-gold font-semibold"
                           style={{ backgroundColor: '#121212', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(212, 175, 55, 0.3)' }}
                         >
-                          1 × {s.included_sessions || 1} {(s.included_sessions || 1) === 1 ? 'Session' : 'Sessions'}
+                          {s.duration_minutes} Mins × {s.included_sessions || 1} {(s.included_sessions || 1) === 1 ? 'Session' : 'Sessions'}
                         </span>
                       </div>
                       <h3 className="mt-3 font-display text-2xl font-medium text-foreground">{s.title}</h3>
