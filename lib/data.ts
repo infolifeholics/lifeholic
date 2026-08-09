@@ -10,34 +10,54 @@ const isDummyConfig =
   !process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
   !process.env.FIREBASE_API_KEY;
 
+let isFirestoreOffline = false;
+
 // Cache the Firestore queries globally for server components using next/cache
 const getCachedCollectionData = unstable_cache(
   async (colName: string) => {
     const defaults = (seedData as any)[colName] || [];
 
-    if (isDummyConfig) {
+    if (isDummyConfig || isFirestoreOffline) {
       return defaults;
     }
 
     try {
       const colRef = collection(db, colName);
-      let snap;
-      if (colName === 'products') {
-        const q = query(colRef, where('is_active', '==', true));
-        snap = await getDocs(q);
-      } else {
-        snap = await getDocs(colRef);
-      }
+      
+      const fetchDocs = async () => {
+        if (colName === 'products') {
+          const q = query(colRef, where('is_active', '==', true));
+          return getDocs(q);
+        } else {
+          return getDocs(colRef);
+        }
+      };
+
+      // Set a 1.5 seconds timeout for fetching from Firestore
+      const snap = await Promise.race([
+        fetchDocs(),
+        new Promise<any>((_, reject) =>
+          setTimeout(() => reject(new Error('Firestore connection timeout')), 1500)
+        ),
+      ]);
+
       if (snap.empty) {
         return defaults;
       }
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const data = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
       return data;
     } catch (e: any) {
+      if (e.message === 'Firestore connection timeout') {
+        isFirestoreOffline = true;
+        // Reset offline status after 2 minutes to retry
+        setTimeout(() => {
+          isFirestoreOffline = false;
+        }, 120000);
+      }
       if (e.code === 'permission-denied') {
         console.info(`[Info] Database reads/writes are securely restricted for collection "${colName}". Using local defaults.`);
       } else {
-        console.error(`Error loading collection ${colName}:`, e);
+        console.warn(`[Warning] Error/Timeout loading collection "${colName}" from Firestore:`, e.message || e, 'Using local defaults.');
       }
       return defaults;
     }

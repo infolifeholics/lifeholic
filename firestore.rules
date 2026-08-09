@@ -33,7 +33,8 @@ service cloud.firestore {
     }
     match /landing_feed/{document} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if true;
+      allow delete: if isAdmin();
     }
     match /product_reviews/{document} {
       allow read, write: if true;

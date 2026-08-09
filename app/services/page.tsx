@@ -36,12 +36,12 @@ export default async function ServicesPage() {
               <StaggerItem key={s.id}>
                 <Link href={getServiceRoute(s.slug)} className="group block h-full">
                   <article className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-border/60 bg-card/60 shadow-soft transition-all duration-500 ease-soft hover:-translate-y-1.5 hover:shadow-float sm:flex-row">
-                    <div className="relative aspect-[16/11] overflow-hidden sm:aspect-auto sm:w-2/5">
+                    <div className="relative w-full overflow-hidden sm:aspect-auto sm:w-2/5">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={s.image}
                         alt={s.title}
-                        className="h-full w-full object-cover transition-transform duration-1000 ease-soft group-hover:scale-105"
+                        className="w-full h-auto object-contain transition-transform duration-1000 ease-soft group-hover:scale-105 sm:h-full sm:w-full sm:object-cover"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent sm:bg-gradient-to-r" />
                     </div>

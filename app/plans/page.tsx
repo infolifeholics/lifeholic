@@ -425,6 +425,10 @@ export default function SomaticPlansPage() {
           0% { left: -100%; }
           100% { left: 200%; }
         }
+        @keyframes drift-fog {
+          0% { transform: translate3d(0, 0, 0); }
+          100% { transform: translate3d(-50%, 0, 0); }
+        }
         @keyframes float-slow {
           0% { transform: translate(0px, 0px) scale(1); opacity: 0.55; }
           33% { transform: translate(45px, -65px) scale(1.15); opacity: 0.75; }
@@ -488,9 +492,6 @@ export default function SomaticPlansPage() {
         <div className="absolute top-[-10%] left-[-10%] w-[60%] aspect-square rounded-full bg-gradient-to-br from-[#A7C0B0]/40 to-[#C0B9E5]/30 blur-[130px] pointer-events-none z-0 misty-orb-1" />
         <div className="absolute bottom-[5%] right-[-15%] w-[55%] aspect-square rounded-full bg-gradient-to-br from-[#E4D1B9]/50 to-[#C9DFD0]/40 blur-[140px] pointer-events-none z-0 misty-orb-2" />
         <div className="absolute top-[30%] left-[25%] w-[40%] aspect-square rounded-full bg-[#EAE3CB]/45 blur-[120px] pointer-events-none z-0 misty-orb-3" />
-
-        {/* Slow drifting cloud fog layer overlay */}
-        <div className="absolute inset-0 pointer-events-none opacity-30 mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/fog.png')] bg-repeat" style={{ animation: 'shine-sweep 80s linear infinite' }} />
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Back button */}

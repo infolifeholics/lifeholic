@@ -282,7 +282,14 @@ export function HomeHero() {
   const [showPromoPopup, setShowPromoPopup] = useState(false);
 
   useEffect(() => {
-    getDoc(doc(db, 'settings', 'search_options'))
+    function withTimeout<T>(promise: Promise<T>, ms: number = 1800): Promise<T> {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+      ]);
+    }
+
+    withTimeout(getDoc(doc(db, 'settings', 'search_options')))
       .then((snap: any) => {
         if (snap.exists()) {
           const fetchedCats = snap.data().categories || [];
@@ -311,10 +318,10 @@ export function HomeHero() {
           });
         }
       })
-      .catch((e: any) => console.error('Error fetching dynamic search options:', e));
+      .catch((e: any) => console.warn('Could not fetch dynamic search options:', e.message || e));
 
     // Load featured promo coupon
-    getDocs(query(collection(db, 'coupons'), where('active', '==', true), where('featured_promo', '==', true)))
+    withTimeout(getDocs(query(collection(db, 'coupons'), where('active', '==', true), where('featured_promo', '==', true))))
       .then((snap) => {
         if (!snap.empty) {
           const cData = snap.docs[0].data();
@@ -327,23 +334,23 @@ export function HomeHero() {
           }
         }
       })
-      .catch((e) => console.error('Error fetching featured promo:', e));
+      .catch((e) => console.warn('Could not fetch featured promo:', e.message || e));
 
     // Load services from Firestore
-    getDocs(collection(db, 'services'))
+    withTimeout(getDocs(collection(db, 'services')))
       .then((snap) => {
         const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         list.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
         setDbServices(list);
       })
-      .catch((e) => console.error('Error fetching services:', e));
+      .catch((e) => console.warn('Could not fetch services:', e.message || e));
 
     // Load recommendation rules
-    getDocs(collection(db, 'recommendation_rules'))
+    withTimeout(getDocs(collection(db, 'recommendation_rules')))
       .then((snap) => {
         setRecRules(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       })
-      .catch((e) => console.error('Error fetching recommendation rules:', e));
+      .catch((e) => console.warn('Could not fetch recommendation rules:', e.message || e));
   }, []);
 
   // Search Dropdown States
@@ -407,7 +414,14 @@ export function HomeHero() {
 
   useEffect(() => {
     const colRef = collection(db, 'landing_images');
-    getDocs(colRef)
+    function withTimeout<T>(promise: Promise<T>, ms: number = 1800): Promise<T> {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+      ]);
+    }
+
+    withTimeout(getDocs(colRef))
       .then((snap) => {
         if (!snap.empty) {
           const data = snap.docs.map((doc) => doc.data());
@@ -1157,7 +1171,7 @@ export function HomeHero() {
               </div>
 
               {/* Status Text Area */}
-              <div className="h-24 flex flex-col items-center justify-start">
+              <div className="h-auto mt-6 flex flex-col items-center justify-start">
                 <AnimatePresence mode="wait">
                   {analysisStep === 'analyzing' ? (
                     <motion.div
@@ -1166,12 +1180,13 @@ export function HomeHero() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -15 }}
                       transition={{ duration: 0.5 }}
-                      className="space-y-2"
+                      className="space-y-2 px-6 py-4 rounded-2xl border border-white/10 max-w-sm mx-auto shadow-xl text-center"
+                      style={{ backgroundColor: 'rgba(18, 18, 18, 0.95)' }}
                     >
-                      <h3 className="font-display text-2xl font-semibold text-foreground tracking-tight text-gradient-gold">
+                      <h3 className="font-display text-xl font-semibold text-white tracking-tight">
                         Analyzing your choices...
                       </h3>
-                      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                      <p className="text-sm text-white/80 max-w-xs mx-auto">
                         Our somatic engine is tailoring the optimal healing path for your profile
                       </p>
                     </motion.div>
@@ -1182,12 +1197,13 @@ export function HomeHero() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -15 }}
                       transition={{ duration: 0.5 }}
-                      className="space-y-2"
+                      className="space-y-2 px-6 py-4 rounded-2xl border border-white/10 max-w-sm mx-auto shadow-xl text-center"
+                      style={{ backgroundColor: 'rgba(18, 18, 18, 0.95)' }}
                     >
-                      <h3 className="font-display text-2xl font-semibold text-foreground tracking-tight text-gradient-gold">
+                      <h3 className="font-display text-xl font-semibold text-white tracking-tight">
                         Thank you for your patience!
                       </h3>
-                      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                      <p className="text-sm text-white/80 max-w-xs mx-auto">
                         Your personalized healing plans are ready. Redirecting...
                       </p>
                     </motion.div>

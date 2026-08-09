@@ -56,24 +56,30 @@ export function HomeInstagram() {
 
   const handleImageLoad = (id: string, e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
+    let ratio: 'portrait' | 'landscape' | 'square' = 'square';
     if (img.naturalWidth > img.naturalHeight + 50) {
-      setAspectRatios((prev) => ({ ...prev, [id]: 'landscape' }));
+      ratio = 'landscape';
     } else if (img.naturalHeight > img.naturalWidth + 50) {
-      setAspectRatios((prev) => ({ ...prev, [id]: 'portrait' }));
-    } else {
-      setAspectRatios((prev) => ({ ...prev, [id]: 'square' }));
+      ratio = 'portrait';
     }
+    setAspectRatios((prev) => {
+      if (prev[id] === ratio) return prev;
+      return { ...prev, [id]: ratio };
+    });
   };
 
   const handleVideoMetadata = (id: string, e: React.SyntheticEvent<HTMLVideoElement>) => {
     const video = e.currentTarget;
+    let ratio: 'portrait' | 'landscape' | 'square' = 'square';
     if (video.videoWidth > video.videoHeight) {
-      setAspectRatios((prev) => ({ ...prev, [id]: 'landscape' }));
+      ratio = 'landscape';
     } else if (video.videoHeight > video.videoWidth) {
-      setAspectRatios((prev) => ({ ...prev, [id]: 'portrait' }));
-    } else {
-      setAspectRatios((prev) => ({ ...prev, [id]: 'square' }));
+      ratio = 'portrait';
     }
+    setAspectRatios((prev) => {
+      if (prev[id] === ratio) return prev;
+      return { ...prev, [id]: ratio };
+    });
   };
 
   const handleLike = async (itemId: string, e?: React.MouseEvent) => {

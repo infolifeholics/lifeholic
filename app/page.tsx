@@ -7,7 +7,6 @@ import { HomeCTA } from '@/components/home/cta';
 import { OfferInlineBanner } from '@/components/site/offer-promo';
 import { ScrollBlurWrapper } from '@/components/home/scroll-blur-wrapper';
 import { HomeAboutPreview } from '@/components/home/about-preview';
-import { HomeCommunity } from '@/components/home/community';
 
 export const revalidate = 60;
 
@@ -21,7 +20,6 @@ export default async function HomePage() {
         <OfferInlineBanner />
         <HomeAboutPreview />
         <HomeTestimonials items={testimonials} />
-        <HomeCommunity />
         <HomeInstagram />
       </ScrollBlurWrapper>
     </>
