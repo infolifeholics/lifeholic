@@ -465,7 +465,7 @@ function PaymentPageContent() {
           <div className="rounded-3xl border border-border/60 bg-muted/30 p-5 text-xs text-muted-foreground space-y-2">
             <p className="font-semibold text-foreground">Refund Policy</p>
             <p className="leading-relaxed">
-              If you cancel or reschedule more than 24 hours prior to the session start time, a full refund can be requested by emailing hello@thelifeholics.com.
+              If you cancel or reschedule more than 24 hours prior to the session start time, a full refund can be requested by emailing {process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'support@thelifeholics.com'}.
             </p>
           </div>
         </div>

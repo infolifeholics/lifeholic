@@ -8,6 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function ShippingPage() {
+  const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'support@thelifeholics.com';
   return (
     <LegalPage
       eyebrow="Legal"
@@ -38,7 +39,7 @@ export default function ShippingPage() {
         {
           heading: 'Damaged or lost orders',
           body: [
-            'If your order arrives damaged or is lost in transit, please write to hello@thelifeholics.com within 7 days and we will replace or refund it.',
+            `If your order arrives damaged or is lost in transit, please write to ${contactEmail} within 7 days and we will replace or refund it.`,
           ],
         },
       ]}

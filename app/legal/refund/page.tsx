@@ -8,6 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function RefundPage() {
+  const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'support@thelifeholics.com';
   return (
     <LegalPage
       eyebrow="Legal"
@@ -33,7 +34,7 @@ export default function RefundPage() {
           heading: 'Digital products',
           body: [
             'Because digital products (meditations, courses, journals) are delivered instantly and cannot be returned, they are generally non-refundable.',
-            'If a product is faulty or not as described, please write to hello@thelifeholics.com and we will make it right.',
+            `If a product is faulty or not as described, please write to ${contactEmail} and we will make it right.`,
           ],
         },
         {
@@ -47,7 +48,7 @@ export default function RefundPage() {
           heading: 'How refunds are processed',
           body: [
             'Refunds are issued to the original payment method within 7–10 business days.',
-            'Write to hello@thelifeholics.com with your order number to begin a refund.',
+            `Write to ${contactEmail} with your order number to begin a refund.`,
           ],
         },
       ]}

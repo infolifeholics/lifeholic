@@ -79,7 +79,7 @@ export function SiteFooter() {
               {[
                 { Icon: Instagram, href: process.env.NEXT_PUBLIC_CONTACT_INSTAGRAM || 'https://instagram.com/thelifeholics', label: 'Instagram' },
                 { Icon: MessageCircle, href: `https://wa.me/${process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || '919999999999'}`, label: 'WhatsApp' },
-                { Icon: Mail, href: `mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'hello@thelifeholics.com'}`, label: 'Email' },
+                { Icon: Mail, href: `mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'support@thelifeholics.com'}`, label: 'Email' },
                 {
                   Icon: Youtube,
                   href: process.env.NEXT_PUBLIC_YOUTUBE_URL || 'https://youtube.com/@thelifeholics?si=klROE04Ogf1VArJY',

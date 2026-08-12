@@ -180,12 +180,12 @@ export function ContactInfo() {
 
         <a
           href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL ||
-            'hello@thelifeholics.com'
+            'support@thelifeholics.com'
             }`}
           className="mt-1 block font-medium text-foreground hover:underline"
         >
           {process.env.NEXT_PUBLIC_CONTACT_EMAIL ||
-            'hello@thelifeholics.com'}
+            'support@thelifeholics.com'}
         </a>
       </div>
 

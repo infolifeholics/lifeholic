@@ -61,7 +61,7 @@ export default async function BookingSuccessPage({
           </div>
 
           <p className="mt-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Mail className="h-3.5 w-3.5" /> Didn&apos;t get an email? Check spam, or write to hello@thelifeholics.com
+            <Mail className="h-3.5 w-3.5" /> Didn&apos;t get an email? Check spam, or write to {process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'support@thelifeholics.com'}
           </p>
         </div>
       </div>

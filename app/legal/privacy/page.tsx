@@ -8,6 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
+  const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'support@thelifeholics.com';
   return (
     <LegalPage
       eyebrow="Legal"
@@ -46,13 +47,13 @@ export default function PrivacyPage() {
         {
           heading: 'Your rights',
           body: [
-            'You may request access to, correction of, or deletion of your personal data at any time by writing to hello@thelifeholics.com.',
+            `You may request access to, correction of, or deletion of your personal data at any time by writing to ${contactEmail}.`,
             'You may unsubscribe from the newsletter at any time using the link in any email.',
           ],
         },
         {
           heading: 'Contact',
-          body: ['Questions about privacy? Write to hello@thelifeholics.com and we will respond thoughtfully.'],
+          body: [`Questions about privacy? Write to ${contactEmail} and we will respond thoughtfully.`],
         },
       ]}
     />

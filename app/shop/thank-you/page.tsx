@@ -82,7 +82,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
           </div>
 
           <p className="mt-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Mail className="h-3.5 w-3.5" /> Questions? hello@thelifeholics.com
+            <Mail className="h-3.5 w-3.5" /> Questions? {process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'support@thelifeholics.com'}
           </p>
         </div>
       </div>
