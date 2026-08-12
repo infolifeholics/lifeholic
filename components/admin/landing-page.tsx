@@ -4,22 +4,25 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, UploadCloud, Video, X, Image as ImageIcon } from 'lucide-react';
+import { Loader2, UploadCloud, Video, X, Image as ImageIcon, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const DEFAULT_VIDEO = 'https://cdn.prod.website-files.com/691c3d8b8165d353a2345b2d%2F691d841c9c6b35b63efb82bc_hero-bg-video_mp4.mp4';
+const DEFAULT_AUDIO = '/liecio-calming-rain-257596.mp3';
 const DEFAULT_FOUNDER_IMAGE = '/images/founder/photo.jpg';
 const DEFAULT_FOUNDER_IMAGE_2 = 'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=800';
 const DEFAULT_BG_IMAGE = 'https://images.pexels.com/photos/3280130/pexels-photo-3280130.jpeg?auto=compress&cs=tinysrgb&w=1200';
 
 export function AdminLandingPage() {
   const [videoUrl, setVideoUrl] = useState('');
+  const [audioUrl, setAudioUrl] = useState('');
   const [founderImage, setFounderImage] = useState(DEFAULT_FOUNDER_IMAGE);
   const [founderImage2, setFounderImage2] = useState(DEFAULT_FOUNDER_IMAGE_2);
   const [bgImage, setBgImage] = useState(DEFAULT_BG_IMAGE);
   const [loading, setLoading] = useState(true);
 
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
   const [uploadingFounder, setUploadingFounder] = useState(false);
   const [uploadingFounder2, setUploadingFounder2] = useState(false);
   const [uploadingBgImage, setUploadingBgImage] = useState(false);
@@ -32,6 +35,14 @@ export function AdminLandingPage() {
         setVideoUrl(videoDoc.data().url || '');
       } else {
         setVideoUrl('');
+      }
+
+      // Fetch Audio Settings
+      const audioDoc = await getDoc(doc(db, 'settings', 'music'));
+      if (audioDoc.exists()) {
+        setAudioUrl(audioDoc.data().url || '');
+      } else {
+        setAudioUrl('');
       }
 
       // 2. Fetch Founder portrait details
@@ -141,6 +152,65 @@ export function AdminLandingPage() {
 
       setVideoUrl('');
       toast.success('Default video restored.', { id: toastId });
+    } catch (err: any) {
+      toast.error('Failed: ' + err.message, { id: toastId });
+    }
+  };
+
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAudio(true);
+    const toastId = toast.loading('Uploading custom background audio...');
+
+    try {
+      const { url } = await uploadToCloudinaryDirect(file, true);
+
+      if (audioUrl && audioUrl.includes('cloudinary.com')) {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: audioUrl }),
+        });
+      }
+
+      await setDoc(doc(db, 'settings', 'music'), {
+        url,
+        updated_at: new Date().toISOString(),
+      }, { merge: true });
+
+      setAudioUrl(url);
+      toast.success('Background audio updated successfully!', { id: toastId });
+    } catch (err: any) {
+      toast.error('Upload failed: ' + err.message, { id: toastId });
+    } finally {
+      setUploadingAudio(false);
+    }
+  };
+
+  const handleDeleteAudio = async () => {
+    if (!audioUrl) return;
+    const confirm = window.confirm('Are you sure you want to restore the default calming audio?');
+    if (!confirm) return;
+
+    const toastId = toast.loading('Restoring default audio...');
+    try {
+      if (audioUrl.includes('cloudinary.com')) {
+        await fetch('/api/upload/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: audioUrl }),
+        });
+      }
+
+      await setDoc(doc(db, 'settings', 'music'), {
+        url: '',
+        updated_at: new Date().toISOString(),
+      }, { merge: true });
+
+      setAudioUrl('');
+      toast.success('Default audio restored.', { id: toastId });
     } catch (err: any) {
       toast.error('Failed: ' + err.message, { id: toastId });
     }
@@ -390,6 +460,71 @@ export function AdminLandingPage() {
                 <span>
                   <UploadCloud className="h-4 w-4 text-muted-foreground" />
                   Replace Video
+                </span>
+              </Button>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION: Audio Settings */}
+      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-soft space-y-6">
+        <div className="flex items-center justify-between border-b border-border/30 pb-4">
+          <div className="flex items-center gap-3">
+            <Music className="h-6 w-6 text-gold" />
+            <div>
+              <h2 className="font-display text-xl font-medium text-foreground">Landing Background Audio</h2>
+              <p className="text-sm text-muted-foreground">Upload a custom audio or restore the default calming track.</p>
+            </div>
+          </div>
+          {audioUrl && (
+            <button
+              onClick={handleDeleteAudio}
+              className="p-1.5 rounded-full bg-destructive/15 text-destructive hover:bg-destructive/25 transition-all"
+              title="Restore default audio"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-[2fr_1fr] items-start">
+          <div className="relative flex flex-col items-center justify-center p-6 rounded-2xl border border-border/40 bg-card/60">
+            <audio
+              key={audioUrl || 'default'}
+              controls
+              className="w-full max-w-md mx-auto"
+              src={audioUrl || DEFAULT_AUDIO}
+            />
+            {uploadingAudio && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm rounded-2xl">
+                <Loader2 className="h-8 w-8 animate-spin text-gold" />
+                <span className="mt-2 text-sm font-medium text-foreground">Uploading audio...</span>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="p-4 bg-secondary/30 rounded-2xl border border-border/30">
+              <span className="text-xs font-semibold text-muted-foreground block">Active Audio Source</span>
+              <p className="text-[11px] text-foreground font-mono mt-1 break-all bg-card/60 p-2 rounded-lg border border-border/20">
+                {audioUrl || 'Default Calming Track'}
+              </p>
+            </div>
+
+            <label className="block w-full">
+              <span className="sr-only">Choose audio</span>
+              <input type="file" accept="audio/*" disabled={uploadingAudio} onChange={handleAudioUpload} className="hidden" id="bg-audio-input" />
+              <Button
+                asChild
+                variant="outline"
+                className="w-full rounded-full cursor-pointer flex items-center justify-center gap-2 h-11"
+                disabled={uploadingAudio}
+                onClick={() => document.getElementById('bg-audio-input')?.click()}
+              >
+                <span>
+                  <UploadCloud className="h-4 w-4 text-muted-foreground" />
+                  Replace Audio
                 </span>
               </Button>
             </label>

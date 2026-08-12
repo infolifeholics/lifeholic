@@ -73,7 +73,7 @@ export function SiteFooter() {
             <Logo className="text-white [&&_img]:invert [&&_img]:brightness-[200]" />
             <p className="mt-5 max-w-xs text-pretty text-sm leading-relaxed text-white/80 font-sans">
               A calm, safe space for spiritual psychology, emotional healing and mindful growth —
-              online and in person, for clients across the world.
+              online , for clients across the world.
             </p>
             <div className="mt-6 flex items-center gap-2">
               {[
@@ -119,9 +119,9 @@ export function SiteFooter() {
           ))}
 
           <div>
-            <h4 className="font-display text-lg font-medium text-white">Letters of stillness</h4>
+            <h4 className="font-display text-lg font-medium text-white">Leave your Email Here</h4>
             <p className="mt-4 text-sm text-white/80">
-              Slow, thoughtful notes on healing, presence and the inner life. No noise, ever.
+              Join our growing community of like-minded individuals on a journey of healing and growth.
             </p>
             <form onSubmit={subscribe} className="mt-5 flex gap-2">
               <Input

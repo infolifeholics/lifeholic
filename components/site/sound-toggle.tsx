@@ -13,20 +13,37 @@ export function SoundToggle() {
   const customAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    const fetchMusic = async () => {
+    let unsub = () => {};
+    const listenMusic = async () => {
       try {
         const { db } = await import('@/lib/firebase');
-        const { doc, getDoc } = await import('firebase/firestore');
-        const snap = await getDoc(doc(db, 'settings', 'music'));
-        if (snap.exists() && snap.data().url) {
-          setCustomMusicUrl(snap.data().url);
-        }
+        const { doc, onSnapshot } = await import('firebase/firestore');
+        unsub = onSnapshot(doc(db, 'settings', 'music'), (snap) => {
+          if (snap.exists() && snap.data().url) {
+            setCustomMusicUrl(snap.data().url);
+          } else {
+            setCustomMusicUrl('/liecio-calming-rain-257596.mp3');
+          }
+        });
       } catch (e) {
         console.warn('Error loading custom background music:', e);
       }
     };
-    fetchMusic();
+    listenMusic();
+    return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (customAudioRef.current && customMusicUrl) {
+      const wasPlaying = !customAudioRef.current.paused;
+      customAudioRef.current.pause();
+      customAudioRef.current.src = customMusicUrl;
+      customAudioRef.current.load();
+      if (wasPlaying) {
+        customAudioRef.current.play().catch(e => console.warn(e));
+      }
+    }
+  }, [customMusicUrl]);
 
   // Initialize Web Audio nodes
   const initAudio = () => {
