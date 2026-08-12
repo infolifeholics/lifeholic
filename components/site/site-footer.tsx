@@ -12,30 +12,30 @@ import { cn } from '@/lib/utils';
 
 const COLS = [
   {
-    title: '',
+    title: 'Explore',
     links: [
-      { href: '/', label: '' },
-      { href: '/about', label: '' },
-      { href: '/services', label: '' },
-      { href: '/booking', label: '  ' },
-      { href: '/shop', label: '' },
+      { href: '/', label: 'Home' },
+      { href: '/about', label: 'Our Story' },
+      { href: '/services', label: 'Services' },
+      { href: '/booking', label: 'Book a Session' },
+      { href: '/shop', label: 'Shop' },
     ],
   },
   {
-    title: '',
+    title: 'Support',
     links: [
-      { href: '/contact', label: '' },
-      { href: '/faq', label: '' },
-      { href: '/account', label: '' },
-      // { href: '/admin', label: 'Admin' },
+      { href: '/contact', label: 'Contact Us' },
+      { href: '/faq', label: 'FAQ' },
+      { href: '/account', label: 'Account' },
     ],
   },
   {
     title: 'Legal',
     links: [
       { href: '/legal/privacy', label: 'Privacy Policy' },
-      { href: '/legal/refund', label: 'Refund Policy' },
-      { href: '/legal/terms', label: 'Terms of Service' },
+      { href: '/legal/refund', label: 'Cancellation & Refund Policy' },
+      { href: '/legal/terms', label: 'Terms & Conditions' },
+      { href: '/legal/shipping', label: 'Shipping Policy' },
     ],
   },
 ];
