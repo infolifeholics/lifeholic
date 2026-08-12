@@ -1606,11 +1606,11 @@ export function AdminWorkshops() {
             setCropperSrc('');
           }}
           imageSrc={cropperSrc}
-          aspect={cropperAspect}
+          aspect={4 / 3} // Enforce 4:3 ratio for workshops
           onCropComplete={(croppedFile) => {
             handleUploadFile(croppedFile, cropperTarget);
           }}
-          title={cropperTarget === 'thumbnail' ? 'Crop Thumbnail (1:1)' : 'Crop Workshop Banner (16:9)'}
+          title={cropperTarget === 'thumbnail' ? 'Crop Thumbnail (4:3)' : 'Crop Workshop Banner (4:3)'}
         />
       )}
     </div>

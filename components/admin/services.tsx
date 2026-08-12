@@ -566,11 +566,11 @@ export function AdminServices() {
             setCropperSrc('');
           }}
           imageSrc={cropperSrc}
-          aspect={16 / 11} // 16:11 ratio for services
+          aspect={4 / 3} // 4:3 ratio for services
           onCropComplete={(croppedFile) => {
             handleImageUpload(croppedFile);
           }}
-          title="Crop Service Image (16:11)"
+          title="Crop Service Image (4:3)"
         />
       )}
     </div>

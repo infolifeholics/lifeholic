@@ -153,7 +153,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
             {relatedFinal.map((s) => (
               <Link key={s.id} href={getServiceRoute(s.slug)} className="group block h-full">
                 <article className="group h-full overflow-hidden rounded-3xl border border-border/60 bg-card/60 shadow-soft transition-all duration-500 ease-soft hover:-translate-y-1.5 hover:shadow-float">
-                  <div className="relative aspect-[16/11] overflow-hidden">
+                  <div className="relative aspect-[4/3] overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={s.image} alt={s.title} className="h-full w-full object-cover transition-transform duration-1000 ease-soft group-hover:scale-105" />
                   </div>

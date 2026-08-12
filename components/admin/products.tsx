@@ -894,11 +894,11 @@ export function AdminProducts() {
             setCropperSrc('');
           }}
           imageSrc={cropperSrc}
-          aspect={1} // 1:1 for products
+          aspect={4 / 3} // 4:3 for products
           onCropComplete={(croppedFile) => {
             handleImageUpload(croppedFile, cropperIsGallery);
           }}
-          title="Crop Product Image"
+          title="Crop Product Image (4:3)"
         />
       )}
     </div>

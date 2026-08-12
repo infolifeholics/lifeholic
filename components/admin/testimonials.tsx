@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { Loader2, Plus, Edit2, Trash2, Check, X, Star, Pin } from 'lucide-react';
+import { Loader2, Plus, Edit2, Trash2, Check, X, Star, Pin, UploadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,11 +12,78 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import type { Testimonial } from '@/lib/types';
+import { ImageCropperModal } from './image-cropper-modal';
 
 export function AdminTestimonials() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTestimonial, setEditingTestimonial] = useState<Partial<Testimonial> | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Cropper states
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperSrc, setCropperSrc] = useState<string>('');
+
+  const handleFileSelect = (file: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      setCropperSrc(reader.result as string);
+      setCropperOpen(true);
+    });
+    reader.readAsDataURL(file);
+  };
+
+  const uploadToCloudinaryDirect = async (file: File, isVideoOrAudio: boolean) => {
+    const signRes = await fetch('/api/upload/sign', { method: 'POST' });
+    if (!signRes.ok) {
+      const err = await signRes.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to generate upload signature');
+    }
+    const { signature, timestamp, cloudName, apiKey, folder } = await signRes.json();
+
+    const resourceType = isVideoOrAudio ? 'video' : 'image';
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', String(timestamp));
+    formData.append('signature', signature);
+    formData.append('folder', folder);
+
+    const uploadRes = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!uploadRes.ok) {
+      const err = await uploadRes.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Direct Cloudinary upload failed');
+    }
+
+    const data = await uploadRes.json();
+    return {
+      url: data.secure_url,
+      public_id: data.public_id,
+    };
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+    setUploading(true);
+    const toastId = toast.loading('Uploading avatar to Cloudinary...');
+    try {
+      const { url } = await uploadToCloudinaryDirect(file, false);
+      setEditingTestimonial((prev) => (prev ? { ...prev, image: url } : null));
+      toast.success('Avatar uploaded successfully!', { id: toastId });
+    } catch (err: any) {
+      toast.error('Image upload failed: ' + err.message, { id: toastId });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const fetchTestimonials = async () => {
     try {
@@ -171,8 +238,44 @@ export function AdminTestimonials() {
             </div>
           </div>
 
+          <div className="space-y-3">
+            <Label>Client Avatar Image</Label>
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 overflow-hidden rounded-full border border-border bg-background-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={editingTestimonial.image || 'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=150'} 
+                  alt="Avatar Preview" 
+                  className="h-full w-full object-cover" 
+                />
+              </div>
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileSelect(file);
+                  }}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-full gap-2 h-10 px-4 text-xs"
+                >
+                  <UploadCloud className="h-4 w-4" /> Upload Avatar (4:3)
+                </Button>
+              </div>
+            </div>
+          </div>
+
           <div>
-            <Label>Client Avatar Image URL</Label>
+            <Label>Or Avatar Image URL</Label>
             <Input
               value={editingTestimonial.image || ''}
               onChange={(e) => setEditingTestimonial({ ...editingTestimonial, image: e.target.value })}
@@ -259,6 +362,22 @@ export function AdminTestimonials() {
             </div>
           ))}
         </div>
+      )}
+
+      {cropperOpen && (
+        <ImageCropperModal
+          isOpen={cropperOpen}
+          onClose={() => {
+            setCropperOpen(false);
+            setCropperSrc('');
+          }}
+          imageSrc={cropperSrc}
+          aspect={4 / 3} // Enforce 4:3 crop aspect ratio for testimonials
+          onCropComplete={(croppedFile) => {
+            handleImageUpload(croppedFile);
+          }}
+          title="Crop Testimonial Avatar (4:3)"
+        />
       )}
     </div>
   );
