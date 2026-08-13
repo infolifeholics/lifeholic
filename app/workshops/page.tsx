@@ -138,6 +138,44 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
   const left = Math.max(0, w.seats_total - w.seats_booked);
   const pct = Math.round((w.seats_booked / w.seats_total) * 100);
 
+  if (isCompleted) {
+    return (
+      <Link href={`/workshops/${w.slug}`} className="group block h-full">
+        <article className="group relative h-full overflow-hidden rounded-3xl border border-white/20 bg-white/40 backdrop-blur-md p-4 hover:border-gold/30 transition-all duration-300 flex flex-col justify-between cursor-pointer">
+          <div className="space-y-4">
+            <div className="aspect-[16/9] overflow-hidden rounded-2xl relative border border-border/20">
+              <img src={w.image} alt={w.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-103" />
+              <span className="absolute bottom-3 left-3 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-full bg-secondary text-muted-foreground">
+                Completed
+              </span>
+            </div>
+            <div>
+              <h3 className="font-display text-lg font-medium text-foreground line-clamp-1">{w.title}</h3>
+              <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{w.short_description}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-border/20 space-y-3">
+            <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <CalendarDays className="h-3.5 w-3.5" />
+                {new Date(w.date).toLocaleDateString()}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                {w.start_time}
+              </span>
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3.5 w-3.5" />
+                {w.venue_name || w.location || 'Online'}
+              </span>
+            </div>
+          </div>
+        </article>
+      </Link>
+    );
+  }
+
   return (
     <article className="group relative h-full overflow-hidden rounded-3xl border border-white/20 bg-white/40 backdrop-blur-md p-4 hover:border-gold/30 transition-all duration-300 flex flex-col justify-between">
       <div className="space-y-4">
@@ -145,9 +183,9 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
           <img src={w.image} alt={w.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-103" />
           <span className={cn(
             'absolute bottom-3 left-3 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-full',
-            isCompleted ? 'bg-secondary text-muted-foreground' : 'bg-gold text-gold-foreground'
+            'bg-gold text-gold-foreground'
           )}>
-            {isCompleted ? 'Completed' : w.type}
+            {w.type}
           </span>
         </div>
         <div>
@@ -172,27 +210,21 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
           </span>
         </div>
 
-        {!isCompleted && (
-          <div className="space-y-1">
-            <div className="h-1 w-full rounded-full bg-secondary overflow-hidden">
-              <div className="h-full bg-gold" style={{ width: `${pct}%` }} />
-            </div>
-            <p className="text-[10px] text-muted-foreground text-right">{left} seats left</p>
+        <div className="space-y-1">
+          <div className="h-1 w-full rounded-full bg-secondary overflow-hidden">
+            <div className="h-full bg-gold" style={{ width: `${pct}%` }} />
           </div>
-        )}
+          <p className="text-[10px] text-muted-foreground text-right">{left} seats left</p>
+        </div>
 
         <div className="flex justify-between items-center pt-1">
-          {!isCompleted ? (
-            <div>
-              <p className="text-[9px] text-muted-foreground uppercase">Exchange</p>
-              <p className="text-sm font-bold text-foreground">{formatPrice(w.price_inr, 'INR')}</p>
-            </div>
-          ) : (
-            <div />
-          )}
+          <div>
+            <p className="text-[9px] text-muted-foreground uppercase">Exchange</p>
+            <p className="text-sm font-bold text-foreground">{formatPrice(w.price_inr, 'INR')}</p>
+          </div>
           <Link href={`/workshops/${w.slug}`}>
             <Button size="sm" className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground">
-              {isCompleted ? 'View Memories' : 'Details'}
+              Details
             </Button>
           </Link>
         </div>

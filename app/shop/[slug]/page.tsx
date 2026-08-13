@@ -6,9 +6,7 @@ import { getProducts, getProductBySlug } from '@/lib/data';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { AddToCart } from '@/components/shop/add-to-cart';
-import { ProductReviews } from '@/components/shop/product-reviews';
 import { ProductWishlistButton } from '@/components/shop/product-wishlist-button';
-import { StarRating } from '@/components/site/star-rating';
 import { formatPrice } from '@/lib/format';
 import { getProductRoute } from '@/lib/routes';
 import { SectionHeading } from '@/components/site/section-heading';
@@ -44,20 +42,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  let reviewRows: any[] = [];
-  try {
-    const qReviews = query(
-      collection(db, 'product_reviews'),
-      where('product_id', '==', product.id),
-      limit(100)
-    );
-    const snap = await getDocs(qReviews);
-    reviewRows = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-  } catch (err) {
-    console.warn('Could not fetch reviews from Firestore:', err);
-  }
+
 
   const all = await getProducts();
   const related = all.filter((p) => p.slug !== product.slug && p.category === product.category).slice(0, 4);
@@ -165,10 +150,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        {/* Reviews */}
-        <section className="mt-20">
-          <ProductReviews productId={product.id} initial={reviewRows} />
-        </section>
+
 
         {/* Related */}
         <section className="mt-20 pb-10">

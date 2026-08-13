@@ -153,6 +153,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
       const { collection, query, onSnapshot } = await import('firebase/firestore');
       const { db } = await import('@/lib/firebase');
       const q = query(collection(db, 'holidays'));
+      if (!active) return;
       unsubHolidays = onSnapshot(q, (snap) => {
         if (!active) return;
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -208,6 +209,8 @@ export function BookingFlow({ services }: { services: Service[] }) {
 
       // Call initially
       fetchSlotsData();
+
+      if (!active) return;
 
       // Listeners
       unsubBookings = onSnapshot(qBookings, () => fetchSlotsData());

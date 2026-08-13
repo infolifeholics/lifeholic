@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import { useWishlist } from '@/components/providers/wishlist-provider';
 import { ProductWishlistButton } from '@/components/shop/product-wishlist-button';
-import { StarRating } from '@/components/site/star-rating';
 import { formatPrice } from '@/lib/format';
 import { getProductRoute } from '@/lib/routes';
 import type { Product } from '@/lib/types';

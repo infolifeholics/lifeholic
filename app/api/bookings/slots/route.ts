@@ -58,10 +58,27 @@ export async function GET(req: Request) {
     );
     const bookingsSnap = await getDocs(qBookings);
     const existingBookings = bookingsSnap.docs.map(d => d.data());
-    const bookedRanges = existingBookings.map(b => ({
-      start: new Date(b.start_time).getTime(),
-      end: new Date(b.end_time).getTime()
-    }));
+
+    // Fetch existing free call bookings for the day (non-cancelled)
+    const freeCallsRef = collection(db, 'free_call_bookings');
+    const qFreeCalls = query(
+      freeCallsRef,
+      where('start_time', '>=', dayStartUTC.toISOString()),
+      where('start_time', '<', dayEndUTC.toISOString())
+    );
+    const freeCallsSnap = await getDocs(qFreeCalls);
+    const existingFreeCalls = freeCallsSnap.docs.map(d => d.data()).filter((f: any) => f.status !== 'cancelled');
+
+    const bookedRanges = [
+      ...existingBookings.map(b => ({
+        start: new Date(b.start_time).getTime(),
+        end: new Date(b.end_time).getTime()
+      })),
+      ...existingFreeCalls.map(f => ({
+        start: new Date(f.start_time).getTime(),
+        end: new Date(f.end_time).getTime()
+      }))
+    ];
 
     // 4. Map and filter slots
     const now = Date.now();

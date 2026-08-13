@@ -43,13 +43,15 @@ import { AdminWorkshops } from '@/components/admin/workshops';
 import { AdminTodaysBookings } from '@/components/admin/todays-bookings';
 import { AdminSlotsManagement } from '@/components/admin/slots-management';
 import { AdminSearchOptions } from '@/components/admin/search-options';
-import { AlertTriangle, HelpCircle } from 'lucide-react';
 import { AdminCommunityApplications } from '@/components/admin/community-applications';
+import { AdminFreeCalls } from '@/components/admin/free-calls';
+import { PhoneCall, HelpCircle } from 'lucide-react';
 
 const NAV = [
   // { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'todays_bookings', label: "Today's Bookings", icon: CalendarDays },
   { id: 'bookings', label: 'Bookings & Calendar', icon: CalendarDays },
+  { id: 'free_calls', label: 'Free Consultation Calls', icon: PhoneCall },
   { id: 'slots_management', label: 'Session Slots', icon: Settings },
   { id: 'workshops', label: 'Workshops', icon: CalendarDays },
   { id: 'healers', label: 'Healers', icon: Users },
@@ -149,6 +151,7 @@ function AdminShell() {
             {/* {section === 'overview' && <AdminDashboard onNavigateSection={setSection} />} */}
             {section === 'todays_bookings' && <AdminTodaysBookings />}
             {section === 'bookings' && <AdminDashboard onNavigateSection={setSection} />}
+            {section === 'free_calls' && <AdminFreeCalls />}
             {section === 'slots_management' && <AdminSlotsManagement />}
             {section === 'workshops' && <AdminWorkshops />}
             {section === 'healers' && <AdminHealers />}

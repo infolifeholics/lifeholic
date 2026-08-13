@@ -13,11 +13,13 @@ export function SoundToggle() {
   const customAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    let active = true;
     let unsub = () => {};
     const listenMusic = async () => {
       try {
         const { db } = await import('@/lib/firebase');
         const { doc, onSnapshot } = await import('firebase/firestore');
+        if (!active) return;
         unsub = onSnapshot(doc(db, 'settings', 'music'), (snap) => {
           if (snap.exists() && snap.data().url) {
             setCustomMusicUrl(snap.data().url);
@@ -30,7 +32,10 @@ export function SoundToggle() {
       }
     };
     listenMusic();
-    return () => unsub();
+    return () => {
+      active = false;
+      unsub();
+    };
   }, []);
 
   useEffect(() => {
@@ -175,7 +180,7 @@ export function SoundToggle() {
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
       onClick={handleToggle}
-      className="fixed bottom-6 right-6 z-[999] flex h-11 w-11 items-center justify-center rounded-full glass border border-white/10 text-foreground shadow-glow backdrop-blur-md transition-all"
+      className="fixed bottom-24 md:bottom-6 right-6 z-[999] flex h-11 w-11 items-center justify-center rounded-full glass border border-white/10 text-foreground shadow-glow backdrop-blur-md transition-all"
       aria-label={playing ? 'Mute ambient sound' : 'Unmute ambient sound'}
     >
       {playing ? (

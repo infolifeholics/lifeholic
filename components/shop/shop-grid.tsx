@@ -8,7 +8,6 @@ import { Search, SlidersHorizontal, X, Plus, Minus } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { StarRating } from '@/components/site/star-rating';
 import { ProductWishlistButton } from '@/components/shop/product-wishlist-button';
 import { formatPrice } from '@/lib/format';
 import { getProductRoute } from '@/lib/routes';
@@ -28,7 +27,7 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string>('All');
   const [type, setType] = useState<'All' | 'digital' | 'physical'>('All');
-  const [sort, setSort] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
+  const [sort, setSort] = useState<'featured' | 'price-asc' | 'price-desc'>('featured');
 
   useEffect(() => {
     const q = firestoreQuery(collection(db, 'products'), where('is_active', '==', true));
@@ -89,7 +88,6 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
     });
     if (sort === 'price-asc') list = [...list].sort((a, b) => a.price_inr - b.price_inr);
     if (sort === 'price-desc') list = [...list].sort((a, b) => b.price_inr - a.price_inr);
-    if (sort === 'rating') list = [...list].sort((a, b) => b.rating - a.rating);
     return list;
   }, [products, query, category, type, sort]);
 
@@ -138,7 +136,6 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
             <option value="featured">Featured</option>
             <option value="price-asc">Price: low to high</option>
             <option value="price-desc">Price: high to low</option>
-            <option value="rating">Top rated</option>
           </select>
           {(query || category !== 'All' || type !== 'All' || sort !== 'featured') && (
             <Button variant="ghost" size="sm" onClick={reset} className="rounded-full">

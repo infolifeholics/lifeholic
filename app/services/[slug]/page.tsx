@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, Check, Clock, Globe, Sparkles, Users, Video } from 'lucide-react';
+import { ArrowRight, Clock, Sparkles, Video } from 'lucide-react';
 import { getServices, getServiceBySlug } from '@/lib/data';
 import { ServiceFaq } from '@/components/services/faq';
 import { ServiceHero } from '@/components/services/hero';
 import { ServiceBookingCta } from '@/components/services/booking-cta';
 import { getServiceRoute } from '@/lib/routes';
 import { formatPrice } from '@/lib/format';
+import { FreeConsultationModal } from '@/components/services/free-consultation-modal';
 
 export async function generateStaticParams() {
   const services = await getServices();
@@ -48,57 +49,9 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
 
       <section className="relative py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-16">
-            <div className="space-y-16">
-              {/* About */}
-              <div>
-                <h2 className="font-display text-3xl font-semibold tracking-tight text-black">About this work</h2>
-                <p className="mt-5 text-pretty text-base leading-relaxed text-black/90 font-medium sm:text-lg">
-                  {service.description}
-                </p>
-              </div>
-
-              {/* Who is it for */}
-              {service.who_for && (
-                <div className="rounded-3xl border border-border/60 bg-secondary/40 p-7">
-                  <h3 className="flex items-center gap-2 font-display text-xl font-semibold text-black">
-                    <Users className="h-5 w-5 text-gold" /> Who is this for?
-                  </h3>
-                  <p className="mt-3 text-pretty text-sm leading-relaxed text-black/95 font-medium">{service.who_for}</p>
-                </div>
-              )}
-
-              {/* Benefits */}
-              <div>
-                <h3 className="font-display text-2xl font-semibold tracking-tight text-black">What you may gain</h3>
-                <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {service.benefits.map((b) => (
-                    <li key={b} className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card/50 p-4">
-                      <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success/15 text-success">
-                        <Check className="h-3 w-3" />
-                      </span>
-                      <span className="text-sm leading-relaxed text-black/95 font-medium">{b}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Process */}
-              <div>
-                <h3 className="font-display text-2xl font-semibold tracking-tight text-black">How a session flows</h3>
-                <ol className="mt-5 space-y-3">
-                  {service.process.map((p, i) => (
-                    <li key={p} className="flex items-start gap-4 rounded-2xl border border-border/60 bg-card/50 p-4">
-                      <span className="font-display text-lg font-semibold text-gold">{String(i + 1).padStart(2, '0')}</span>
-                      <span className="text-sm leading-relaxed text-black/95 font-medium">{p}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            </div>
-
-            {/* Sticky summary */}
-            <aside className="lg:sticky lg:top-28 lg:self-start">
+          <div className="max-w-2xl mx-auto">
+            {/* Summary details */}
+            <aside className="w-full">
               <div className="rounded-3xl border border-border/60 bg-card/60 p-7 shadow-soft">
                 <h3 className="font-display text-2xl font-semibold text-black">Session details</h3>
                 <dl className="mt-5 space-y-4 text-sm">
@@ -167,6 +120,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
       </section>
+      <FreeConsultationModal showPopupOnly={true} serviceId={service.id} serviceName={service.title} />
     </div>
   );
 }

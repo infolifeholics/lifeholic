@@ -11,6 +11,7 @@ import { PwaInstall } from '@/components/site/pwa-install';
 import { cn } from '@/lib/utils';
 import { GlobalErrorBoundary } from '@/components/site/error-boundary';
 import { ClientHardening } from '@/components/site/client-hardening';
+import { FreeConsultationModal } from '@/components/services/free-consultation-modal';
 import Script from 'next/script';
 
 const serif = Cormorant_Garamond({
@@ -93,6 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <SiteFooter />
             <OfferPopup />
             <PwaInstall />
+            <FreeConsultationModal showButtonOnly={true} serviceId="general" serviceName="General Site Help" />
             <script
               type="application/ld+json"
               dangerouslySetInnerHTML={{
