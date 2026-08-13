@@ -62,11 +62,16 @@ export function FreeConsultationModal({
   // Handle auto-popup trigger with a 5-second delay
   useEffect(() => {
     if (!mounted || showButtonOnly) return;
+
+    // Check for query parameter force_popup=true to bypass storage check in deployment testing
+    const searchParams = new URLSearchParams(window.location.search);
+    const forcePopup = searchParams.get('force_popup') === 'true';
+
     const isBooked = localStorage.getItem('free_call_booked') === 'true';
     const isDismissed = sessionStorage.getItem('free_call_popup_dismissed') === 'true';
     const isDev = process.env.NODE_ENV === 'development';
 
-    if (isDev || (!isBooked && !isDismissed)) {
+    if (isDev || forcePopup || (!isBooked && !isDismissed)) {
       const timer = setTimeout(() => {
         setIsOpen(true);
       }, 5000);
@@ -212,7 +217,7 @@ export function FreeConsultationModal({
                     <Label htmlFor="fc-name" className="text-xs font-semibold">Your Name</Label>
                     <Input
                       id="fc-name"
-                      placeholder="e.g. John Doe"
+                      placeholder="e.g. The Life Holics"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       disabled={submitting}
