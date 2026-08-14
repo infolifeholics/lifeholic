@@ -337,46 +337,51 @@ export async function POST(req: Request) {
         const globalSettingsRef = doc(db, 'settings', 'global');
         const globalSettingsSnap = await transaction.get(globalSettingsRef);
         let meetingLink = null;
+        let usdToInrRate = null;
         if (globalSettingsSnap.exists()) {
           const gSettings = globalSettingsSnap.data();
           if (gSettings.meeting_provider === 'gmeet' && gSettings.google_meet_link) {
             meetingLink = gSettings.google_meet_link;
           }
+          if (typeof gSettings.usd_to_inr_rate === 'number' && gSettings.usd_to_inr_rate > 0) {
+            usdToInrRate = gSettings.usd_to_inr_rate;
+          }
         }
 
         const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
 
-        // Check if we need to create a Razorpay Order
-        let pgOrderId = null;
-        const finalCurrency = currency || 'INR';
-        const finalAmount = isSubsequentBooking ? 0 : (amount ?? 0);
-        if (finalAmount > 0) {
-          try {
-            const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
-            const keySecret = process.env.RAZORPAY_KEY_SECRET || 'rzp_test_secret';
-            
-            const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + Buffer.from(keyId + ':' + keySecret).toString('base64'),
-              },
-              body: JSON.stringify({
-                amount: Math.round(Number(finalAmount) * 100), // paise/cents
-                currency: finalCurrency,
-              }),
-            });
+        // Calculate and validate finalCurrency and finalAmount on the server side
+        const isIndiaCountry = clientCountry === 'IN';
+        const isIndiaTz = (client_timezone?.toLowerCase().includes('kolkata') ||
+                           client_timezone?.toLowerCase().includes('calcutta') ||
+                           client_timezone?.toLowerCase().includes('india'));
+        const finalCurrency = (isIndiaCountry || isIndiaTz) ? 'INR' : 'USD';
+        
+        if (finalCurrency === 'USD' && (!usdToInrRate || isNaN(usdToInrRate))) {
+          throw new Error('International payments are currently unavailable. USD to INR exchange rate is not configured by the admin.');
+        }
 
-            if (rzpRes.ok) {
-              const rzpOrder = await rzpRes.json();
-              pgOrderId = rzpOrder.id;
+        let calculatedBaseAmount = 0;
+        if (!isSubsequentBooking) {
+          if (isSomatic) {
+            let basePriceInr = 11000;
+            const planKey = somaticPlanName?.toLowerCase().includes('essential') ? 'essential' : somaticPlanName?.toLowerCase().includes('elite') ? 'elite' : 'premium';
+            const somaticSettingsRef = doc(db, 'settings', 'somatic_plans');
+            const somaticSettingsSnap = await transaction.get(somaticSettingsRef);
+            if (somaticSettingsSnap.exists()) {
+              const sData = somaticSettingsSnap.data();
+              basePriceInr = sData[`${planKey}_price_inr`] ?? (planKey === 'essential' ? 4444 : planKey === 'premium' ? 11000 : 21000);
             } else {
-              console.error('Razorpay order creation failed for booking:', await rzpRes.text());
+              basePriceInr = planKey === 'essential' ? 4444 : planKey === 'premium' ? 11000 : 21000;
             }
-          } catch (err) {
-            console.error('Error generating Razorpay Order ID for booking:', err);
+            calculatedBaseAmount = finalCurrency === 'USD' && usdToInrRate ? Math.round(basePriceInr / usdToInrRate) : basePriceInr;
+          } else {
+            calculatedBaseAmount = finalCurrency === 'USD' ? (service.price_usd || 0) : (service.price_inr || 0);
           }
         }
+
+        const finalAmount = calculatedBaseAmount;
+        let pgOrderId = null;
 
         // Check somatic package number tracking if user is booking a subsequent session
         let sessionNumber = null;

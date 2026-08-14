@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
-import { triggerBookingNotification } from '@/lib/notifications';
+import { collection, query, where, getDocs, doc, setDoc, runTransaction, addDoc } from 'firebase/firestore';
+import { triggerBookingNotification, triggerOrderNotification, triggerWorkshopNotification } from '@/lib/notifications';
 
 export async function POST(req: Request) {
   try {
@@ -24,30 +24,32 @@ export async function POST(req: Request) {
 
     const event = JSON.parse(rawBody);
     if (event.event === 'payment.captured' || event.event === 'order.paid') {
-      const payment = event.payload.payment.entity;
-      const orderId = payment.order_id;
+      const payment = event.payload.payment?.entity;
+      const order = event.payload.order?.entity;
+      const orderId = payment?.order_id || order?.id || event.payload.payment_link?.entity?.order_id;
+      const paymentId = payment?.id || 'webhook_' + Math.random().toString(36).substring(7);
 
-      // Find booking by order_id
-      const q = query(collection(db, 'bookings'), where('order_id', '==', orderId));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const bookingDoc = snap.docs[0];
+      if (!orderId) {
+        return NextResponse.json({ ok: true, note: 'No order ID found in webhook payload.' });
+      }
+
+      // ─── 1. CHECK BOOKINGS ───
+      const bookingQuery = query(collection(db, 'bookings'), where('order_id', '==', orderId));
+      const bookingSnap = await getDocs(bookingQuery);
+      if (!bookingSnap.empty) {
+        const bookingDoc = bookingSnap.docs[0];
         const bookingId = bookingDoc.id;
         const b = bookingDoc.data();
 
-        // Update payment & booking status
-        const bookingRef = doc(db, 'bookings', bookingId);
-        const timeline = b.status_timeline || [];
-        
-        // Check if already paid to prevent duplicate timeline logs
         if (b.payment_status !== 'paid') {
+          const timeline = b.status_timeline || [];
           const updatedTimeline = [
             ...timeline,
             {
               status: 'Payment Successful',
               timestamp: new Date().toISOString(),
               updated_by: 'Razorpay Webhook',
-              note: `Payment ID ${payment.id} verified via webhook.`
+              note: `Payment ID ${paymentId} verified via webhook.`
             },
             {
               status: 'confirmed',
@@ -76,29 +78,147 @@ export async function POST(req: Request) {
             updated_at: new Date().toISOString()
           };
 
-          await setDoc(bookingRef, updatedBooking, { merge: true });
+          await setDoc(doc(db, 'bookings', bookingId), updatedBooking, { merge: true });
 
-          // Trigger Notification
           try {
             await triggerBookingNotification(bookingId, { ...b, ...updatedBooking }, 'confirmed');
           } catch (err) {
             console.error('[Notification Trigger Error]:', err);
           }
 
-          // Save payment entry
-          await setDoc(doc(db, 'payments', payment.id), {
+          await setDoc(doc(db, 'payments', paymentId), {
             booking_id: bookingId,
-            payment_id: payment.id,
+            payment_id: paymentId,
             order_id: orderId,
             amount: b.amount || 0,
             status: 'captured',
             created_at: new Date().toISOString(),
           });
         }
+        return NextResponse.json({ ok: true, processed: 'booking' });
+      }
+
+      // ─── 2. CHECK SHOP ORDERS ───
+      const orderQuery = query(collection(db, 'orders'), where('payment_ref', '==', orderId));
+      const orderSnap = await getDocs(orderQuery);
+      if (!orderSnap.empty) {
+        const oDoc = orderSnap.docs[0];
+        const orderIdDb = oDoc.id;
+        const o = oDoc.data();
+
+        if (o.payment_status !== 'paid') {
+          const updatedOrder = {
+            status: 'paid',
+            payment_status: 'paid',
+            payment_ref: paymentId,
+            payment_provider: 'razorpay',
+            updated_at: new Date().toISOString()
+          };
+
+          await setDoc(doc(db, 'orders', orderIdDb), updatedOrder, { merge: true });
+
+          try {
+            await triggerOrderNotification(orderIdDb, { ...o, ...updatedOrder });
+          } catch (err) {
+            console.error('[Shop Webhook Notification Error]:', err);
+          }
+
+          if (o.coupon_code) {
+            try {
+              const q = query(collection(db, 'coupons'), where('code', '==', o.coupon_code.toUpperCase()));
+              const couponSnap = await getDocs(q);
+              if (!couponSnap.empty) {
+                const couponDoc = couponSnap.docs[0];
+                const newUses = (couponDoc.data().uses || 0) + 1;
+                await setDoc(couponDoc.ref, { uses: newUses }, { merge: true });
+              }
+            } catch (err) {
+              console.error('Error incrementing coupon uses via webhook:', err);
+            }
+          }
+
+          await setDoc(doc(db, 'payments', paymentId), {
+            order_id: orderIdDb,
+            payment_id: paymentId,
+            razorpay_order_id: orderId,
+            amount: o.total || 0,
+            currency: o.currency || 'INR',
+            status: 'captured',
+            created_at: new Date().toISOString(),
+          });
+        }
+        return NextResponse.json({ ok: true, processed: 'shop_order' });
+      }
+
+      // ─── 3. CHECK WORKSHOP REGISTRATIONS ───
+      const workshopQuery = query(collection(db, 'workshopRegistrations'), where('order_id', '==', orderId));
+      const workshopSnap = await getDocs(workshopQuery);
+      if (!workshopSnap.empty) {
+        const regDoc = workshopSnap.docs[0];
+        const registrationId = regDoc.id;
+        const reg = regDoc.data();
+
+        if (reg.payment_status !== 'paid') {
+          const wsRef = doc(db, 'workshops', reg.workshop_id);
+          const host = req.headers.get('host') || 'localhost:3000';
+          const protocol = req.headers.get('x-forwarded-proto') || 'http';
+          const ticketUrl = `${protocol}://${host}/workshops/${registrationId}/ticket?name=${encodeURIComponent(reg.client_name || '')}&email=${encodeURIComponent(reg.client_email || '')}&phone=${encodeURIComponent(reg.client_phone || '')}&workshop=${encodeURIComponent(reg.workshop_title || '')}`;
+          const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticketUrl)}`;
+
+          await runTransaction(db, async (transaction) => {
+            const wsDoc = await transaction.get(wsRef);
+            if (!wsDoc.exists()) {
+              throw new Error('Workshop not found.');
+            }
+            
+            const seatsBooked = wsDoc.data().seats_booked || 0;
+            const seatsTotal = wsDoc.data().seats_total || 0;
+            
+            transaction.update(wsRef, {
+              seats_booked: Math.min(seatsTotal, seatsBooked + 1),
+            });
+
+            if (reg.coupon_code) {
+              const couponRef = doc(db, 'coupons', reg.coupon_code.toUpperCase());
+              const couponDoc = await transaction.get(couponRef);
+              if (couponDoc.exists()) {
+                const currentCount = couponDoc.data().usage_count || 0;
+                transaction.update(couponRef, {
+                  usage_count: currentCount + 1
+                });
+              }
+            }
+
+            transaction.update(regDoc.ref, {
+              payment_status: 'paid',
+              status: 'confirmed',
+              payment_id: paymentId,
+              qr_code: qrCodeUrl,
+            });
+          });
+
+          if (reg.user_id && reg.user_id !== 'anonymous') {
+            await addDoc(collection(db, 'notifications'), {
+              user_id: reg.user_id,
+              type: 'workshop',
+              title: 'Workshop Confirmed!',
+              message: `Your ticket for "${reg.workshop_title}" is confirmed. Download your ticket inside your dashboard.`,
+              read: false,
+              created_at: new Date().toISOString(),
+            });
+          }
+
+          try {
+            await triggerWorkshopNotification(registrationId, { ...reg, payment_status: 'paid', status: 'confirmed' }, host, protocol);
+          } catch (err) {
+            console.error('Failed to trigger workshop webhook notifications:', err);
+          }
+        }
+        return NextResponse.json({ ok: true, processed: 'workshop' });
       }
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, note: 'No matching records found for this webhook event.' });
   } catch (error: any) {
     console.error('Webhook error:', error);
     return NextResponse.json({ error: 'Webhook processing failed.' }, { status: 500 });

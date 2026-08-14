@@ -30,6 +30,25 @@ export async function POST(req: Request) {
     const regDoc = querySnap.docs[0];
     const reg = regDoc.data();
 
+    // Verify signature cryptographically
+    const secret = process.env.RAZORPAY_KEY_SECRET || 'rzp_test_secret';
+    const razorpay_order_id = reg.order_id;
+
+    const isLive = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.startsWith('rzp_live_');
+    const isMock = !isLive && (razorpay_payment_id.startsWith('pay_mock_') || razorpay_payment_id.startsWith('pay_ws_') || razorpay_payment_id.startsWith('pay_retry_'));
+
+    if (!isMock && razorpay_order_id) {
+      const crypto = await import('crypto');
+      const generated_signature = crypto
+        .createHmac('sha256', secret)
+        .update(razorpay_order_id + "|" + razorpay_payment_id)
+        .digest('hex');
+
+      if (generated_signature !== razorpay_signature) {
+        return NextResponse.json({ error: 'Invalid transaction signature.' }, { status: 400 });
+      }
+    }
+
     // 2. Perform dynamic Firestore transaction to update payment state & seats count
     const wsRef = doc(db, 'workshops', reg.workshop_id);
     

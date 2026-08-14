@@ -7,6 +7,8 @@ export type CartItem = {
   slug: string;
   name: string;
   price: number;
+  price_inr?: number;
+  price_usd?: number;
   image: string;
   quantity: number;
   type: 'digital' | 'physical';

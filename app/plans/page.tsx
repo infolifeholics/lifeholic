@@ -270,6 +270,8 @@ export default function SomaticPlansPage() {
   const [billingCycle, setBillingCycle] = useState<'day' | 'total'>('total');
   const [tz, setTz] = useState(detectTimezone());
   const currency = currencyForTimezone(tz);
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [rateError, setRateError] = useState(false);
   const [planServices, setPlanServices] = useState<{
     essential: any;
     premium: any;
@@ -286,6 +288,20 @@ export default function SomaticPlansPage() {
     } catch (e) {
       console.error('Error loading survey:', e);
     }
+
+    getDoc(doc(db, 'settings', 'global')).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (typeof data.usd_to_inr_rate === 'number' && data.usd_to_inr_rate > 0) {
+          setExchangeRate(data.usd_to_inr_rate);
+          return;
+        }
+      }
+      setRateError(true);
+    }).catch(err => {
+      console.error(err);
+      setRateError(true);
+    });
 
     const fetchPlanServices = async () => {
       try {
@@ -360,7 +376,7 @@ export default function SomaticPlansPage() {
   const handleSelectPlan = (planKey: 'essential' | 'premium' | 'elite', defaultPriceInr: number) => {
     const s = planServices ? planServices[planKey] : null;
     const finalPriceInr = s?.price_inr || defaultPriceInr;
-    const finalPrice = currency === 'USD' ? Math.round(finalPriceInr / 85) : finalPriceInr;
+    const finalPrice = currency === 'USD' ? Math.round(finalPriceInr / (exchangeRate || 1)) : finalPriceInr;
     const finalTitle = s?.title || (planKey === 'essential' ? 'Personal Healing & Clarity Session' : planKey === 'elite' ? 'Ancestral Healing Session' : '4-Week Deep Transformation Program');
     const finalId = s?.id || `somatic_${planKey}`;
 
@@ -405,9 +421,9 @@ export default function SomaticPlansPage() {
   };
 
   const prices = {
-    essential: currency === 'USD' ? Math.round(rawPrices.essential / 85) : rawPrices.essential,
-    premium: currency === 'USD' ? Math.round(rawPrices.premium / 85) : rawPrices.premium,
-    elite: currency === 'USD' ? Math.round(rawPrices.elite / 85) : rawPrices.elite,
+    essential: currency === 'USD' ? Math.round(rawPrices.essential / (exchangeRate || 1)) : rawPrices.essential,
+    premium: currency === 'USD' ? Math.round(rawPrices.premium / (exchangeRate || 1)) : rawPrices.premium,
+    elite: currency === 'USD' ? Math.round(rawPrices.elite / (exchangeRate || 1)) : rawPrices.elite,
   };
 
   const formatPlanPrice = (priceVal: number) => {
@@ -499,6 +515,12 @@ export default function SomaticPlansPage() {
             <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
             Back to search
           </Link>
+
+          {currency === 'USD' && rateError && (
+            <div className="rounded-3xl border border-destructive/30 bg-destructive/5 p-6 mb-8 text-sm text-destructive leading-relaxed font-medium">
+              International bookings are currently unavailable because the exchange rate has not been configured by the admin. Please contact the administrator.
+            </div>
+          )}
 
           {/* Header Card */}
           <div className="rounded-3xl border border-white/20 bg-gradient-to-tr from-card/90 via-card/60 to-gold/5 p-6 md:p-8 mb-10 backdrop-blur-xl relative overflow-hidden">
@@ -617,6 +639,7 @@ export default function SomaticPlansPage() {
                     {planKey === 'premium' ? (
                       <Button
                         onClick={() => handleSelectPlan('premium', 11000)}
+                        disabled={currency === 'USD' && rateError}
                         className="
                           group
                           relative
@@ -646,6 +669,7 @@ export default function SomaticPlansPage() {
                     ) : planKey === 'elite' ? (
                       <Button
                         onClick={() => handleSelectPlan('elite', 21000)}
+                        disabled={currency === 'USD' && rateError}
                         className="
                           group
                           relative
@@ -677,6 +701,7 @@ export default function SomaticPlansPage() {
                     ) : (
                       <Button
                         onClick={() => handleSelectPlan('essential', 4444)}
+                        disabled={currency === 'USD' && rateError}
                         className="
                           group
                           relative

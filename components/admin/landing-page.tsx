@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Loader2, UploadCloud, Video, X, Image as ImageIcon, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ export function AdminLandingPage() {
   const [founderImage, setFounderImage] = useState(DEFAULT_FOUNDER_IMAGE);
   const [founderImage2, setFounderImage2] = useState(DEFAULT_FOUNDER_IMAGE_2);
   const [bgImage, setBgImage] = useState(DEFAULT_BG_IMAGE);
+  const [feedItems, setFeedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -26,6 +27,7 @@ export function AdminLandingPage() {
   const [uploadingFounder, setUploadingFounder] = useState(false);
   const [uploadingFounder2, setUploadingFounder2] = useState(false);
   const [uploadingBgImage, setUploadingBgImage] = useState(false);
+  const [uploadingFeed, setUploadingFeed] = useState<Record<string, boolean>>({});
 
   const fetchData = async () => {
     try {
@@ -52,6 +54,27 @@ export function AdminLandingPage() {
         setFounderImage2(globalDoc.data().about_image_2 || DEFAULT_FOUNDER_IMAGE_2);
         setBgImage(globalDoc.data().background_image || DEFAULT_BG_IMAGE);
       }
+
+      // 3. Fetch Somatic Feed slots
+      const feedDocs = await getDocs(collection(db, 'landing_feed'));
+      const feedData = feedDocs.docs.map(doc => doc.data());
+      const defaultPosts = [
+        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=500',
+        'https://images.pexels.com/photos/3823039/pexels-photo-3823039.jpeg?auto=compress&cs=tinysrgb&w=500',
+        'https://images.pexels.com/photos/4202325/pexels-photo-4202325.jpeg?auto=compress&cs=tinysrgb&w=500',
+        'https://images.pexels.com/photos/3771115/pexels-photo-3771115.jpeg?auto=compress&cs=tinysrgb&w=500',
+      ];
+      const items = Array.from({ length: 4 }, (_, i) => {
+        const id = `slot_${i + 1}`;
+        const found = feedData?.find((d) => d.id === id);
+        return {
+          id,
+          url: (found && found.url) ? found.url : defaultPosts[i],
+          type: found ? found.type : 'image',
+          likes: (found && typeof found.likes === 'number') ? found.likes : 0,
+        };
+      });
+      setFeedItems(items);
     } catch (err: any) {
       console.error('Error fetching CMS data:', err);
     } finally {
@@ -386,6 +409,40 @@ export function AdminLandingPage() {
       toast.error('Failed: ' + err.message, { id: toastId });
     }
   };
+ 
+  const handleFeedUpload = async (slotId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const typeLabel = isVideo ? 'video' : 'image';
+
+    setUploadingFeed(prev => ({ ...prev, [slotId]: true }));
+    const toastId = toast.loading(`Uploading ${typeLabel} to ${slotId.replace('_', ' ')}...`);
+
+    try {
+      const { url } = await uploadToCloudinaryDirect(file, isVideo);
+      const cacheBustedUrl = `${url}?v=${Date.now()}`;
+
+      const slotDoc = await getDoc(doc(db, 'landing_feed', slotId));
+      const existingLikes = slotDoc.exists() ? (slotDoc.data().likes || 0) : 0;
+
+      await setDoc(doc(db, 'landing_feed', slotId), {
+        id: slotId,
+        url: cacheBustedUrl,
+        type: typeLabel,
+        likes: existingLikes,
+        updated_at: new Date().toISOString(),
+      }, { merge: true });
+
+      setFeedItems(prev => prev.map(item => item.id === slotId ? { ...item, url: cacheBustedUrl, type: typeLabel } : item));
+      toast.success(`${typeLabel} uploaded successfully!`, { id: toastId });
+    } catch (err: any) {
+      toast.error('Upload failed: ' + err.message, { id: toastId });
+    } finally {
+      setUploadingFeed(prev => ({ ...prev, [slotId]: false }));
+    }
+  };
 
   if (loading) {
     return (
@@ -709,6 +766,79 @@ export function AdminLandingPage() {
               </Button>
             </label>
           </div>
+        </div>
+      </div>
+
+      {/* SECTION: Somatic Feed Assets ("A little quiet on your feed") */}
+      <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-soft space-y-6">
+        <div>
+          <h2 className="font-display text-xl font-medium text-foreground">Somatic Feed Assets ("A little quiet on your feed")</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage the four media slots displayed in the Instagram section on the landing page. Each slot supports either an image or a video.
+          </p>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {feedItems.map((item, idx) => (
+            <div key={item.id} className="p-4 rounded-2xl border border-border/40 bg-secondary/10 space-y-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between border-b border-border/20 pb-2">
+                <span className="text-sm font-semibold text-foreground">
+                  Slot {idx + 1} ({item.type === 'video' ? 'Video' : 'Image'})
+                </span>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-border/40 bg-card">
+                  {item.type === 'video' ? (
+                    <video
+                      src={item.url}
+                      muted
+                      loop
+                      playsInline
+                      autoPlay
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={item.url}
+                      alt={`Slot ${idx + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  )}
+                  {uploadingFeed[item.id] && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+                      <Loader2 className="h-6 w-6 animate-spin text-gold" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block w-full">
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      disabled={uploadingFeed[item.id]}
+                      onChange={(e) => handleFeedUpload(item.id, e)}
+                      className="hidden"
+                      id={`feed-input-${item.id}`}
+                    />
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="w-full rounded-full cursor-pointer flex items-center justify-center gap-1.5 h-9 text-xs"
+                      disabled={uploadingFeed[item.id]}
+                      onClick={() => document.getElementById(`feed-input-${item.id}`)?.click()}
+                    >
+                      <span>
+                        <UploadCloud className="h-3.5 w-3.5 text-muted-foreground" />
+                        Replace Slot {idx + 1}
+                      </span>
+                    </Button>
+                  </label>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

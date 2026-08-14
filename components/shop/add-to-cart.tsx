@@ -56,6 +56,8 @@ export function AddToCart({
           slug: product.slug,
           name: product.name,
           price,
+          price_inr: product.price_inr,
+          price_usd: product.price_usd,
           image: product.image,
           type: product.type,
         },

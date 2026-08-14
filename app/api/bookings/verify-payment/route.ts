@@ -19,7 +19,8 @@ export async function POST(req: Request) {
       .update(razorpay_order_id + "|" + razorpay_payment_id)
       .digest('hex');
 
-    const isMock = razorpay_payment_id.startsWith('pay_mock_') || razorpay_order_id.startsWith('order_mock_');
+    const isMock = !process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.startsWith('rzp_live_') &&
+      (razorpay_payment_id.startsWith('pay_mock_') || razorpay_order_id.startsWith('order_mock_'));
 
     if (!isMock && generated_signature !== razorpay_signature) {
       return NextResponse.json({ error: 'Invalid transaction signature.' }, { status: 400 });

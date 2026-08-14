@@ -13,8 +13,8 @@ const isDummyConfig =
 let isFirestoreOffline = false;
 
 // Cache the Firestore queries globally for server components using next/cache
-const getCachedCollectionData = unstable_cache(
-  async (colName: string) => {
+const getCachedCollectionData = (colName: string) => unstable_cache(
+  async () => {
     const defaults = (seedData as any)[colName] || [];
 
     if (isDummyConfig || isFirestoreOffline) {
@@ -62,9 +62,9 @@ const getCachedCollectionData = unstable_cache(
       return defaults;
     }
   },
-  ['firestore-collections'],
-  { revalidate: 60, tags: ['firestore-collections'] }
-);
+  ['firestore-collections', colName],
+  { revalidate: 60, tags: ['firestore-collections', `firestore-collection-${colName}`] }
+)();
 
 async function getCollectionData<T>(colName: string): Promise<T[]> {
   return getCachedCollectionData(colName) as Promise<T[]>;

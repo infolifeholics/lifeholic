@@ -43,6 +43,8 @@ function PaymentPageContent() {
   const [cardCvc, setCardCvc] = useState('');
   const [paying, setPaying] = useState(false);
 
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+
   useEffect(() => {
     if (!bookingId) {
       toast.error('No booking reference found.');
@@ -68,6 +70,16 @@ function PaymentPageContent() {
           const serviceSnap = await getDoc(serviceRef);
           if (serviceSnap.exists()) {
             setServiceData(serviceSnap.data());
+          }
+        }
+
+        // Fetch exchange rate dynamically
+        const globalRef = doc(db, 'settings', 'global');
+        const globalSnap = await getDoc(globalRef);
+        if (globalSnap.exists()) {
+          const gData = globalSnap.data();
+          if (typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
+            setExchangeRate(gData.usd_to_inr_rate);
           }
         }
       } catch (err) {
@@ -141,17 +153,12 @@ function PaymentPageContent() {
   const total = subtotal - discount + gst;
 
   // Razorpay payment trigger
-  const handleRazorpayPayment = () => {
+  const handleRazorpayPayment = async () => {
     if (!(window as any).Razorpay) {
       toast.error('Razorpay SDK failed to load. Please try again.');
       return;
     }
 
-    // Cancellation warning pop-up
-    // const userConfirmed = window.confirm('Once the booking is confirmed, it cannot be canceled. Are you sure you want to proceed?');
-    // if (!userConfirmed) {
-    //   return;
-    // }
     const userConfirmed = window.confirm(
       "Once the booking is confirmed, it cannot be canceled.\n\nClick 'OK' to Confirm or 'Cancel' to cancel the booking."
     );
@@ -160,114 +167,136 @@ function PaymentPageContent() {
       return;
     }
 
+    setPaying(true);
+    const toastId = toast.loading('Initiating secure order...');
 
-    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
+    try {
+      // Call create-order to calculate server-validated amount and fetch order ID
+      const orderRes = await fetch('/api/bookings/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: bookingData.id,
+          coupon_code: appliedCoupon || null,
+        }),
+      });
 
-    if (keyId === 'rzp_test_mockKey123') {
-      toast.info('Using Demo/Test Payment Mode. Confirming your session booking...');
-      setPaying(true);
-      setTimeout(async () => {
-        try {
-          const res = await fetch('/api/bookings/verify-payment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              razorpay_payment_id: 'pay_mock_' + bookingData.id,
-              razorpay_order_id: 'order_mock_' + bookingData.id,
-              razorpay_signature: 'sig_mock_' + bookingData.id,
-              booking_id: bookingData.id,
-            }),
-          });
-          if (res.ok) {
-            toast.success('Test payment successful! Booking confirmed.');
-            router.push(`/booking/success?service=${serviceData?.slug || ''}&date=${encodeURIComponent(bookingData.start_time)}&tz=${encodeURIComponent(bookingData.client_timezone)}`);
-          } else {
-            toast.error('Test payment verification failed.');
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) {
+        throw new Error(orderData.error || 'Failed to create order on server.');
+      }
+
+      toast.dismiss(toastId);
+
+      const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
+
+      if (keyId === 'rzp_test_mockKey123') {
+        toast.info('Using Demo/Test Payment Mode. Confirming your session booking...');
+        setTimeout(async () => {
+          try {
+            const res = await fetch('/api/bookings/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_payment_id: 'pay_mock_' + bookingData.id,
+                razorpay_order_id: orderData.order_id,
+                razorpay_signature: 'sig_mock_' + bookingData.id,
+                booking_id: bookingData.id,
+              }),
+            });
+            if (res.ok) {
+              toast.success('Test payment successful! Booking confirmed.');
+              router.push(`/booking/success?service=${serviceData?.slug || ''}&date=${encodeURIComponent(bookingData.start_time)}&tz=${encodeURIComponent(bookingData.client_timezone)}`);
+            } else {
+              toast.error('Test payment verification failed.');
+              setPaying(false);
+            }
+          } catch (err) {
+            toast.error('Test payment failed.');
             setPaying(false);
           }
-        } catch (err) {
-          toast.error('Test payment failed.');
-          setPaying(false);
-        }
-      }, 1500);
-      return;
-    }
-
-    const options: any = {
-      key: keyId,
-      amount: total * 100, // in paise
-      currency: bookingData.currency || 'INR',
-      name: 'TheLifeHolics',
-      description: bookingData.service_title,
-      image: '/logo.svg',
-      handler: async function (response: any) {
-        setPaying(true);
-        try {
-          const res = await fetch('/api/bookings/verify-payment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id || 'order_mock_' + bookingData.id,
-              razorpay_signature: response.razorpay_signature || 'mock_sig_' + bookingData.id,
-              booking_id: bookingData.id,
-            }),
-          });
-
-          if (!res.ok) throw new Error('Verification failed.');
-
-          // If coupon was applied, increment coupon usage
-          if (appliedCoupon) {
-            const { doc, runTransaction } = await import('firebase/firestore');
-            const couponRef = doc(db, 'coupons', appliedCoupon);
-            await runTransaction(db, async (transaction) => {
-              const sfDoc = await transaction.get(couponRef);
-              if (sfDoc.exists()) {
-                const newCount = (sfDoc.data().usage_count || 0) + 1;
-                transaction.update(couponRef, { usage_count: newCount });
-              }
-            });
-          }
-
-          toast.success('Payment verified & booking confirmed!');
-          router.push(`/booking/success?service=${serviceData?.slug || ''}&date=${encodeURIComponent(bookingData.start_time)}&tz=${encodeURIComponent(bookingData.client_timezone)}`);
-        } catch (err) {
-          toast.error('Failed to verify payment status.');
-        } finally {
-          setPaying(false);
-        }
-      },
-      prefill: {
-        name: bookingData.client_name,
-        email: bookingData.client_email,
-        contact: bookingData.client_phone || '',
-      },
-      theme: {
-        color: '#d4af37',
-      },
-      modal: {
-        ondismiss: async function () {
-          // If payment cancelled/closed, update to pending and redirect to profile
-          try {
-            const bookingRef = doc(db, 'bookings', bookingData.id);
-            await updateDoc(bookingRef, {
-              status: 'pending',
-              payment_status: 'unpaid',
-            });
-            toast.info('Payment cancelled. Your booking status is pending.');
-            router.push('/account');
-          } catch (err) {
-            router.push('/account');
-          }
-        }
+        }, 1500);
+        return;
       }
-    };
-    if (bookingData.order_id) {
-      options.order_id = bookingData.order_id;
-    }
 
-    const rzp = new (window as any).Razorpay(options);
-    rzp.open();
+      const options: any = {
+        key: keyId,
+        amount: Math.round(Number(orderData.amount) * 100), // paise/cents
+        currency: orderData.currency || 'INR',
+        name: 'TheLifeHolics',
+        description: bookingData.service_title,
+        image: '/logo.svg',
+        order_id: orderData.order_id,
+        handler: async function (response: any) {
+          setPaying(true);
+          try {
+            const res = await fetch('/api/bookings/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                booking_id: bookingData.id,
+              }),
+            });
+
+            if (!res.ok) throw new Error('Verification failed.');
+
+            // If coupon was applied, increment coupon usage
+            if (appliedCoupon) {
+              const { doc, runTransaction } = await import('firebase/firestore');
+              const couponRef = doc(db, 'coupons', appliedCoupon);
+              await runTransaction(db, async (transaction) => {
+                const sfDoc = await transaction.get(couponRef);
+                if (sfDoc.exists()) {
+                  const newCount = (sfDoc.data().usage_count || 0) + 1;
+                  transaction.update(couponRef, { usage_count: newCount });
+                }
+              });
+            }
+
+            toast.success('Payment verified & booking confirmed!');
+            router.push(`/booking/success?service=${serviceData?.slug || ''}&date=${encodeURIComponent(bookingData.start_time)}&tz=${encodeURIComponent(bookingData.client_timezone)}`);
+          } catch (err) {
+            toast.error('Failed to verify payment status.');
+          } finally {
+            setPaying(false);
+          }
+        },
+        prefill: {
+          name: bookingData.client_name,
+          email: bookingData.client_email,
+          contact: bookingData.client_phone || '',
+        },
+        theme: {
+          color: '#d4af37',
+        },
+        modal: {
+          ondismiss: async function () {
+            // If payment cancelled/closed, update to pending and redirect to profile
+            try {
+              const bookingRef = doc(db, 'bookings', bookingData.id);
+              await updateDoc(bookingRef, {
+                status: 'pending',
+                payment_status: 'unpaid',
+              });
+              toast.info('Payment cancelled. Your booking status is pending.');
+              router.push('/account');
+            } catch (err) {
+              router.push('/account');
+            }
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(err.message || 'Error preparing Razorpay payment.');
+      setPaying(false);
+    }
   };
 
   // Simulated international card payment
@@ -414,6 +443,11 @@ function PaymentPageContent() {
               <span className="text-foreground font-display text-lg">Total Amount</span>
               <span className="text-foreground font-display text-2xl font-bold">{formatPrice(total, currency)}</span>
             </div>
+            {currency === 'USD' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
+              <div className="text-[10px] text-amber-500 text-right mt-1 font-medium">
+                Note: Charged in INR equivalent: {formatPrice(Math.round(total * (exchangeRate || 1)), 'INR')}
+              </div>
+            )}
           </div>
         </div>
 
@@ -439,9 +473,15 @@ function PaymentPageContent() {
                 Fast &amp; secure transaction processing (supporting domestic bank transfers, international cards and wallets) powered securely by Razorpay.
               </p>
 
+              {currency === 'USD' && !exchangeRate && (
+                <div className="p-4 bg-destructive/10 text-destructive text-xs font-medium rounded-2xl border border-destructive/20 leading-relaxed mb-3">
+                  International payments are currently unavailable because the exchange rate has not been configured. Please contact the administrator.
+                </div>
+              )}
+
               <Button
                 onClick={handleRazorpayPayment}
-                disabled={paying}
+                disabled={paying || (currency === 'USD' && !exchangeRate)}
                 className="w-full rounded-full py-6 text-base font-semibold shadow-glow bg-gold hover:bg-gold-hover text-gold-foreground"
               >
                 {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : `Pay Now via Razorpay (${currency})`}

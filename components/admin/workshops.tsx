@@ -43,11 +43,7 @@ export function AdminWorkshops() {
     reader.addEventListener('load', () => {
       setCropperSrc(reader.result as string);
       setCropperTarget(target);
-      if (target === 'thumbnail') {
-        setCropperAspect(1);
-      } else {
-        setCropperAspect(16/9);
-      }
+      setCropperAspect(4 / 3);
       setCropperOpen(true);
     });
     reader.readAsDataURL(file);
@@ -469,13 +465,15 @@ export function AdminWorkshops() {
         mime_type: file.type,
       };
 
+      const cacheBustedUrl = `${url}?v=${Date.now()}`;
+
       if (target === 'image') {
-        setEditingWs((prev) => ({ ...prev, image: url }));
+        setEditingWs((prev) => ({ ...prev, image: cacheBustedUrl }));
       } else if (target === 'thumbnail') {
-        setEditingWs((prev) => ({ ...prev, thumbnail: url }));
+        setEditingWs((prev) => ({ ...prev, thumbnail: cacheBustedUrl }));
       } else if (target === 'gallery') {
         const cur = editingWs?.gallery || [];
-        const itemObj = { url, caption: '', alt: '', is_featured: false };
+        const itemObj = { url: cacheBustedUrl, caption: '', alt: '', is_featured: false };
         setEditingWs((prev) => ({ ...prev, gallery: [...cur, itemObj as any] }));
       } else if (target === 'videos') {
         const cur = editingWs?.videos || [];
@@ -722,6 +720,24 @@ export function AdminWorkshops() {
                 className="mt-1.5 rounded-xl"
               />
             </div>
+            <div>
+              <Label>Duration</Label>
+              <Input
+                value={editingWs.duration || ''}
+                onChange={(e) => setEditingWs({ ...editingWs, duration: e.target.value })}
+                placeholder="e.g. 2 Hours, 2 Days"
+                className="mt-1.5 rounded-xl"
+              />
+            </div>
+            <div>
+              <Label>Location / City (Display fallback)</Label>
+              <Input
+                value={editingWs.location || ''}
+                onChange={(e) => setEditingWs({ ...editingWs, location: e.target.value })}
+                placeholder="e.g. Online, Mumbai"
+                className="mt-1.5 rounded-xl"
+              />
+            </div>
           </div>
 
           {/* Cloudinary media selection */}
@@ -739,7 +755,12 @@ export function AdminWorkshops() {
                   className="mt-1 file:bg-gold/15 file:text-gold file:border-0 file:rounded-full file:px-3 file:py-1 file:text-xs"
                 />
                 {editingWs.image && (
-                  <p className="text-[10px] text-muted-foreground mt-1 truncate">Current: {editingWs.image}</p>
+                  <div className="mt-2 space-y-1">
+                    <div className="relative w-32 aspect-[4/3] rounded-xl overflow-hidden border border-border bg-card">
+                      <img src={editingWs.image} alt="Cover Preview" className="h-full w-full object-cover" />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">Current: {editingWs.image}</p>
+                  </div>
                 )}
               </div>
               <div>
@@ -751,7 +772,12 @@ export function AdminWorkshops() {
                   className="mt-1 file:bg-gold/15 file:text-gold file:border-0 file:rounded-full file:px-3 file:py-1 file:text-xs"
                 />
                 {editingWs.thumbnail && (
-                  <p className="text-[10px] text-muted-foreground mt-1 truncate">Current: {editingWs.thumbnail}</p>
+                  <div className="mt-2 space-y-1">
+                    <div className="relative w-32 aspect-[4/3] rounded-xl overflow-hidden border border-border bg-card">
+                      <img src={editingWs.thumbnail} alt="Thumbnail Preview" className="h-full w-full object-cover" />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">Current: {editingWs.thumbnail}</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -1233,6 +1259,162 @@ export function AdminWorkshops() {
             )}
           </div>
 
+          {/* Benefits */}
+          <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-3">
+            <h4 className="font-semibold text-xs text-gold uppercase tracking-wider">Benefits</h4>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add a benefit of this workshop..."
+                value={benefitInput}
+                onChange={(e) => setBenefitInput(e.target.value)}
+                className="h-9 rounded-xl"
+              />
+              <Button
+                type="button"
+                onClick={() => {
+                  if (!benefitInput.trim()) return;
+                  const current = editingWs.benefits || [];
+                  setEditingWs({ ...editingWs, benefits: [...current, benefitInput.trim()] });
+                  setBenefitInput('');
+                }}
+                className="rounded-xl bg-gold hover:bg-gold-hover text-gold-foreground h-9 text-xs font-semibold px-4"
+              >
+                Add
+              </Button>
+            </div>
+            {editingWs.benefits && editingWs.benefits.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                {editingWs.benefits.map((b, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-xs bg-secondary/60 p-2 rounded-xl">
+                    <span>{b}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = [...(editingWs.benefits || [])];
+                        next.splice(idx, 1);
+                        setEditingWs({ ...editingWs, benefits: next });
+                      }}
+                      className="text-destructive font-bold"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Tags */}
+          <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-3">
+            <h4 className="font-semibold text-xs text-gold uppercase tracking-wider">Tags</h4>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add tag (e.g. healing, meditation)..."
+                id="tag-input"
+                className="h-9 rounded-xl"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const el = e.currentTarget;
+                    if (el.value.trim()) {
+                      const current = editingWs.tags || [];
+                      if (!current.includes(el.value.trim())) {
+                        setEditingWs({ ...editingWs, tags: [...current, el.value.trim()] });
+                      }
+                      el.value = '';
+                    }
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('tag-input') as HTMLInputElement;
+                  if (el && el.value.trim()) {
+                    const current = editingWs.tags || [];
+                    if (!current.includes(el.value.trim())) {
+                      setEditingWs({ ...editingWs, tags: [...current, el.value.trim()] });
+                    }
+                    el.value = '';
+                  }
+                }}
+                className="rounded-xl bg-gold hover:bg-gold-hover text-gold-foreground h-9 text-xs font-semibold px-4"
+              >
+                Add Tag
+              </Button>
+            </div>
+            {editingWs.tags && editingWs.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {editingWs.tags.map((t, idx) => (
+                  <span key={idx} className="bg-secondary px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
+                    {t}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = [...(editingWs.tags || [])];
+                        next.splice(idx, 1);
+                        setEditingWs({ ...editingWs, tags: next });
+                      }}
+                      className="text-destructive font-bold"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* FAQs */}
+          <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-3">
+            <h4 className="font-semibold text-xs text-gold uppercase tracking-wider">FAQs</h4>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Question"
+                value={faqForm.question}
+                onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })}
+                className="h-9 rounded-xl"
+              />
+              <Input
+                placeholder="Answer"
+                value={faqForm.answer}
+                onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
+                className="h-9 rounded-xl"
+              />
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={addFaq}
+              className="rounded-full bg-gold/25 hover:bg-gold/40 text-gold-foreground"
+            >
+              Add FAQ
+            </Button>
+            {editingWs.faqs && editingWs.faqs.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                {editingWs.faqs.map((f, idx) => (
+                  <div key={idx} className="flex justify-between items-start text-xs bg-secondary/60 p-2 rounded-xl gap-4">
+                    <div className="space-y-0.5 text-left">
+                      <p className="font-semibold">Q: {f.question}</p>
+                      <p className="text-muted-foreground">A: {f.answer}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = [...(editingWs.faqs || [])];
+                        next.splice(idx, 1);
+                        setEditingWs({ ...editingWs, faqs: next });
+                      }}
+                      className="text-destructive font-bold"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Status and settings */}
           <div className="flex items-center justify-between pt-4 border-t border-border/40 flex-wrap gap-4">
             <div className="flex gap-6">
@@ -1606,7 +1788,7 @@ export function AdminWorkshops() {
             setCropperSrc('');
           }}
           imageSrc={cropperSrc}
-          aspect={4 / 3} // Enforce 4:3 ratio for workshops
+          aspect={cropperAspect}
           onCropComplete={(croppedFile) => {
             handleUploadFile(croppedFile, cropperTarget);
           }}

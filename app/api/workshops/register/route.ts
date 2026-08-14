@@ -15,8 +15,10 @@ export async function POST(req: Request) {
       country,
       notes,
       user_id,
-      currency = 'INR',
     } = body;
+
+    const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
+    const currency = clientCountry === 'IN' ? 'INR' : 'USD';
 
     if (!workshop_id || !client_name || !client_email || !client_phone) {
       return NextResponse.json({ error: 'Missing mandatory fields.' }, { status: 400 });
@@ -91,8 +93,66 @@ export async function POST(req: Request) {
       finalPrice = Math.max(0, finalPrice - discount);
     }
 
+    // Fetch global settings to get dynamic exchange rate
+    let usdToInrRate = null;
+    try {
+      const globalSnap = await getDoc(doc(db, 'settings', 'global'));
+      if (globalSnap.exists()) {
+        const gData = globalSnap.data();
+        if (typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
+          usdToInrRate = gData.usd_to_inr_rate;
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching exchange rate in workshop registration:', err);
+    }
+
+    if (currency === 'USD' && (!usdToInrRate || isNaN(usdToInrRate))) {
+      return NextResponse.json({ error: 'International payments are currently unavailable. USD to INR exchange rate is not configured by the admin.' }, { status: 400 });
+    }
+
+    let chargePrice = finalPrice;
+    let chargeCurrency = currency;
+
+    const supportUSD = process.env.RAZORPAY_SUPPORT_USD === 'true';
+    if (chargeCurrency === 'USD' && !supportUSD) {
+      chargePrice = Math.round(chargePrice * (usdToInrRate || 1));
+      chargeCurrency = 'INR';
+    }
+
     const regId = 'wreg_' + Math.random().toString(36).substring(7).toUpperCase();
-    const orderId = 'order_ws_' + Math.random().toString(36).substring(7).toUpperCase();
+
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
+    const keySecret = process.env.RAZORPAY_KEY_SECRET || 'rzp_test_secret';
+
+    let pgOrderId = null;
+    if (chargePrice > 0 && keyId !== 'rzp_test_mockKey123') {
+      try {
+        const response = await fetch('https://api.razorpay.com/v1/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + Buffer.from(keyId + ':' + keySecret).toString('base64'),
+          },
+          body: JSON.stringify({
+            amount: Math.round(Number(chargePrice) * 100), // paise/cents
+            currency: chargeCurrency,
+            receipt: regId,
+          }),
+        });
+
+        if (response.ok) {
+          const rzpOrder = await response.json();
+          pgOrderId = rzpOrder.id;
+        } else {
+          console.error('Razorpay order creation failed for workshop:', await response.text());
+        }
+      } catch (err) {
+        console.error('Error calling Razorpay API for workshop:', err);
+      }
+    }
+
+    const orderId = pgOrderId || 'order_ws_' + Math.random().toString(36).substring(7).toUpperCase();
 
     // 5. Save pending registration record
     const regData = {
@@ -107,8 +167,13 @@ export async function POST(req: Request) {
       city: city || '',
       country: country || '',
       notes: notes || '',
-      amount: finalPrice,
-      currency,
+      amount: chargePrice,
+      currency: chargeCurrency,
+      base_amount: finalPrice,
+      base_currency: currency,
+      exchange_rate: usdToInrRate,
+      charged_amount: chargePrice,
+      charged_currency: chargeCurrency,
       payment_status: 'unpaid',
       payment_id: '',
       status: 'pending',
@@ -124,8 +189,8 @@ export async function POST(req: Request) {
       ok: true,
       registration_id: regId,
       order_id: orderId,
-      amount: finalPrice,
-      currency,
+      amount: chargePrice,
+      currency: chargeCurrency,
     });
   } catch (error: any) {
     console.error('Workshop registration creation error:', error);

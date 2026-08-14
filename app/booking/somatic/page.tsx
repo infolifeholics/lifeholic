@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { Check, Clock, Globe, Loader2, Calendar, ArrowLeft, ArrowRight, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +33,8 @@ function SomaticBookingFlowContent() {
   const [planName, setPlanName] = useState('Premium');
   const [price, setPrice] = useState(10800);
   const [survey, setSurvey] = useState<any>(null);
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [rateError, setRateError] = useState(false);
 
   const [step, setStep] = useState(0); // 0: Date & Time, 1: Details, 2: Confirm
 
@@ -89,11 +93,24 @@ function SomaticBookingFlowContent() {
         setSurvey(currentSurvey);
 
         // Fetch price dynamically from Firestore Settings to stay connected to Admin Panel edits
-        const { doc, getDoc } = await import('firebase/firestore');
-        const { db } = await import('@/lib/firebase');
         const somaticDocRef = doc(db, 'settings', 'somatic_plans');
         const somaticSnap = await getDoc(somaticDocRef);
+        const globalRef = doc(db, 'settings', 'global');
+        const globalSnap = await getDoc(globalRef);
+        let usdToInrRate = null;
+        if (globalSnap.exists()) {
+          const gData = globalSnap.data();
+          if (typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
+            usdToInrRate = gData.usd_to_inr_rate;
+            setExchangeRate(usdToInrRate);
+          }
+        }
+
         const currency = currencyForTimezone(tz);
+        if (currency === 'USD' && !usdToInrRate) {
+          setRateError(true);
+        }
+
         if (somaticSnap.exists()) {
           const sData = somaticSnap.data();
           let priceKey = 'premium_price_inr';
@@ -103,9 +120,9 @@ function SomaticBookingFlowContent() {
             priceKey = 'elite_price_inr';
           }
           const rawPrice = sData[priceKey] || currentPrice;
-          setPrice(currency === 'USD' ? Math.round(rawPrice / 85) : rawPrice);
+          setPrice(currency === 'USD' && usdToInrRate ? Math.round(rawPrice / usdToInrRate) : rawPrice);
         } else {
-          setPrice(currency === 'USD' ? Math.round(currentPrice / 85) : currentPrice);
+          setPrice(currency === 'USD' && usdToInrRate ? Math.round(currentPrice / usdToInrRate) : currentPrice);
         }
       } catch (e) {
         console.error('Error fetching service details:', e);
@@ -519,10 +536,20 @@ function SomaticBookingFlowContent() {
               )}
 
               {/* Navigation buttons */}
+              {currencyForTimezone(tz) === 'USD' && rateError && (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex gap-3 text-xs text-destructive mb-3">
+                  <ShieldAlert className="h-5 w-5 shrink-0" />
+                  <div>
+                    <span className="font-semibold block">International Bookings Unavailable</span>
+                    International bookings are currently unavailable because the exchange rate has not been configured by the admin. Please contact the administrator.
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between pt-4 border-t border-border/20">
                 <Button variant="ghost" onClick={() => setStep(1)} className="rounded-full">Back</Button>
                 <Button
-                  disabled={submitting}
+                  disabled={submitting || (currencyForTimezone(tz) === 'USD' && rateError)}
                   onClick={handleBook}
                   className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground px-8 font-semibold shadow-soft"
                 >

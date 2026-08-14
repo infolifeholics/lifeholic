@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
 import Script from 'next/script';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export function CheckoutView() {
   const { items, subtotal, clear } = useCart();
@@ -57,17 +59,40 @@ export function CheckoutView() {
     }
   }, [user]);
 
-  const hasPhysical = items.some((i) => i.type === 'physical');
-  const baseShipping = subtotal > 1500 || !hasPhysical ? 0 : 149;
-  const discount = applied?.discount || 0;
-  const shipping = Math.max(0, baseShipping);
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [rateError, setRateError] = useState(false);
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'global')).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (typeof data.usd_to_inr_rate === 'number' && data.usd_to_inr_rate > 0) {
+          setExchangeRate(data.usd_to_inr_rate);
+          return;
+        }
+      }
+      setRateError(true);
+    }).catch(err => {
+      console.error(err);
+      setRateError(true);
+    });
+  }, []);
 
-  // If USD is detected, we perform simple conversion (e.g. 1 USD = 85 INR)
-  // Check if we need to convert items prices or subtotal
-  const currencyRate = detectedCurrency === 'USD' ? 85 : 1;
-  const convertedSubtotal = subtotal / currencyRate;
+  const hasPhysical = items.some((i) => i.type === 'physical');
+  const currencyRate = detectedCurrency === 'USD' ? (exchangeRate || 1) : 1;
+
+  const convertedSubtotal = items.reduce((acc, item) => {
+    const price = detectedCurrency === 'USD' 
+      ? (item.price_usd || Math.round((item.price_inr || item.price) / (exchangeRate || 1))) 
+      : (item.price_inr || item.price);
+    return acc + price * item.quantity;
+  }, 0);
+
+  const discount = applied?.discount || 0;
   const convertedDiscount = discount / currencyRate;
-  const convertedShipping = shipping / currencyRate;
+
+  const baseShippingInr = subtotal > 1500 || !hasPhysical ? 0 : 149;
+  const convertedShipping = detectedCurrency === 'USD' ? Math.round(baseShippingInr / (exchangeRate || 1)) : baseShippingInr;
+
   const total = Math.max(0, convertedSubtotal - convertedDiscount + convertedShipping);
 
   const applyCoupon = async () => {
@@ -128,7 +153,7 @@ export function CheckoutView() {
             id: i.id,
             slug: i.slug,
             name: i.name,
-            price: i.price / currencyRate,
+            price: detectedCurrency === 'USD' ? (i.price_usd || Math.round((i.price_inr || i.price) / (exchangeRate || 1))) : (i.price_inr || i.price),
             quantity: i.quantity,
             image: i.image,
             type: i.type,
@@ -181,8 +206,8 @@ export function CheckoutView() {
 
       const options = {
         key: keyId,
-        amount: Math.round(Number(total) * 100),
-        currency: 'INR',
+        amount: Math.round(Number(data.total) * 100),
+        currency: detectedCurrency,
         name: 'TheLifeHolics',
         description: `Order ${data.number}`,
         image: '/logo.svg',
@@ -323,7 +348,13 @@ export function CheckoutView() {
             </div>
           </fieldset>
 
-          <Button type="submit" size="lg" disabled={placing} className="w-full rounded-full">
+          {detectedCurrency === 'USD' && !exchangeRate && (
+            <div className="p-4 bg-destructive/10 text-destructive text-sm font-medium rounded-2xl border border-destructive/20 leading-relaxed">
+              International payments are currently unavailable because the exchange rate has not been configured. Please contact the administrator.
+            </div>
+          )}
+
+          <Button type="submit" size="lg" disabled={placing || (detectedCurrency === 'USD' && !exchangeRate)} className="w-full rounded-full">
             {placing ? (<><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Processing payment…</>) : `Pay Now · ${formatPrice(total, detectedCurrency)}`}
           </Button>
         </form>
@@ -339,7 +370,7 @@ export function CheckoutView() {
                   <p className="text-sm font-medium text-foreground">{i.name}</p>
                   <p className="text-xs text-muted-foreground">Qty {i.quantity}</p>
                 </div>
-                <span className="text-sm font-medium text-foreground">{formatPrice((i.price / currencyRate) * i.quantity, detectedCurrency)}</span>
+                <span className="text-sm font-medium text-foreground">{formatPrice((detectedCurrency === 'USD' ? (i.price_usd || Math.round((i.price_inr || i.price) / (exchangeRate || 1))) : (i.price_inr || i.price)) * i.quantity, detectedCurrency)}</span>
               </li>
             ))}
           </ul>
@@ -371,8 +402,13 @@ export function CheckoutView() {
           <dl className="mt-5 space-y-3 border-t border-border/50 pt-5 text-sm">
             <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, detectedCurrency)}</dd></div>
             {discount > 0 && <div className="flex justify-between"><dt className="text-success">Discount</dt><dd className="font-medium text-success">−{formatPrice(convertedDiscount, detectedCurrency)}</dd></div>}
-            <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{shipping === 0 ? 'Free' : formatPrice(convertedShipping, detectedCurrency)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{convertedShipping === 0 ? 'Free' : formatPrice(convertedShipping, detectedCurrency)}</dd></div>
             <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, detectedCurrency)}</dd></div>
+            {detectedCurrency === 'USD' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
+              <div className="text-[10px] text-amber-500 text-right mt-1 font-medium">
+                Note: Charged in INR equivalent: {formatPrice(Math.round(total * (exchangeRate || 1)), 'INR')}
+              </div>
+            )}
           </dl>
         </aside>
       </div>

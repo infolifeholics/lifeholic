@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, onSnapshot, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, addDoc, doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '@/components/providers/auth-provider';
 import Link from 'next/link';
 import { AuthModal } from '@/components/auth/auth-modal';
@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 import { useParams } from 'next/navigation';
+import Script from 'next/script';
 
 export default function WorkshopDetailsPage() {
   const unwrappedParams = useParams();
@@ -26,6 +27,27 @@ export default function WorkshopDetailsPage() {
   const [ws, setWs] = useState<Workshop | null>(null);
   const [loading, setLoading] = useState(true);
   const [authOpen, setAuthOpen] = useState(false);
+  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+
+  useEffect(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
+      const isIndia = tz.toLowerCase().includes('kolkata') || tz.toLowerCase().includes('calcutta') || tz.toLowerCase().includes('india');
+      setCurrency(isIndia ? 'INR' : 'USD');
+    } catch {
+      setCurrency('INR');
+    }
+
+    getDoc(doc(db, 'settings', 'global')).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (typeof data.usd_to_inr_rate === 'number' && data.usd_to_inr_rate > 0) {
+          setExchangeRate(data.usd_to_inr_rate);
+        }
+      }
+    }).catch(err => console.error(err));
+  }, []);
 
   // Registration Form States
   const [registering, setRegistering] = useState(false);
@@ -211,8 +233,7 @@ export default function WorkshopDetailsPage() {
   const left = Math.max(0, (ws.seats_total || 0) - (ws.seats_booked || 0));
   const todayStr = new Date().toLocaleDateString('en-CA');
   const isCompleted = ws.status === 'completed' || ws.status === 'cancelled' || (ws.date && (ws.end_date || ws.date) < todayStr);
-  const isUpcoming = !ws.date || ws.date > todayStr;
-  const isCurrent = ws.date && todayStr >= ws.date && todayStr <= (ws.end_date || ws.date);
+  const isUpcoming = !isCompleted;
 
   const handleRegisterNowClick = () => {
     if (!user) {
@@ -245,38 +266,97 @@ export default function WorkshopDetailsPage() {
           notes,
           user_id: user?.uid,
           coupon_code: appliedCoupon || null,
+          currency,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed.');
 
-      // Simulate payment verification callback
-      toast.loading('Verifying transaction token...', { id: toastId });
-      const verifyRes = await fetch('/api/workshops/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          registration_id: data.registration_id,
-          razorpay_payment_id: 'pay_ws_' + Math.random().toString(36).substring(7).toUpperCase(),
-          razorpay_signature: 'sig_ws_' + Math.random().toString(36).substring(7).toUpperCase(),
-        }),
-      });
+      const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
 
-      const verifyData = await verifyRes.json();
-      if (!verifyRes.ok) throw new Error(verifyData.error || 'Verification failed.');
+      if (keyId === 'rzp_test_mockKey123') {
+        toast.loading('Verifying transaction token...', { id: toastId });
+        const verifyRes = await fetch('/api/workshops/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            registration_id: data.registration_id,
+            razorpay_payment_id: 'pay_ws_' + Math.random().toString(36).substring(7).toUpperCase(),
+            razorpay_signature: 'sig_ws_' + Math.random().toString(36).substring(7).toUpperCase(),
+          }),
+        });
 
-      toast.success('Registration successful! Redirecting to ticket...', { id: toastId });
-      window.location.href = `/workshops/${data.registration_id}/ticket`;
+        const verifyData = await verifyRes.json();
+        if (!verifyRes.ok) throw new Error(verifyData.error || 'Verification failed.');
+
+        toast.success('Registration successful! Redirecting to ticket...', { id: toastId });
+        window.location.href = `/workshops/${data.registration_id}/ticket`;
+        return;
+      }
+
+      toast.dismiss(toastId);
+
+      const options = {
+        key: keyId,
+        amount: Math.round(Number(data.amount) * 100), // paise/cents
+        currency: data.currency || 'INR',
+        name: 'TheLifeHolics',
+        description: ws.title,
+        image: '/logo.svg',
+        order_id: data.order_id,
+        handler: async function (response: any) {
+          setPaying(true);
+          const verifyToastId = toast.loading('Verifying payment...');
+          try {
+            const verifyRes = await fetch('/api/workshops/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                registration_id: data.registration_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(verifyData.error || 'Verification failed.');
+
+            toast.success('Registration successful! Redirecting to ticket...', { id: verifyToastId });
+            window.location.href = `/workshops/${data.registration_id}/ticket`;
+          } catch (err: any) {
+            toast.error(err.message || 'Payment verification failed.', { id: verifyToastId });
+            setPaying(false);
+          }
+        },
+        prefill: {
+          name: clientName,
+          email: clientEmail,
+          contact: clientPhone || '',
+        },
+        theme: {
+          color: '#d4af37',
+        },
+        modal: {
+          ondismiss: function () {
+            toast.info('Payment cancelled. You can retry registration.');
+            setPaying(false);
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
     } catch (err: any) {
-      toast.error(err.message || 'Payment failed.', { id: toastId });
-    } finally {
+      toast.dismiss(toastId);
+      toast.error(err.message || 'Payment failed.');
       setPaying(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-background-2/30 py-16 sm:py-24 text-left">
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
         
         {/* Hero banner */}
@@ -567,7 +647,7 @@ export default function WorkshopDetailsPage() {
                 </div>
               </div>
 
-              {isCurrent ? (
+              {isUpcoming ? (
                 <>
                   <div className="border-t border-border/40 pt-4 flex justify-between items-center text-xs">
                     <span className="text-muted-foreground">Availability</span>
@@ -642,23 +722,46 @@ export default function WorkshopDetailsPage() {
                       <div className="pt-2 border-t border-border/40 space-y-1.5 text-[11px]">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Original Ticket Price:</span>
-                          <span className="font-semibold text-foreground">{formatPrice(ws.price_inr, 'INR')}</span>
+                          <span className="font-semibold text-foreground">
+                            {currency === 'USD' 
+                              ? formatPrice(ws.price_usd || Math.round(ws.price_inr / (exchangeRate || 1)), 'USD') 
+                              : formatPrice(ws.price_inr, 'INR')}
+                          </span>
                         </div>
                         {discount > 0 && (
                           <div className="flex justify-between text-emerald-500 font-semibold">
                             <span>Promo Discount:</span>
-                            <span>-{formatPrice(discount, 'INR')}</span>
+                            <span>
+                              {currency === 'USD' 
+                                ? `-${formatPrice(discount / (exchangeRate || 1), 'USD')}` 
+                                : `-${formatPrice(discount, 'INR')}`}
+                            </span>
                           </div>
                         )}
                         <div className="flex justify-between border-t border-border/20 pt-1.5 font-bold text-xs">
                           <span>Total Payable:</span>
-                          <span className="text-gold">{formatPrice(ws.price_inr - discount, 'INR')}</span>
+                          <span className="text-gold">
+                            {currency === 'USD' 
+                              ? formatPrice((ws.price_usd || Math.round(ws.price_inr / (exchangeRate || 1))) - (discount / (exchangeRate || 1)), 'USD') 
+                              : formatPrice(ws.price_inr - discount, 'INR')}
+                          </span>
                         </div>
+                        {currency === 'USD' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
+                          <div className="text-[10px] text-amber-500 text-right mt-1 font-medium">
+                            Note: Charged in INR equivalent: {formatPrice(Math.round(((ws.price_usd || Math.round(ws.price_inr / (exchangeRate || 1))) - (discount / (exchangeRate || 1))) * (exchangeRate || 1)), 'INR')}
+                          </div>
+                        )}
                       </div>
+
+                      {currency === 'USD' && !exchangeRate && (
+                        <div className="p-3 bg-destructive/10 text-destructive text-[11px] font-medium rounded-2xl border border-destructive/20 leading-relaxed mt-2 text-center">
+                          International payments are currently unavailable because the exchange rate has not been configured. Please contact the administrator.
+                        </div>
+                      )}
 
                       <Button 
                         type="submit" 
-                        disabled={paying}
+                        disabled={paying || (currency === 'USD' && !exchangeRate)}
                         className="w-full rounded-full py-6 bg-gold hover:bg-gold-hover text-gold-foreground font-semibold mt-2"
                       >
                         {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Confirm &amp; Pay'}
@@ -666,15 +769,6 @@ export default function WorkshopDetailsPage() {
                     </form>
                   )}
                 </>
-              ) : isUpcoming ? (
-                <div className="border-t border-border/40 pt-4 text-center space-y-2">
-                  <span className="inline-block rounded-full bg-gold/10 border border-gold/20 px-3 py-1 text-xs text-gold font-semibold">
-                    Registrations Opening Soon
-                  </span>
-                  <p className="text-[10px] text-muted-foreground">
-                    This workshop is scheduled to start on {ws.date ? new Date(ws.date).toLocaleDateString() : 'TBD'}.
-                  </p>
-                </div>
               ) : (
                 <div className="border-t border-border/40 pt-4 text-center space-y-2">
                   <span className="inline-block rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground font-semibold">

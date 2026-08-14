@@ -28,6 +28,7 @@ type AdminSettings = {
   meeting_provider?: string;
   reminder_hours_before?: number;
   google_meet_link?: string;
+  usd_to_inr_rate?: number;
 };
 
 type CertificateSettings = {
@@ -239,6 +240,7 @@ export function AdminSettingsPanel() {
     meeting_provider: 'gmeet',
     reminder_hours_before: 24,
     google_meet_link: '',
+    usd_to_inr_rate: 85,
   });
 
   const [certSettings, setCertSettings] = useState<CertificateSettings>(DEFAULT_CERTIFICATE_SETTINGS);
@@ -436,6 +438,21 @@ export function AdminSettingsPanel() {
                   <Input
                     value={globalSettings.business_name || ''}
                     onChange={(e) => setGlobalSettings({ ...globalSettings, business_name: e.target.value })}
+                    className="mt-1.5 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label>International Payment Exchange Rate (1 USD = ₹X)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    value={globalSettings.usd_to_inr_rate ?? 85}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setGlobalSettings({ ...globalSettings, usd_to_inr_rate: isNaN(val) ? 85 : val });
+                    }}
                     className="mt-1.5 rounded-xl"
                   />
                 </div>
