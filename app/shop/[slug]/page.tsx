@@ -6,6 +6,7 @@ import { getProducts, getProductBySlug } from '@/lib/data';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { AddToCart } from '@/components/shop/add-to-cart';
+import { ProductFaq } from '@/components/shop/product-faq';
 import { ProductWishlistButton } from '@/components/shop/product-wishlist-button';
 import { formatPrice } from '@/lib/format';
 import { getProductRoute } from '@/lib/routes';
@@ -151,6 +152,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
 
 
+
+        {/* Product FAQ */}
+        <ProductFaq />
 
         {/* Related */}
         <section className="mt-20 pb-10">

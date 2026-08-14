@@ -72,8 +72,8 @@ export function SiteFooter() {
           <div>
             <Logo className="text-white [&&_img]:invert [&&_img]:brightness-[200]" />
             <p className="mt-5 max-w-xs text-pretty text-sm leading-relaxed text-white/80 font-sans">
-              A calm, safe space for spiritual psychology, emotional healing and mindful growth —
-              online , for clients across the world.
+              Helping you understand your inner world—through your Dreams, Emotions, Patterns, Healing & Energy. Because true
+              Clarity begins within.
             </p>
             <div className="mt-6 flex items-center gap-2">
               {[
@@ -92,7 +92,7 @@ export function SiteFooter() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 glass text-white/80 transition-all hover:-translate-y-1 hover:border-gold hover:text-white hover:scale-105"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 glass text-white/80 transition-all duration-300 hover:-translate-y-1 hover:border-gold hover:bg-gold hover:text-black hover:scale-110 hover:shadow-[0_0_14px_rgba(212,175,55,0.5)]"
                 >
                   <Icon className="h-[18px] w-[18px]" />
                 </a>
@@ -102,15 +102,19 @@ export function SiteFooter() {
 
           {COLS.map((col, idx) => (
             <div key={idx}>
-              <h4 className="font-display text-lg font-medium text-white">{col.title}</h4>
+              <h4 className="font-display text-lg font-medium text-gold underline underline-offset-4 decoration-gold/50">{col.title}</h4>
               <ul className="mt-4 space-y-3">
                 {col.links.map((l) => (
                   <li key={l.href}>
                     <Link
                       href={l.href}
-                      className="text-sm text-white/85 transition-colors hover:text-white"
+                      className="group relative inline-block text-sm text-white/80 transition-all duration-300 hover:text-black"
                     >
-                      {l.label}
+                      <span className="absolute inset-0 -mx-2 -my-0.5 scale-x-0 rounded-md bg-gold transition-transform duration-300 ease-out group-hover:scale-x-100" />
+                      <span className="relative flex items-center gap-1.5">
+                        <span className="text-gold text-xs transition-colors duration-300 group-hover:text-black">▸</span>
+                        {l.label}
+                      </span>
                     </Link>
                   </li>
                 ))}
@@ -119,9 +123,10 @@ export function SiteFooter() {
           ))}
 
           <div>
-            <h4 className="font-display text-lg font-medium text-white">Leave your Email Here</h4>
+            <h4 className="font-display text-lg font-medium text-gold underline underline-offset-4 decoration-gold/50">Stay Connected</h4>
             <p className="mt-4 text-sm text-white/80">
-              Join our growing community of like-minded individuals on a journey of healing and growth.
+              Drop your email below to stay connected with LifeHolics.
+              Be the first to receive our latest insights, updates, and future newsletters—straight to your inbox.
             </p>
             <form onSubmit={subscribe} className="mt-5 flex gap-2">
               <Input
@@ -132,7 +137,7 @@ export function SiteFooter() {
                 className="rounded-full bg-white/5 border border-white/10 text-white placeholder:text-white/60 focus:ring-1 focus:ring-gold/60"
                 required
               />
-              <Button type="submit" className="rounded-full px-5 bg-gold text-gold-foreground hover:scale-105 hover:bg-gold/90 transition-all">
+              <Button type="submit" className="rounded-full px-5 bg-gold text-black font-semibold transition-all duration-300 hover:scale-110 hover:bg-gold/80 hover:shadow-[0_0_18px_rgba(212,175,55,0.6)] active:scale-95">
                 Join
               </Button>
             </form>

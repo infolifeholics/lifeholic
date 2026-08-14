@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { WorkshopFaq } from '@/components/shop/workshop-faq';
 
 import { useParams } from 'next/navigation';
 import Script from 'next/script';
@@ -783,6 +784,7 @@ export default function WorkshopDetailsPage() {
           </div>
         </div>
       </div>
+      <WorkshopFaq />
       <AuthModal 
         isOpen={authOpen} 
         onClose={() => setAuthOpen(false)} 

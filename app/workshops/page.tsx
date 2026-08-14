@@ -9,6 +9,7 @@ import { formatPrice } from '@/lib/format';
 import type { Workshop } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { WorkshopFaq } from '@/components/shop/workshop-faq';
 
 export default function WorkshopsPage() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
@@ -128,6 +129,8 @@ export default function WorkshopsPage() {
             </div>
           )}
         </div>
+
+        <WorkshopFaq />
 
       </div>
     </div>

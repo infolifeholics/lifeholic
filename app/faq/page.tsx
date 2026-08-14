@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
-import { getAllFaqs } from '@/lib/data';
 import { SectionHeading } from '@/components/site/section-heading';
-import { FaqList } from '@/components/site/faq-list';
-import { Reveal } from '@/components/site/reveal';
+import { GeneralFaq } from '@/components/site/general-faq';
 
 export const metadata: Metadata = {
   title: 'FAQ',
@@ -10,16 +8,13 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://thelifeholics.com/faq' },
 };
 
-export default async function FaqPage() {
-  const faqs = await getAllFaqs();
+export default function FaqPage() {
   return (
     <div className="pt-32 sm:pt-40">
       <section className="py-8">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <SectionHeading eyebrow="Good to know" title="Frequently asked questions" />
-          <Reveal delay={0.1} className="mt-12">
-            <FaqList items={faqs} defaultOpen={1} />
-          </Reveal>
+          <GeneralFaq />
         </div>
       </section>
     </div>

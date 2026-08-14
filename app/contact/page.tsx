@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import { SectionHeading } from '@/components/site/section-heading';
 import { ContactForm, ContactInfo } from '@/components/contact/contact-form';
-import { getAllFaqs } from '@/lib/data';
-import { FaqList } from '@/components/site/faq-list';
 import { Reveal } from '@/components/site/reveal';
+import { GeneralFaq } from '@/components/site/general-faq';
 
 export const metadata: Metadata = {
   title: 'Contact',
@@ -11,9 +10,7 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://thelifeholics.com/contact' },
 };
 
-export default async function ContactPage() {
-  const faqs = await getAllFaqs();
-  const generalFaqs = faqs.filter((f) => f.scope === 'general');
+export default function ContactPage() {
   return (
     <div className="pt-32 sm:pt-40">
       <section className="py-8">
@@ -40,9 +37,7 @@ export default async function ContactPage() {
       <section className="py-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <SectionHeading eyebrow="Good to know" title="Quick questions" />
-          <Reveal delay={0.1} className="mt-10">
-            <FaqList items={generalFaqs} defaultOpen={1} />
-          </Reveal>
+          <GeneralFaq />
         </div>
       </section>
     </div>

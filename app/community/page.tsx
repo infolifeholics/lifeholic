@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { SectionHeading } from '@/components/site/section-heading';
 import { Reveal } from '@/components/site/reveal';
 import { CommunityForm } from '@/components/community/community-form';
+import { CommunityFaq } from '@/components/community/community-faq';
 
 export const metadata: Metadata = {
   title: 'Join the Lifeholics Exclusive Community',
@@ -68,6 +69,8 @@ export default function CommunityPage() {
           </div>
         </div>
       </section>
+
+      <CommunityFaq />
     </div>
   );
 }
