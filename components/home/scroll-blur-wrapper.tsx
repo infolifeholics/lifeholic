@@ -9,8 +9,7 @@ export function ScrollBlurWrapper({ children }: { children: React.ReactNode }) {
   // Smooth out the scroll changes
   const smoothScrollY = useSpring(scrollY, { damping: 40, stiffness: 180 });
 
-  // Map scroll distance (0 to 500px) to backdrop-blur and bg opacity for a very soft, gradual transition
-  const backdropBlur = useTransform(smoothScrollY, [0, 500], ['blur(0px)', 'blur(2px)']);
+  // Map scroll distance (0 to 500px) to bg opacity for a very soft, gradual transition
   const bgOpacity = useTransform(
     smoothScrollY,
     [0, 500],
@@ -20,8 +19,6 @@ export function ScrollBlurWrapper({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
       style={{
-        backdropFilter: backdropBlur,
-        WebkitBackdropFilter: backdropBlur,
         backgroundColor: bgOpacity,
       }}
       className="relative z-10"

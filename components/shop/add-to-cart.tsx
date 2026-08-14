@@ -89,7 +89,7 @@ export function AddToCart({
           >
             <Minus className="h-4 w-4" />
           </button>
-          <span className="w-10 text-center text-sm font-semibold">{cartItem.quantity}</span>
+          <span className="w-10 text-center text-sm font-semibold text-neutral-900">{cartItem.quantity}</span>
           <button
             onClick={() => {
               setQuantity(product.id, cartItem.quantity + 1);
@@ -123,7 +123,7 @@ export function AddToCart({
           >
             <Minus className="h-4 w-4" />
           </button>
-          <span className="w-10 text-center text-sm font-medium">{qty}</span>
+          <span className="w-10 text-center text-sm font-medium text-neutral-900">{qty}</span>
           <button
             onClick={() => setQty((q) => q + 1)}
             className="inline-flex h-11 w-11 items-center justify-center rounded-r-full text-foreground hover:bg-secondary"
@@ -151,7 +151,7 @@ export function AddToCart({
         ) : outOfStock ? (
           'Sold out'
         ) : (
-          `Add to bag · ${formatPrice(price, currency)}`
+          `Add to bag (${qty}) · ${formatPrice(price * qty, currency)}`
         )}
       </Button>
     </div>

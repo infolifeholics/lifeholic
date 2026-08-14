@@ -170,7 +170,7 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                       <img
                         src={p.image}
                         alt={p.name}
-                        className="h-full w-full object-cover transition-transform duration-1000 ease-soft group-hover:scale-105"
+                        className="h-full w-full object-contain transition-transform duration-1000 ease-soft group-hover:scale-105"
                       />
                       <div className="absolute right-3 top-3">
                         <ProductWishlistButton productId={p.id} />
@@ -244,7 +244,7 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                                     >
                                       <Minus className="h-3 w-3" />
                                     </button>
-                                    <span className="w-5 text-center text-xs font-semibold">{cartItem.quantity}</span>
+                                    <span className="w-5 text-center text-xs font-semibold text-neutral-900">{cartItem.quantity}</span>
                                     <button
                                       onClick={(e) => {
                                         e.preventDefault();

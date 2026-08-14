@@ -151,7 +151,7 @@ export function ProductGallery({ gallery, productName, productId }: ProductGalle
         onMouseMove={handleMouseMove}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
-        className="relative aspect-square overflow-hidden rounded-[2rem] border border-border/60 bg-card shadow-float select-none group/gallery"
+        className="relative aspect-[4/3] overflow-hidden rounded-[2rem] border border-border/60 bg-card shadow-float select-none group/gallery"
       >
         {/* Wishlist item */}
         <div className="absolute right-4 top-4 z-10">
@@ -184,14 +184,14 @@ export function ProductGallery({ gallery, productName, productId }: ProductGalle
                 setLightboxIndex(i);
                 setLightboxOpen(true);
               }}
-              className="relative min-w-full w-full h-full aspect-square scroll-snap-align-start shrink-0 cursor-zoom-in"
+              className="relative min-w-full w-full h-full aspect-[4/3] scroll-snap-align-start shrink-0 cursor-zoom-in"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img 
                 src={src} 
                 alt={`${productName} - Image ${i + 1}`} 
                 className={cn(
-                  "h-full w-full object-cover transition-transform duration-100 ease-out",
+                  "h-full w-full object-contain transition-transform duration-100 ease-out",
                   isHovering && activeIndex === i && "md:scale-[1.8]"
                 )}
                 style={

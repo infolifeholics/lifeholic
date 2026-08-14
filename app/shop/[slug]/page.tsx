@@ -159,11 +159,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             {relatedFinal.map((p) => (
               <Link key={p.id} href={getProductRoute(p.slug)} className="group block h-full">
                 <article className="group h-full overflow-hidden rounded-3xl border border-border/60 bg-card/60 shadow-soft transition-all duration-500 ease-soft hover:-translate-y-1.5 hover:shadow-float">
-                  <div className="relative aspect-square overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.image} alt={p.name} className="h-full w-full object-cover transition-transform duration-1000 ease-soft group-hover:scale-105" />
+                  <div className="p-3">
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border/40 bg-secondary/10">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.image} alt={p.name} className="h-full w-full object-contain transition-transform duration-1000 ease-soft group-hover:scale-105" />
+                    </div>
                   </div>
-                  <div className="p-4">
+                  <div className="p-4 pt-1">
                     <h3 className="font-display text-base font-medium text-foreground">{p.name}</h3>
                     <p className="mt-1 text-sm font-medium text-foreground">{formatPrice(p.price_inr, 'INR')}</p>
                   </div>
