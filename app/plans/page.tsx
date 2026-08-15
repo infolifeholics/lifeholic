@@ -296,7 +296,7 @@ export default function SomaticPlansPage() {
       return part;
     });
   };
-  const [billingCycle, setBillingCycle] = useState<'day' | 'total'>('total');
+  const billingCycle = 'total';
   const [tz, setTz] = useState(detectTimezone());
   const currency = currencyForTimezone(tz);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
@@ -454,9 +454,6 @@ export default function SomaticPlansPage() {
   };
 
   const formatPlanPrice = (priceVal: number) => {
-    if (billingCycle === 'day') {
-      return Math.round(priceVal / 30);
-    }
     return priceVal;
   };
 
@@ -562,7 +559,7 @@ export default function SomaticPlansPage() {
             <div className="mt-8 pt-6 border-t border-border/30 bg-black p-5 rounded-2xl border border-gold/20">
               <h3 className="text-sm font-bold uppercase tracking-wider text-gold mb-3 flex items-center gap-1.5">
                 <ShieldCheck className="h-4.5 w-4.5 text-gold" />
-                Energetic Insight:
+                your personalised Energetic analysis :
               </h3>
               <p className="text-sm leading-relaxed text-white/80 font-medium pl-6 relative">
                 <span className="absolute left-0 top-0 text-2xl text-gold/30 font-serif leading-none">“</span>
@@ -571,25 +568,6 @@ export default function SomaticPlansPage() {
             </div>
           </div>
 
-          {/* Pricing Toggle Controls */}
-          <div className="flex justify-center mb-10">
-            <div className="bg-secondary/60 p-1 rounded-full border border-border/40 inline-flex items-center gap-1">
-              <button
-                onClick={() => setBillingCycle('day')}
-                className={`px-5 py-2 rounded-full text-xs font-semibold transition-all ${billingCycle === 'day' ? 'bg-gold text-gold-foreground' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-              >
-                Price / day
-              </button>
-              <button
-                onClick={() => setBillingCycle('total')}
-                className={`px-5 py-2 rounded-full text-xs font-semibold transition-all ${billingCycle === 'total' ? 'bg-gold text-gold-foreground' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-              >
-                Total / 30 days
-              </button>
-            </div>
-          </div>
 
           {/* Two Dynamic Recommended Plans Grid */}
           <div className={`grid gap-8 items-stretch justify-center max-w-4xl mx-auto grid-cols-1 md:grid-cols-2`}>
@@ -635,7 +613,7 @@ export default function SomaticPlansPage() {
                       <span className="font-display text-4xl font-semibold text-gold">
                         {formatPrice(priceVal, currency)}
                       </span>
-                      <span className="text-xs text-muted-foreground ml-1">/ {billingCycle === 'day' ? 'day' : 'session'}</span>
+                      <span className="text-xs text-muted-foreground ml-1">/ {planKey === 'essential' ? 'session' : 'program'}</span>
                       {(() => {
                         const planSess = planServices?.[planKey]?.sessions || (planKey === 'essential' ? 1 : planKey === 'premium' ? 4 : 8);
                         const planDuration = planServices?.[planKey]?.duration || (planKey === 'elite' ? 90 : 30);

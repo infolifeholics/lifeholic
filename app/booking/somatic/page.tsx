@@ -31,6 +31,7 @@ function SomaticBookingFlowContent() {
   const continueBtnRef = useRef<HTMLDivElement>(null);
 
   const [planName, setPlanName] = useState('Premium');
+  const [planTitle, setPlanTitle] = useState('4-Week Deep Transformation Program');
   const [price, setPrice] = useState(10800);
   const [survey, setSurvey] = useState<any>(null);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
@@ -75,6 +76,7 @@ function SomaticBookingFlowContent() {
         let currentPlan = 'Premium';
         let currentPrice = 11000;
         let currentSurvey = null;
+        let currentTitle = '4-Week Deep Transformation Program';
 
         if (stored) {
           const parsed = JSON.parse(stored);
@@ -82,14 +84,17 @@ function SomaticBookingFlowContent() {
           currentPrice = parsed.price || 11000;
           currentSurvey = parsed.survey || null;
           finalServiceId = parsed.service_id || finalServiceId;
+          currentTitle = parsed.title || (currentPlan.toLowerCase() === 'essential' ? 'Personal Healing & Clarity Session' : currentPlan.toLowerCase() === 'elite' ? 'Ancestral Healing Session' : '4-Week Deep Transformation Program');
         } else {
           const qPlan = search.get('plan') || 'premium';
           currentPlan = qPlan.charAt(0).toUpperCase() + qPlan.slice(1);
           const qServiceId = search.get('service_id') || `somatic_${qPlan}`;
           finalServiceId = qServiceId;
+          currentTitle = currentPlan.toLowerCase() === 'essential' ? 'Personal Healing & Clarity Session' : currentPlan.toLowerCase() === 'elite' ? 'Ancestral Healing Session' : '4-Week Deep Transformation Program';
         }
 
         setPlanName(currentPlan);
+        setPlanTitle(currentTitle);
         setSurvey(currentSurvey);
 
         // Fetch price dynamically from Firestore Settings to stay connected to Admin Panel edits
@@ -569,15 +574,14 @@ function SomaticBookingFlowContent() {
             <div className="space-y-4">
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-widest block font-bold">Category</span>
-                <span className="text-sm font-semibold text-foreground">{planName} Somatic Care</span>
+                <span className="text-sm font-semibold text-foreground">{planTitle}</span>
               </div>
 
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-widest block font-bold">Session Duration</span>
                 <span className="text-sm text-foreground flex items-center gap-1.5 mt-0.5">
                   <Clock className="h-4 w-4 text-gold" />
-                  {planName.toLowerCase().includes('essential') ? '30 minutes' : 
-                   planName.toLowerCase().includes('elite') ? '90 minutes' : '60 minutes'}
+                  {planName.toLowerCase().includes('elite') ? '90 minutes' : '30 minutes'}
                 </span>
               </div>
 

@@ -16,7 +16,7 @@ export default function CommunityPage() {
       <section className="py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
-            eyebrow="Exclusive Membership"
+            eyebrow="Exclusive Community"
             title="Join the Lifeholics Community"
             description="A thoughtfully curated space for those genuinely committed to personal growth, healing, and evolving together."
           />
@@ -31,19 +31,19 @@ export default function CommunityPage() {
                 <h3 className="font-display text-2xl font-medium text-white">
                   About Our Community
                 </h3>
-                
+
                 <p className="text-sm leading-relaxed text-white/80">
                   The Lifeholics Community is a small, intimate, and thoughtfully curated space for people who are genuinely committed to their personal growth and healing journey.
                 </p>
-                
+
                 <p className="text-sm leading-relaxed text-white/80">
                   This is not just another community—it’s a place for those who are willing to look within, understand the deeper meaning of life’s experiences, and grow alongside like-minded individuals.
                 </p>
-                
+
                 <p className="text-sm leading-relaxed text-white/80">
                   We come together through monthly gatherings, meaningful discussions, and ongoing support to help each other evolve.
                 </p>
-                
+
                 <div className="border-t border-white/10 pt-6">
                   <h4 className="font-semibold text-white text-sm mb-3">
                     Application Details
@@ -56,7 +56,7 @@ export default function CommunityPage() {
                     <li>How you believe the community can support your journey</li>
                   </ul>
                 </div>
-                
+
                 <p className="text-xs leading-relaxed text-white/60 italic border-t border-white/10 pt-4">
                   Every application is personally reviewed, and we’ll get back to you if we feel you’re the right fit for our community. We look forward to connecting with you.
                 </p>
