@@ -39,18 +39,17 @@ export function AdminWorkshops() {
       handleUploadFile(file, target);
       return;
     }
+    // Gallery images: skip cropper, upload directly (any ratio allowed)
+    if (target === 'gallery') {
+      handleUploadFile(file, target);
+      return;
+    }
     const reader = new FileReader();
     reader.addEventListener('load', () => {
       setCropperSrc(reader.result as string);
       setCropperTarget(target);
-      // Banner: 21:7 (wide cinematic), Thumbnail: 4:3, Gallery: free
-      if (target === 'image') {
-        setCropperAspect(21 / 7);
-      } else if (target === 'thumbnail') {
-        setCropperAspect(4 / 3);
-      } else {
-        setCropperAspect(NaN); // free aspect
-      }
+      // Banner: 21:7 (1400×500 wide cinematic), Thumbnail: 4:3 (800×600)
+      setCropperAspect(target === 'image' ? 21 / 7 : 4 / 3);
       setCropperOpen(true);
     });
     reader.readAsDataURL(file);
