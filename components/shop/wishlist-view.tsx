@@ -15,16 +15,21 @@ export function WishlistView({ products }: { products: Product[] }) {
   if (list.length === 0) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
-        <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-          <Heart className="h-7 w-7" />
-        </span>
-        <h1 className="mt-6 font-display text-3xl font-medium text-foreground">Your wishlist is empty</h1>
-        <p className="mt-3 max-w-sm text-pretty text-muted-foreground">
-          Tap the heart on any product to save it here for later.
-        </p>
-        <Link href="/shop" className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-          Browse the shop
-        </Link>
+        <div
+          className="flex flex-col items-center rounded-3xl border border-white/10 p-10 sm:p-14 backdrop-blur-md shadow-2xl"
+          style={{ backgroundColor: 'rgba(10, 8, 6, 0.85)' }}
+        >
+          <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-white">
+            <Heart className="h-7 w-7" />
+          </span>
+          <h1 className="mt-6 font-display text-3xl font-medium" style={{ color: '#D4AF37' }}>Your wishlist is empty</h1>
+          <p className="mt-3 max-w-sm text-pretty text-white/75">
+            Tap the heart on any product to save it here for later.
+          </p>
+          <Link href="/shop" className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+            Browse the shop
+          </Link>
+        </div>
       </div>
     );
   }

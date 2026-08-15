@@ -16,16 +16,21 @@ export function CartView() {
   if (count === 0) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
-        <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-          <ShoppingBag className="h-7 w-7" />
-        </span>
-        <h1 className="mt-6 font-display text-3xl font-medium text-foreground">Your bag is empty</h1>
-        <p className="mt-3 max-w-sm text-pretty text-muted-foreground">
-          Explore the shop for meditations, journals and ritual objects to support your practice.
-        </p>
-        <Button asChild className="mt-6 rounded-full">
-          <Link href="/shop">Browse the shop <ArrowRight className="ml-1 h-4 w-4" /></Link>
-        </Button>
+        <div
+          className="flex flex-col items-center rounded-3xl border border-white/10 p-10 sm:p-14 backdrop-blur-md shadow-2xl"
+          style={{ backgroundColor: 'rgba(10, 8, 6, 0.85)' }}
+        >
+          <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-white">
+            <ShoppingBag className="h-7 w-7" />
+          </span>
+          <h1 className="mt-6 font-display text-3xl font-medium" style={{ color: '#D4AF37' }}>Your bag is empty</h1>
+          <p className="mt-3 max-w-sm text-pretty text-white/75">
+            Explore the shop for meditations, journals and ritual objects to support your practice.
+          </p>
+          <Button asChild className="mt-6 rounded-full">
+            <Link href="/shop">Browse the shop <ArrowRight className="ml-1 h-4 w-4" /></Link>
+          </Button>
+        </div>
       </div>
     );
   }
