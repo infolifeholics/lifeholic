@@ -154,7 +154,9 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
             </div>
             <div>
               <h3 className="font-display text-lg font-medium text-foreground line-clamp-1">{w.title}</h3>
-              <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{w.short_description}</p>
+              <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                {w.short_description || (w.description ? w.description.replace(/<[^>]*>/g, '').slice(0, 100) + '...' : '')}
+              </p>
             </div>
           </div>
 
@@ -193,7 +195,9 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
         </div>
         <div>
           <h3 className="font-display text-lg font-medium text-foreground line-clamp-1">{w.title}</h3>
-          <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{w.short_description}</p>
+          <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+            {w.short_description || (w.description ? w.description.replace(/<[^>]*>/g, '').slice(0, 100) + '...' : '')}
+          </p>
         </div>
       </div>
 

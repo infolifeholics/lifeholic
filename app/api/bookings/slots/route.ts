@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { seedDefaultSlotsIfEmpty, getIstWeekday, istDateTimeToUtc } from '@/lib/booking-utils';
+import { adminDb } from '@/lib/firebase-admin';
+import { seedDefaultSlotsIfEmpty } from '@/lib/booking-utils-server';
+import { getIstWeekday, istDateTimeToUtc } from '@/lib/booking-utils';
 
 export async function GET(req: Request) {
   try {
@@ -18,8 +18,7 @@ export async function GET(req: Request) {
     await seedDefaultSlotsIfEmpty();
 
     // 1. Fetch holidays and filter in memory by range (inclusive)
-    const holidaysRef = collection(db, 'holidays');
-    const holidaysSnap = await getDocs(holidaysRef);
+    const holidaysSnap = await adminDb.collection('holidays').get();
     const allHolidays = holidaysSnap.docs.map(d => d.data());
     const holidays = allHolidays.filter((h: any) => {
       const from = h.from_date || h.date;
@@ -35,9 +34,10 @@ export async function GET(req: Request) {
 
     // 2. Fetch session slots configured for the weekday of this date
     const weekday = getIstWeekday(dateStr);
-    const slotsRef = collection(db, 'session_slots');
-    const qSlots = query(slotsRef, where('day_of_week', '==', weekday), where('active', '==', true));
-    const slotsSnap = await getDocs(qSlots);
+    const slotsSnap = await adminDb.collection('session_slots')
+      .where('day_of_week', '==', weekday)
+      .where('active', '==', true)
+      .get();
     const configuredSlots = slotsSnap.docs.map(d => d.data());
 
     if (configuredSlots.length === 0) {
@@ -45,28 +45,21 @@ export async function GET(req: Request) {
     }
 
     // 3. Fetch existing bookings for that date in UTC
-    // Start of day and end of day in UTC to narrow down query
     const dayStartUTC = istDateTimeToUtc(dateStr, '00:00');
     const dayEndUTC = new Date(dayStartUTC.getTime() + 24 * 60 * 60_000);
 
-    const bookingsRef = collection(db, 'bookings');
-    const qBookings = query(
-      bookingsRef,
-      where('start_time', '>=', dayStartUTC.toISOString()),
-      where('start_time', '<', dayEndUTC.toISOString()),
-      where('status', 'in', ['pending', 'confirmed'])
-    );
-    const bookingsSnap = await getDocs(qBookings);
+    const bookingsSnap = await adminDb.collection('bookings')
+      .where('start_time', '>=', dayStartUTC.toISOString())
+      .where('start_time', '<', dayEndUTC.toISOString())
+      .where('status', 'in', ['pending', 'confirmed'])
+      .get();
     const existingBookings = bookingsSnap.docs.map(d => d.data());
 
     // Fetch existing free call bookings for the day (non-cancelled)
-    const freeCallsRef = collection(db, 'free_call_bookings');
-    const qFreeCalls = query(
-      freeCallsRef,
-      where('start_time', '>=', dayStartUTC.toISOString()),
-      where('start_time', '<', dayEndUTC.toISOString())
-    );
-    const freeCallsSnap = await getDocs(qFreeCalls);
+    const freeCallsSnap = await adminDb.collection('free_call_bookings')
+      .where('start_time', '>=', dayStartUTC.toISOString())
+      .where('start_time', '<', dayEndUTC.toISOString())
+      .get();
     const existingFreeCalls = freeCallsSnap.docs.map(d => d.data()).filter((f: any) => f.status !== 'cancelled');
 
     const bookedRanges = [

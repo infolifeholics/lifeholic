@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function POST(req: Request) {
   try {
     const { code, subtotal } = await req.json();
     if (!code) return NextResponse.json({ error: 'Code required.' }, { status: 400 });
 
-    const colRef = collection(db, 'coupons');
-    const q = query(colRef, where('code', '==', code.toUpperCase()), where('active', '==', true));
-    const snap = await getDocs(q);
+    const snap = await adminDb.collection('coupons')
+      .where('code', '==', code.toUpperCase())
+      .where('active', '==', true)
+      .get();
 
     if (snap.empty) {
       return NextResponse.json({ error: 'Invalid or expired code.' }, { status: 404 });

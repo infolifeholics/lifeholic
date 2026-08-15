@@ -33,7 +33,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
   }
 
   return (
-    <div className="flex min-h-[80vh] items-center pt-32">
+    <div className="relative bg-background/30 backdrop-blur-[2px] z-10 min-h-screen flex items-center pt-32">
       <div className="mx-auto max-w-xl px-4 sm:px-6 lg:px-8">
         <div className="rounded-[2rem] border border-border/60 bg-card/70 p-10 text-center shadow-float">
           <ThankYouAnimation />

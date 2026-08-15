@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -42,6 +43,7 @@ function PaymentPageContent() {
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvc, setCardCvc] = useState('');
   const [paying, setPaying] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
 
@@ -152,18 +154,9 @@ function PaymentPageContent() {
   const gst = currency === 'INR' ? Math.round((subtotal - discount) * 0.18) : 0;
   const total = subtotal - discount + gst;
 
-  // Razorpay payment trigger
   const handleRazorpayPayment = async () => {
     if (!(window as any).Razorpay) {
       toast.error('Razorpay SDK failed to load. Please try again.');
-      return;
-    }
-
-    const userConfirmed = window.confirm(
-      "Once the booking is confirmed, it cannot be canceled.\n\nClick 'OK' to Confirm or 'Cancel' to cancel the booking."
-    );
-
-    if (!userConfirmed) {
       return;
     }
 
@@ -345,10 +338,10 @@ function PaymentPageContent() {
         onLoad={() => setRazorpayReady(true)}
       />
 
-      <div className="text-center max-w-2xl mx-auto">
+      <div className="text-center max-w-2xl mx-auto rounded-[2rem] border border-white/10 bg-black/80 p-6 md:p-8 backdrop-blur-md shadow-lg text-white mb-8">
         <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Secure Gateway</span>
-        <h1 className="mt-2 font-display text-4xl text-foreground font-medium">Complete Your Payment</h1>
-        <p className="mt-2 text-muted-foreground text-sm">
+        <h1 className="mt-2 font-display text-4xl text-white font-medium">Complete Your Payment</h1>
+        <p className="mt-2 text-white/80 text-sm">
           Please review your session details below and finalize payment to confirm your booking.
         </p>
       </div>
@@ -479,9 +472,29 @@ function PaymentPageContent() {
                 </div>
               )}
 
+              <div className="flex items-start gap-2.5 bg-secondary/30 p-3 rounded-2xl border border-border/50">
+                <input
+                  type="checkbox"
+                  id="accept-terms"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-gold focus:ring-gold"
+                />
+                <label htmlFor="accept-terms" className="text-xs text-muted-foreground leading-relaxed select-none">
+                  I accept the{' '}
+                  <Link href="/legal/terms" target="_blank" className="text-gold hover:underline font-semibold">
+                    Terms &amp; Conditions
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/legal/refund" target="_blank" className="text-gold hover:underline font-semibold">
+                    Cancellation &amp; Refund Policy
+                  </Link>.
+                </label>
+              </div>
+
               <Button
                 onClick={handleRazorpayPayment}
-                disabled={paying || (currency === 'USD' && !exchangeRate)}
+                disabled={paying || !acceptedTerms || (currency === 'USD' && !exchangeRate)}
                 className="w-full rounded-full py-6 text-base font-semibold shadow-glow bg-gold hover:bg-gold-hover text-gold-foreground"
               >
                 {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : `Pay Now via Razorpay (${currency})`}

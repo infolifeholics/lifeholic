@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Sparkles, Search, ChevronRight, ArrowLeft, Check, Users, Heart, Activity, Briefcase, X, Clock } from 'lucide-react';
 import { MagneticLink } from '@/components/site/magnetic';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AuthModal } from '@/components/auth/auth-modal';
@@ -130,6 +130,39 @@ const ALL_OPTIONS: Record<string, string[]> = {
     'Feeling emotionally burdened whenever money is discussed.',
     'Difficulty receiving abundance despite sincere effort.',
   ],
+  'Career': [
+    'Career stagnation',
+    'Frequent job changes',
+    'Difficulty finding the right career',
+    'Unemployment or long gaps between jobs',
+    'Lack of growth or promotions',
+    'Feeling stuck in the same position',
+    'Lack of recognition at work',
+    'Salary or income not increasing',
+    'Difficulty attracting good opportunities',
+    'Repeated career setbacks',
+    'Workplace conflicts',
+    'Difficulties with colleagues or seniors',
+    'Job insecurity',
+    'Fear of losing a job',
+    'Lack of motivation at work',
+    'Feeling unfulfilled by your career',
+    'Confusion about career direction',
+    'Difficulty starting a business',
+    'Business growth getting stuck',
+    'Repeated failures in professional ventures',
+    'Difficulty getting clients or projects',
+    'Lack of visibility or recognition',
+    'Not being able to use your full potential',
+    'Career opportunities coming but not materialising',
+    'Feeling that hard work is not giving proportionate results',
+    'Difficulty balancing career and personal life',
+    'Sudden disruptions in career plans',
+    'Difficulty returning to work after a career break',
+    'Feeling unsupported in professional growth',
+    'Repeatedly missing out on desired opportunities',
+    'Feeling energetically or emotionally drained by work'
+  ],
 };
 
 const CATEGORIES = {
@@ -143,7 +176,7 @@ const CATEGORIES = {
   },
   finances: {
     label: 'Finances & Career',
-    subs: ['Sudden Financial Setbacks', 'Ancestral Money Patterns'],
+    subs: ['Sudden Financial Setbacks', 'Ancestral Money Patterns', 'Career'],
   },
 } as const;
 
@@ -196,6 +229,12 @@ const RECOMMENDATIONS: Record<string, {
     category: 'Finances & Career',
     explanation: 'Our relationship with money is deeply rooted in ancestral contracts and generational scarcity mindsets. Unconscious family loyalties to struggle or lack create invisible barriers. This session identifies ancestral blocks, rewrites financial scripts, and opens the flow of ease.',
     showCommonNote: false, // B2: Ancestral Money Pattern - no common healing note
+  },
+  'Career': {
+    title: 'Career recommendation',
+    category: 'Finances & Career',
+    explanation: 'Career challenges and stagnation are often connected to alignment, confidence, or ancestral patterns. We help you identify hidden blocks, clear limiting beliefs, and restore energetic flow so you can step into your full potential and attract the right opportunities.',
+    showCommonNote: true,
   },
 };
 
@@ -414,31 +453,23 @@ export function HomeHero() {
 
   useEffect(() => {
     const colRef = collection(db, 'landing_images');
-    function withTimeout<T>(promise: Promise<T>, ms: number = 10000): Promise<T> {
-      return Promise.race([
-        promise,
-        new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
-      ]);
-    }
+    const unsub = onSnapshot(colRef, (snap) => {
+      if (!snap.empty) {
+        const data = snap.docs.map((doc) => doc.data());
+        const list = data
+          .sort((a: any, b: any) => Number(a.id) - Number(b.id))
+          .map((d: any) => d.url)
+          .filter((url): url is string => !!url);
 
-    withTimeout(getDocs(colRef))
-      .then((snap) => {
-        if (!snap.empty) {
-          const data = snap.docs.map((doc) => doc.data());
-          const list = data
-            .sort((a: any, b: any) => Number(a.id) - Number(b.id))
-            .map((d: any) => d.url)
-            .filter((url): url is string => !!url);
-
-          setImages(list);
-        } else {
-          setImages([]);
-        }
-      })
-      .catch((err) => {
-        console.warn('Could not fetch landing images from Firestore:', err);
+        setImages(list);
+      } else {
         setImages([]);
-      });
+      }
+    }, (err) => {
+      console.warn('Could not fetch landing images from Firestore:', err);
+      setImages([]);
+    });
+    return () => unsub();
   }, []);
 
   useEffect(() => {
@@ -1065,7 +1096,7 @@ export function HomeHero() {
                 initial={{ scale: 0.2, opacity: 0.8 }}
                 animate={{ scale: 2.2, opacity: 0 }}
                 transition={{ duration: 3.5, delay: 1.75, repeat: Infinity, ease: "easeOut" }}
-                className="absolute w-96 h-96 rounded-full border-2 border-purple-500/20"
+                className="absolute w-96 h-96 rounded-full border-2 border-gold/20"
               />
             </div>
 
@@ -1111,7 +1142,7 @@ export function HomeHero() {
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="absolute w-52 h-52 bg-gradient-to-tr from-indigo-500/30 via-fuchsia-500/25 to-amber-500/20 blur-3xl"
+                  className="absolute w-52 h-52 bg-gradient-to-tr from-emerald-800/30 via-emerald-600/25 to-gold/20 blur-3xl"
                 />
 
                 {/* Gemini-like glowing sphere */}
@@ -1124,7 +1155,7 @@ export function HomeHero() {
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="w-40 h-40 rounded-full bg-gradient-to-br from-indigo-600 via-purple-600 to-gold shadow-[0_0_55px_rgba(218,165,32,0.35)] flex items-center justify-center border border-white/20 p-8 relative overflow-hidden"
+                  className="w-40 h-40 rounded-full bg-gradient-to-br from-emerald-800 via-emerald-600 to-gold shadow-[0_0_55px_rgba(218,165,32,0.35)] flex items-center justify-center border border-white/20 p-8 relative overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.2)_0%,transparent_70%)] animate-pulse" />
                   
@@ -1156,7 +1187,7 @@ export function HomeHero() {
                         transition={{ type: "spring", stiffness: 200, damping: 15 }}
                         className="h-16 w-16 bg-white rounded-full flex items-center justify-center shadow-lg"
                       >
-                        <Check className="h-9 w-9 text-purple-600 stroke-[3]" />
+                        <Check className="h-9 w-9 text-emerald-700 stroke-[3]" />
                       </motion.div>
                     )}
                   </AnimatePresence>

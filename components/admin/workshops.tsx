@@ -186,7 +186,11 @@ export function AdminWorkshops() {
         type: 'online',
       };
 
-      await setDoc(doc(db, 'workshops', id), finalWs, { merge: true });
+      const cleanedWs = JSON.parse(JSON.stringify(finalWs, (key, value) => {
+        return value === undefined ? null : value;
+      }));
+
+      await setDoc(doc(db, 'workshops', id), cleanedWs, { merge: true });
 
       // Auto-sync blog
       if (editingWs.publish_as_blog) {

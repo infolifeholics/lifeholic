@@ -1,5 +1,4 @@
-import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import seedData from './seed-data.json';
 import type { Service, Product, Testimonial, Workshop, BlogPost, Faq, Availability } from '@/lib/types';
 import { unstable_cache } from 'next/cache';
@@ -22,48 +21,24 @@ const getCachedCollectionData = (colName: string) => unstable_cache(
     }
 
     try {
-      const colRef = collection(db, colName);
-      
-      const fetchDocs = async () => {
-        if (colName === 'products') {
-          const q = query(colRef, where('is_active', '==', true));
-          return getDocs(q);
-        } else {
-          return getDocs(colRef);
-        }
-      };
+      let queryRef: any = adminDb.collection(colName);
+      if (colName === 'products') {
+        queryRef = queryRef.where('is_active', '==', true);
+      }
 
-      // Set a 10 seconds timeout for fetching from Firestore
-      const snap = await Promise.race([
-        fetchDocs(),
-        new Promise<any>((_, reject) =>
-          setTimeout(() => reject(new Error('Firestore connection timeout')), 10000)
-        ),
-      ]);
-
+      const snap = await queryRef.get();
       if (snap.empty) {
         return defaults;
       }
       const data = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
       return data;
     } catch (e: any) {
-      if (e.message === 'Firestore connection timeout') {
-        isFirestoreOffline = true;
-        // Reset offline status after 2 minutes to retry
-        setTimeout(() => {
-          isFirestoreOffline = false;
-        }, 120000);
-      }
-      if (e.code === 'permission-denied') {
-        console.info(`[Info] Database reads/writes are securely restricted for collection "${colName}". Using local defaults.`);
-      } else {
-        console.warn(`[Warning] Error/Timeout loading collection "${colName}" from Firestore:`, e.message || e, 'Using local defaults.');
-      }
+      console.warn(`[Warning] Error loading collection "${colName}" from Firestore Admin:`, e.message || e, 'Using local defaults.');
       return defaults;
     }
   },
   ['firestore-collections', colName],
-  { revalidate: 60, tags: ['firestore-collections', `firestore-collection-${colName}`] }
+  { revalidate: 1, tags: ['firestore-collections', `firestore-collection-${colName}`] }
 )();
 
 async function getCollectionData<T>(colName: string): Promise<T[]> {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Loader2, Lock, Tag, X, ShieldCheck } from 'lucide-react';
 import { useCart } from '@/components/providers/cart-provider';
@@ -34,6 +35,7 @@ export function CheckoutView() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [razorpayReady, setRazorpayReady] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [detectedCurrency, setDetectedCurrency] = useState<'INR' | 'USD'>('INR');
 
@@ -43,10 +45,23 @@ export function CheckoutView() {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
       const isIndia = tz.toLowerCase().includes('kolkata') || tz.toLowerCase().includes('india');
       setDetectedCurrency(isIndia ? 'INR' : 'USD');
+      setForm((prev) => ({
+        ...prev,
+        country: isIndia ? 'India' : 'United States',
+      }));
     } catch {
       setDetectedCurrency('INR');
+      setForm((prev) => ({ ...prev, country: 'India' }));
     }
   }, []);
+
+  // Update currency dynamically if user manually changes country input
+  useEffect(() => {
+    if (form.country) {
+      const isIndia = form.country.trim().toLowerCase() === 'india';
+      setDetectedCurrency(isIndia ? 'INR' : 'USD');
+    }
+  }, [form.country]);
 
   // Sync profile details if they load dynamically later
   useEffect(() => {
@@ -301,8 +316,8 @@ export function CheckoutView() {
       <h1 className="font-display text-4xl font-medium tracking-tight text-foreground">Checkout</h1>
       <div className="mt-10 grid gap-10 lg:grid-cols-[1.4fr_1fr]">
         <form onSubmit={placeOrder} className="space-y-6">
-          <fieldset className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
-            <legend className="px-2 font-display text-lg font-medium text-foreground">Contact</legend>
+          <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
+            <h2 className="font-display text-lg font-medium text-foreground">Contact</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Label htmlFor="email">Email</Label>
@@ -317,11 +332,11 @@ export function CheckoutView() {
                 <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1.5" />
               </div>
             </div>
-          </fieldset>
+          </div>
 
           {hasPhysical && (
-            <fieldset className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
-              <legend className="px-2 font-display text-lg font-medium text-foreground">Shipping address</legend>
+            <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
+              <h2 className="font-display text-lg font-medium text-foreground">Shipping address</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <Label htmlFor="line1">Address</Label>
@@ -332,11 +347,11 @@ export function CheckoutView() {
                 <div><Label htmlFor="postal">Postal code</Label><Input id="postal" required value={form.postal_code} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} className="mt-1.5" /></div>
                 <div><Label htmlFor="country">Country</Label><Input id="country" required value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className="mt-1.5" /></div>
               </div>
-            </fieldset>
+            </div>
           )}
 
-          <fieldset className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
-            <legend className="px-2 font-display text-lg font-medium text-foreground">Payment</legend>
+          <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
+            <h2 className="font-display text-lg font-medium text-foreground">Payment</h2>
             <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border bg-secondary/40 p-4 text-sm text-muted-foreground">
               <Lock className="h-4 w-4 text-gold" />
               <div>
@@ -346,7 +361,7 @@ export function CheckoutView() {
                 </p>
               </div>
             </div>
-          </fieldset>
+          </div>
 
           {detectedCurrency === 'USD' && !exchangeRate && (
             <div className="p-4 bg-destructive/10 text-destructive text-sm font-medium rounded-2xl border border-destructive/20 leading-relaxed">
@@ -354,7 +369,27 @@ export function CheckoutView() {
             </div>
           )}
 
-          <Button type="submit" size="lg" disabled={placing || (detectedCurrency === 'USD' && !exchangeRate)} className="w-full rounded-full">
+          <div className="flex items-start gap-2.5 bg-secondary/30 p-3 rounded-2xl border border-border/50">
+            <input
+              type="checkbox"
+              id="accept-shop-terms"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-gold focus:ring-gold"
+            />
+            <label htmlFor="accept-shop-terms" className="text-xs text-muted-foreground leading-relaxed select-none">
+              I accept the{' '}
+              <Link href="/legal/terms" target="_blank" className="text-gold hover:underline font-semibold">
+                Terms &amp; Conditions
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/legal/refund" target="_blank" className="text-gold hover:underline font-semibold">
+                    Cancellation &amp; Refund Policy
+                  </Link>.
+            </label>
+          </div>
+
+          <Button type="submit" size="lg" disabled={placing || !acceptedTerms || (detectedCurrency === 'USD' && !exchangeRate)} className="w-full rounded-full">
             {placing ? (<><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Processing payment…</>) : `Pay Now · ${formatPrice(total, detectedCurrency)}`}
           </Button>
         </form>

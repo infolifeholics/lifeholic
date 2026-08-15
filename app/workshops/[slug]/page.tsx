@@ -393,7 +393,7 @@ export default function WorkshopDetailsPage() {
             >
               <h2 className="font-display text-xl font-semibold text-white">About this Experience</h2>
               <div 
-                className="text-sm leading-relaxed text-white/90 font-medium space-y-4"
+                className="text-sm leading-relaxed text-white/90 font-medium space-y-4 workshop-description-container"
                 dangerouslySetInnerHTML={{ __html: ws.description }}
               />
             </div>

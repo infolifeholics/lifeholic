@@ -30,13 +30,12 @@ export function CinematicVideoBg() {
 
   useEffect(() => {
     const docRef = doc(db, 'settings', 'video');
-    getDoc(docRef)
-      .then((snap) => {
-        if (snap.exists() && snap.data().url) {
-          setVideoSrc(snap.data().url);
-        }
-      })
-      .catch((err) => console.warn('Could not fetch custom bg video:', err));
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists() && snap.data().url) {
+        setVideoSrc(snap.data().url);
+      }
+    }, (err) => console.warn('Could not fetch custom bg video:', err));
+    return () => unsubscribe();
   }, []);
 
   // Listen to background image fallback in real-time

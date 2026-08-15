@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import { rateLimiter, getIpFromRequest } from '@/lib/rate-limit';
 import { sendEmailNotification, sendWhatsAppNotification } from '@/lib/notifications';
 import { z } from 'zod';
@@ -41,13 +40,10 @@ export async function POST(req: Request) {
     }
 
     // 2. Duplicate Booking Protection for the same phone number (active pending/contacted)
-    const freeCallCol = collection(db, 'free_call_bookings');
-    const qDuplicate = query(
-      freeCallCol,
-      where('phone', '==', normalizedPhone),
-      where('status', 'in', ['pending', 'contacted'])
-    );
-    const duplicateSnap = await getDocs(qDuplicate);
+    const duplicateSnap = await adminDb.collection('free_call_bookings')
+      .where('phone', '==', normalizedPhone)
+      .where('status', 'in', ['pending', 'contacted'])
+      .get();
     if (!duplicateSnap.empty) {
       return NextResponse.json(
         { error: 'You already have an active pending Discovery Call request.' },
@@ -57,23 +53,18 @@ export async function POST(req: Request) {
 
     // 3. Double Booking prevention for the same time slot
     // Check paid bookings
-    const bookingsCol = collection(db, 'bookings');
-    const qPaidClash = query(
-      bookingsCol,
-      where('start_time', '==', start_time),
-      where('status', 'in', ['pending', 'confirmed'])
-    );
-    const paidClashSnap = await getDocs(qPaidClash);
+    const paidClashSnap = await adminDb.collection('bookings')
+      .where('start_time', '==', start_time)
+      .where('status', 'in', ['pending', 'confirmed'])
+      .get();
     if (!paidClashSnap.empty) {
       return NextResponse.json({ error: 'This time slot is already booked.' }, { status: 409 });
     }
 
     // Check free call bookings
-    const qFreeClash = query(
-      freeCallCol,
-      where('start_time', '==', start_time)
-    );
-    const freeClashSnap = await getDocs(qFreeClash);
+    const freeClashSnap = await adminDb.collection('free_call_bookings')
+      .where('start_time', '==', start_time)
+      .get();
     const activeFreeClashes = freeClashSnap.docs
       .map(d => d.data())
       .filter((f: any) => f.status !== 'cancelled');
@@ -96,7 +87,7 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    const docRef = await addDoc(freeCallCol, bookingDoc);
+    const docRef = await adminDb.collection('free_call_bookings').add(bookingDoc);
 
     // 5. Trigger Admin Notifications (Failures should not fail the booking itself)
     const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'info.lifeholics@gmail.com';

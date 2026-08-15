@@ -391,3 +391,8 @@
 .animated-search-border-active::before {
   opacity: 1;
 }
+
+.workshop-description-container,
+.workshop-description-container * {
+  color: rgba(255, 255, 255, 0.95) !important;
+}

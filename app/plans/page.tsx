@@ -7,7 +7,7 @@ import { Check, Star, ArrowLeft, ShieldCheck, Sparkles, Loader2 } from 'lucide-r
 import { Button } from '@/components/ui/button';
 // import { SiteFooter } from '@/components/site/site-footer';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { currencyForTimezone, detectTimezone, formatPrice } from '@/lib/format';
 
 type SurveyData = {
@@ -80,7 +80,7 @@ const SUBCATEGORY_META: Record<string, {
     }
   },
   'Partner / Marriage': {
-    patterns: 'Based on what you have selected, your challenge may be influenced by one or more of these deeper emotional or spiritual patterns: inner child wounds, karmic relationship patterns, past-life influences, unhealthy attachments, forgiveness, self-love and self-worth challenges, attachment patterns, boundary issues, suppressed emotions, heart, sacral, solar plexus or throat chakra imbalances, shadow work, masculine and feminine energy imbalance, nervous system regulation, or stagnant energy.',
+    patterns: 'Based on what you have selected, your challenge may be influenced by one or more of these deeper emotional or spiritual patterns such as lack of alignment with your true purpose, fear of success or failure, limiting beliefs around money and abundance, low self-worth or feeling undeserving of success, unresolved experiences from the past, family or ancestral patterns around work and money, resistance to change, blocked confidence and personal power, difficulty receiving abundance or recognition, energy depletion from over-giving, suppressed creativity or self-expression, lack of clarity about your direction, repeating behavioural or karmic patterns, attachment to past failures, fear-based decision-making, or feeling disconnected from your inner guidance.',
     recommended: ['essential', 'premium'],
     recommendedLabel: 'Plan B · Premium',
     plansText: {
@@ -156,6 +156,35 @@ const SUBCATEGORY_META: Record<string, {
       premium: {
         title: '4-Week Deep Transformation Program',
         description: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
+        benefits: []
+      }
+    }
+  },
+  'Career': {
+    patterns: 'Based on what you have selected, your career challenge may be influenced by one or more deeper emotional, energetic, or spiritual patterns. These may include limiting beliefs around self-worth, fear of visibility or success, inner child wounds, ancestral patterns, karmic lessons, throat or solar plexus chakra imbalances, emotional exhaustion, or energetic stagnation. During your session, we’ll explore these patterns to help you release blocks and align with your true professional potential.',
+    recommended: ['essential', 'premium'],
+    recommendedLabel: 'Plan B · Premium',
+    plansText: {
+      essential: {
+        title: 'Personal Healing & Clarity Session',
+        description: '30 Minutes | ₹4,444',
+        benefits: [
+          "In this session, we’ll help you understand the deeper reason behind your career challenge and begin the healing process using the approach that’s most aligned with your needs.",
+          "If energetic blocks or limiting beliefs are identified, we’ll work on clearing them. You’ll also receive personalized guidance and practical next steps to support your career growth.",
+          "Every healing journey is unique. While many people experience clarity in one session, some situations require deeper work. If additional support is needed, your healer will guide you accordingly."
+        ]
+      },
+      premium: {
+        title: '4-Week Deep Transformation Program',
+        description: '4 Weekly Sessions (30 Minutes Each) | ₹11,000',
+        benefits: [
+          "If you’re looking for deeper and ongoing support, this program is designed for you. Over four weeks, we’ll work together to heal deeper patterns, review your progress, clear new blocks as they arise, and support lasting emotional, energetic, and professional transformation.",
+          "The program also offers greater value, with a lower cost per session than booking individual sessions."
+        ]
+      },
+      elite: {
+        title: 'Ancestral Healing Session',
+        description: '90 Minutes | ₹21,000',
         benefits: []
       }
     }
@@ -256,12 +285,12 @@ export default function SomaticPlansPage() {
       );
       if (isMatch) {
         return (
-          <span
+          <strong
             key={index}
-            className="text-gold font-bold"
+            className="font-bold text-white"
           >
             {part}
-          </span>
+          </strong>
         );
       }
       return part;
@@ -303,10 +332,9 @@ export default function SomaticPlansPage() {
       setRateError(true);
     });
 
-    const fetchPlanServices = async () => {
+    const docRef = doc(db, 'settings', 'somatic_plans');
+    const unsub = onSnapshot(docRef, (snap) => {
       try {
-        const docRef = doc(db, 'settings', 'somatic_plans');
-        const snap = await getDoc(docRef);
         if (snap.exists()) {
           const data = snap.data();
           setPlanServices({
@@ -364,13 +392,12 @@ export default function SomaticPlansPage() {
           });
         }
       } catch (err) {
-        console.error('Error loading services:', err);
+        console.error('Error loading services in onSnapshot:', err);
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchPlanServices();
+    });
+    return () => unsub();
   }, []);
 
   const handleSelectPlan = (planKey: 'essential' | 'premium' | 'elite', defaultPriceInr: number) => {
@@ -527,17 +554,17 @@ export default function SomaticPlansPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
                 <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground bg-gradient-to-r from-foreground via-foreground/90 to-gold/80 bg-clip-text text-transparent">
-                  This is what we figured out for you ):
+                  This is what we figured out for you
                 </h1>
               </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-border/30 bg-gradient-to-b from-gold/5 via-gold/0 to-transparent p-5 rounded-2xl border border-gold/20">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-foreground mb-3 flex items-center gap-1.5">
+            <div className="mt-8 pt-6 border-t border-border/30 bg-black p-5 rounded-2xl border border-gold/20">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-gold mb-3 flex items-center gap-1.5">
                 <ShieldCheck className="h-4.5 w-4.5 text-gold" />
-                Somatic &amp; Energetic Insight:
+                Energetic Insight:
               </h3>
-              <p className="text-sm leading-relaxed text-foreground italic font-medium pl-6 relative">
+              <p className="text-sm leading-relaxed text-white/80 font-medium pl-6 relative">
                 <span className="absolute left-0 top-0 text-2xl text-gold/30 font-serif leading-none">“</span>
                 {highlightText(meta.patterns)}
               </p>
@@ -734,7 +761,7 @@ export default function SomaticPlansPage() {
 
           {/* Disclaimer Common Warning/Note */}
           {!isB2 && (
-            <div className="mt-16 max-w-3xl mx-auto rounded-[2rem] border-2 border-gold/30 bg-gradient-to-br from-gold/10 via-card/50 to-transparent p-6 md:p-8 backdrop-blur-xl relative overflow-hidden group/note">
+            <div className="mt-16 max-w-3xl mx-auto rounded-[2rem] border-2 border-gold/30 bg-black p-6 md:p-8 backdrop-blur-xl relative overflow-hidden group/note">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gold/10 rounded-full blur-2xl -mr-6 -mt-6 transition-all duration-500 group-hover/note:bg-gold/15" />
 
               <div className="flex items-center justify-center gap-2 mb-4">
@@ -745,9 +772,9 @@ export default function SomaticPlansPage() {
                 <Sparkles className="h-4 w-4 text-gold animate-pulse" />
               </div>
 
-              <div className="space-y-4 text-left text-sm text-foreground/80 leading-relaxed font-medium">
+              <div className="space-y-4 text-left text-sm text-white/80 leading-relaxed font-medium">
                 <p className="pl-4 border-l-2 border-gold/40">
-                  <strong className="text-gold font-bold">Every healing journey is unique.</strong> While some people experience clarity and healing in one session, others may need additional sessions to work through deeper layers. We kindly request you to <strong className="text-foreground underline decoration-gold/40 decoration-2 underline-offset-4 font-semibold">stay open to the healing process.</strong>
+                  <strong className="text-gold font-bold">Every healing journey is unique.</strong> While some people experience clarity and healing in one session, others may need additional sessions to work through deeper layers. We kindly request you to <strong className="text-white underline decoration-gold/40 decoration-2 underline-offset-4 font-semibold">stay open to the healing process.</strong>
                 </p>
 
                 <p className="pl-4 border-l-2 border-gold/40 pt-2">

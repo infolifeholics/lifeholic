@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function CartPage() {
   return (
-    <div className="pt-32 sm:pt-40">
+    <div className="relative bg-background/30 backdrop-blur-[2px] z-10 min-h-screen pt-32 sm:pt-40">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <CartView />
       </div>

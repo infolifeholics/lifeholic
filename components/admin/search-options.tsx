@@ -210,6 +210,42 @@ const DEFAULT_CATEGORIES: Category[] = [
           'Feeling emotionally burdened whenever money is discussed.',
           'Difficulty receiving abundance despite sincere effort.',
         ]
+      },
+      {
+        name: 'Career',
+        problems: [
+          'Career stagnation',
+          'Frequent job changes',
+          'Difficulty finding the right career',
+          'Unemployment or long gaps between jobs',
+          'Lack of growth or promotions',
+          'Feeling stuck in the same position',
+          'Lack of recognition at work',
+          'Salary or income not increasing',
+          'Difficulty attracting good opportunities',
+          'Repeated career setbacks',
+          'Workplace conflicts',
+          'Difficulties with colleagues or seniors',
+          'Job insecurity',
+          'Fear of losing a job',
+          'Lack of motivation at work',
+          'Feeling unfulfilled by your career',
+          'Confusion about career direction',
+          'Difficulty starting a business',
+          'Business growth getting stuck',
+          'Repeated failures in professional ventures',
+          'Difficulty getting clients or projects',
+          'Lack of visibility or recognition',
+          'Not being able to use your full potential',
+          'Career opportunities coming but not materialising',
+          'Feeling that hard work is not giving proportionate results',
+          'Difficulty balancing career and personal life',
+          'Sudden disruptions in career plans',
+          'Difficulty returning to work after a career break',
+          'Feeling unsupported in professional growth',
+          'Repeatedly missing out on desired opportunities',
+          'Feeling energetically or emotionally drained by work'
+        ]
       }
     ]
   }

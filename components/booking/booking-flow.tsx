@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import { COMMON_TIMEZONES, currencyForTimezone, detectTimezone, formatInTz, formatPrice } from '@/lib/format';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AuthModal } from '@/components/auth/auth-modal';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 
 type Service = {
   id: string;
@@ -58,8 +60,22 @@ export function BookingFlow({ services }: { services: Service[] }) {
       containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [step]);
+  const [servicesList, setServicesList] = useState<Service[]>(services);
+
+  useEffect(() => {
+    const q = query(collection(db, 'services'));
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as any)
+        .filter((s) => s.active !== false);
+      list.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      setServicesList(list);
+    });
+    return () => unsub();
+  }, []);
+
   const [serviceSlug, setServiceSlug] = useState<string>(
-    search.get('service') || services[0]?.slug || ''
+    search.get('service') || servicesList[0]?.slug || services[0]?.slug || ''
   );
   const [tz, setTz] = useState(detectTimezone());
   const [month, setMonth] = useState(() => {
@@ -121,8 +137,8 @@ export function BookingFlow({ services }: { services: Service[] }) {
   }, [search]);
 
   const service = useMemo(
-    () => services.find((s) => s.slug === serviceSlug) || services[0],
-    [services, serviceSlug]
+    () => servicesList.find((s) => s.slug === serviceSlug) || servicesList[0],
+    [servicesList, serviceSlug]
   );
 
   const currency = useMemo(() => currencyForTimezone(tz), [tz]);
@@ -335,30 +351,32 @@ export function BookingFlow({ services }: { services: Service[] }) {
         </div>
       )}
       {/* Stepper */}
-      <ol className="mx-auto mt-8 flex max-w-2xl items-center justify-between">
-        {STEPS.map((label, i) => (
-          <li key={label} className="flex flex-1 items-center">
-            <div className="flex flex-col items-center gap-2">
-              <span
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-full border text-sm font-medium transition-all',
-                  i < step && 'border-success bg-success/15 text-success',
-                  i === step && 'border-primary bg-primary text-primary-foreground',
-                  i > step && 'border-border bg-card text-muted-foreground'
-                )}
-              >
-                {i < step ? <Check className="h-4 w-4" /> : i + 1}
-              </span>
-              <span className={cn('text-xs', i === step ? 'font-medium text-foreground' : 'text-muted-foreground')}>
-                {label}
-              </span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <span className={cn('mx-2 h-px flex-1', i < step ? 'bg-success/40' : 'bg-border')} />
-            )}
-          </li>
-        ))}
-      </ol>
+      <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-white/10 bg-black/80 p-4 shadow-lg backdrop-blur-md">
+        <ol className="flex items-center justify-between">
+          {STEPS.map((label, i) => (
+            <li key={label} className="flex flex-1 items-center">
+              <div className="flex flex-col items-center gap-2">
+                <span
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition-all',
+                    i < step && 'border-success bg-success/15 text-success',
+                    i === step && 'border-gold bg-gold text-black',
+                    i > step && 'border-white/10 bg-white/5 text-white/40'
+                  )}
+                >
+                  {i < step ? <Check className="h-4 w-4" /> : i + 1}
+                </span>
+                <span className={cn('text-[10px] sm:text-xs font-semibold', i === step ? 'text-white' : 'text-white/50')}>
+                  {label}
+                </span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <span className={cn('mx-2 h-px flex-1', i < step ? 'bg-success/60' : 'bg-white/10')} />
+              )}
+            </li>
+          ))}
+        </ol>
+      </div>
 
       <div className="mt-12 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
         <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft sm:p-8">
@@ -374,7 +392,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
               >
                 <h2 className="font-display text-2xl font-medium text-foreground">Choose your session</h2>
                 <div className="mt-6 grid gap-3">
-                  {services.map((s) => (
+                  {servicesList.map((s) => (
                     <button
                       key={s.id}
                       onClick={() => {
