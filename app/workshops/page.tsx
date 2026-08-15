@@ -147,7 +147,7 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
         <article className="group relative h-full overflow-hidden rounded-3xl border border-white/20 bg-white/40 backdrop-blur-md p-4 hover:border-gold/30 transition-all duration-300 flex flex-col justify-between cursor-pointer">
           <div className="space-y-4">
             <div className="aspect-[4/3] overflow-hidden rounded-2xl relative border border-border/20">
-              <img src={w.image} alt={w.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-103" />
+              <img src={(w as any).thumbnail || w.image} alt={w.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-103" />
               <span className="absolute bottom-3 left-3 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-full bg-secondary text-muted-foreground">
                 Completed
               </span>
@@ -185,7 +185,7 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
     <article className="group relative h-full overflow-hidden rounded-3xl border border-white/20 bg-white/40 backdrop-blur-md p-4 hover:border-gold/30 transition-all duration-300 flex flex-col justify-between">
       <div className="space-y-4">
         <div className="aspect-[4/3] overflow-hidden rounded-2xl relative border border-border/20">
-          <img src={w.image} alt={w.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-103" />
+          <img src={(w as any).thumbnail || w.image} alt={w.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-103" />
           <span className={cn(
             'absolute bottom-3 left-3 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-full',
             'bg-gold text-gold-foreground'

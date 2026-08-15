@@ -43,7 +43,14 @@ export function AdminWorkshops() {
     reader.addEventListener('load', () => {
       setCropperSrc(reader.result as string);
       setCropperTarget(target);
-      setCropperAspect(4 / 3);
+      // Banner: 21:7 (wide cinematic), Thumbnail: 4:3, Gallery: free
+      if (target === 'image') {
+        setCropperAspect(21 / 7);
+      } else if (target === 'thumbnail') {
+        setCropperAspect(4 / 3);
+      } else {
+        setCropperAspect(NaN); // free aspect
+      }
       setCropperOpen(true);
     });
     reader.readAsDataURL(file);
@@ -760,7 +767,8 @@ export function AdminWorkshops() {
                 />
                 {editingWs.image && (
                   <div className="mt-2 space-y-1">
-                    <div className="relative w-32 aspect-[4/3] rounded-xl overflow-hidden border border-border bg-card">
+                    {/* Banner preview: 21:7 ratio */}
+                    <div className="relative w-full aspect-[21/7] max-w-xs rounded-xl overflow-hidden border border-border bg-card">
                       <img src={editingWs.image} alt="Cover Preview" className="h-full w-full object-cover" />
                     </div>
                     <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">Current: {editingWs.image}</p>
@@ -777,6 +785,7 @@ export function AdminWorkshops() {
                 />
                 {editingWs.thumbnail && (
                   <div className="mt-2 space-y-1">
+                    {/* Thumbnail preview: 4:3 ratio */}
                     <div className="relative w-32 aspect-[4/3] rounded-xl overflow-hidden border border-border bg-card">
                       <img src={editingWs.thumbnail} alt="Thumbnail Preview" className="h-full w-full object-cover" />
                     </div>

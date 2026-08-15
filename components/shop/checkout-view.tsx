@@ -144,9 +144,9 @@ export function CheckoutView() {
       return;
     }
 
-    // Cancellation warning pop-up
-    const userConfirmed = window.confirm('Ek bar order karne ke baad cancel nahi hoga. Kya aap confirm karna chahte hain?');
-    if (!userConfirmed) {
+    // Terms acceptance check
+    if (!acceptedTerms) {
+      toast.error('Please accept the Terms & Conditions and Cancellation & Refund Policy to proceed.');
       return;
     }
 
@@ -369,7 +369,7 @@ export function CheckoutView() {
             </div>
           )}
 
-          <div className="flex items-start gap-2.5 bg-secondary/30 p-3 rounded-2xl border border-border/50">
+          <div className="flex items-start gap-2.5 p-3 rounded-2xl border border-white/10" style={{ backgroundColor: 'rgba(10, 8, 6, 0.80)' }}>
             <input
               type="checkbox"
               id="accept-shop-terms"
@@ -377,15 +377,15 @@ export function CheckoutView() {
               onChange={(e) => setAcceptedTerms(e.target.checked)}
               className="mt-0.5 h-4 w-4 rounded border-gray-300 text-gold focus:ring-gold"
             />
-            <label htmlFor="accept-shop-terms" className="text-xs text-muted-foreground leading-relaxed select-none">
+            <label htmlFor="accept-shop-terms" className="text-xs text-white/90 leading-relaxed select-none">
               I accept the{' '}
-              <Link href="/legal/terms" target="_blank" className="text-gold hover:underline font-semibold">
+              <Link href="/legal/terms" target="_blank" className="font-semibold hover:underline" style={{ color: '#D4AF37' }}>
                 Terms &amp; Conditions
-                  </Link>{' '}
-                  and{' '}
-                  <Link href="/legal/refund" target="_blank" className="text-gold hover:underline font-semibold">
-                    Cancellation &amp; Refund Policy
-                  </Link>.
+              </Link>{' '}
+              and{' '}
+              <Link href="/legal/refund" target="_blank" className="font-semibold hover:underline" style={{ color: '#D4AF37' }}>
+                Cancellation &amp; Refund Policy
+              </Link>.
             </label>
           </div>
 
@@ -440,7 +440,7 @@ export function CheckoutView() {
             <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{convertedShipping === 0 ? 'Free' : formatPrice(convertedShipping, detectedCurrency)}</dd></div>
             <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, detectedCurrency)}</dd></div>
             {detectedCurrency === 'USD' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
-              <div className="text-[10px] text-amber-500 text-right mt-1 font-medium">
+              <div className="mt-2 inline-flex self-end rounded-full px-3 py-1 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(10,8,6,0.85)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>
                 Note: Charged in INR equivalent: {formatPrice(Math.round(total * (exchangeRate || 1)), 'INR')}
               </div>
             )}

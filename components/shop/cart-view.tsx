@@ -40,8 +40,10 @@ export function CartView() {
 
   return (
     <div>
-      <h1 className="font-display text-4xl font-medium tracking-tight text-foreground">Your bag</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{count} {count === 1 ? 'item' : 'items'}</p>
+      <div className="inline-block">
+        <h1 className="font-display text-4xl font-medium tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9)' }}>Your bag</h1>
+        <p className="mt-1 text-sm font-medium text-white/90" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.9)' }}>{count} {count === 1 ? 'item' : 'items'}</p>
+      </div>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-4">
@@ -104,11 +106,11 @@ export function CartView() {
               </div>
             </div>
           ))}
-          <div className="flex justify-between">
-            <Button variant="ghost" onClick={clear} className="rounded-full text-muted-foreground">
+          <div className="flex justify-between rounded-2xl px-2 py-1" style={{ backgroundColor: 'rgba(10, 8, 6, 0.75)' }}>
+            <Button variant="ghost" onClick={clear} className="rounded-full text-white/80 hover:text-white hover:bg-white/10">
               <Trash2 className="mr-1 h-4 w-4" /> Clear bag
             </Button>
-            <Button asChild variant="ghost" className="rounded-full">
+            <Button asChild variant="ghost" className="rounded-full text-white/80 hover:text-white hover:bg-white/10">
               <Link href="/shop">Continue shopping</Link>
             </Button>
           </div>
