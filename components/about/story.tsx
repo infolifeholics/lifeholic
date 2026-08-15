@@ -45,7 +45,7 @@ export function AboutStory() {
               },
               {
                 t: 'Approach',
-                d: 'Evidence-based therapy, expanded by spiritual psychology, somatic awareness and the wisdom of presence.',
+                d: 'Evidence-based therapy, expanded by spiritual psychology, inner awareness and the wisdom of presence.',
               },
               {
                 t: 'Promise',

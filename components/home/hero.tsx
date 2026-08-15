@@ -176,13 +176,13 @@ const RECOMMENDATIONS: Record<string, {
   'Mental & Emotional Health': {
     title: 'Mental recommendation',
     category: 'Health & Well Being',
-    explanation: 'Mental and emotional exhaustion, overthinking, and anxiety indicate a highly stimulated nervous system holding unexpressed energy. Our sessions combine psychodynamic exploration with somatic integration to soothe survival patterns and restore an aligned space of peace.',
+    explanation: 'Mental and emotional exhaustion, overthinking, and anxiety indicate a highly stimulated nervous system holding unexpressed energy. Our sessions combine psychodynamic exploration with body integration to soothe survival patterns and restore an aligned space of peace.',
     showCommonNote: true,
   },
   'Physical Health': {
     title: 'Physical recommendation',
     category: 'Health & Well Being',
-    explanation: 'The body holds the stress, trauma, and emotions that our minds cannot express. Physical symptoms, fatigue, and muscle tension are somatic signals. Using body-centered mindfulness and somatic release, we help you trace sensations, release stored stress, and align physical wellness.',
+    explanation: 'The body holds the stress, trauma, and emotions that our minds cannot express. Physical symptoms, fatigue, and muscle tension are bodily signals. Using body-centered mindfulness and body release, we help you trace sensations, release stored stress, and align physical wellness.',
     showCommonNote: true,
   },
   'Sudden Financial Setbacks': {
@@ -594,7 +594,7 @@ export function HomeHero() {
     if (activeCategory === 'relationships') {
       return `Based on your selections, your challenges appear to be connected with emotional patterns, communication blocks and deeper healing areas. We recommend beginning with the following sessions.`;
     } else if (activeCategory === 'health') {
-      return `Based on your selections, your challenges appear to be connected with nervous system dysregulation, emotional somatic blocks, and a need for somatic grounding and release. We recommend beginning with the following sessions.`;
+      return `Based on your selections, your challenges appear to be connected with nervous system dysregulation, emotional blocks, and a need for grounding and release. We recommend beginning with the following sessions.`;
     } else if (activeCategory === 'finances') {
       return `Based on your selections, your challenges appear to be connected with subconscious scarcity loops, survival anxiety, and ancestral financial patterns. We recommend beginning with the following sessions.`;
     }
@@ -1003,7 +1003,7 @@ export function HomeHero() {
 
             <h3 className="font-display text-xl font-bold text-foreground">Special Offer Just For You!</h3>
             <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-              Get an exclusive discount on your next healing session or somatic transformation workshop.
+              Get an exclusive discount on your next healing session or transformation workshop.
             </p>
 
             <div className="bg-secondary/40 border border-border/40 rounded-2xl p-5 my-6">
@@ -1187,7 +1187,7 @@ export function HomeHero() {
                         Analyzing your choices...
                       </h3>
                       <p className="text-sm text-white/80 max-w-xs mx-auto">
-                        Our somatic engine is tailoring the optimal healing path for your profile
+                        Our engine is tailoring the optimal healing path for your profile
                       </p>
                     </motion.div>
                   ) : (

@@ -9,19 +9,19 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
 
-interface FreeConsultationModalProps {
+interface DiscoveryCallModalProps {
   serviceId: string;
   serviceName: string;
   showButtonOnly?: boolean;
   showPopupOnly?: boolean;
 }
 
-export function FreeConsultationModal({
+export function DiscoveryCallModal({
   serviceId,
   serviceName,
   showButtonOnly = false,
   showPopupOnly = false,
-}: FreeConsultationModalProps) {
+}: DiscoveryCallModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -176,7 +176,7 @@ export function FreeConsultationModal({
         <button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-[9.5rem] md:bottom-20 right-6 z-[9999] flex h-11 w-11 items-center justify-center rounded-full bg-white text-foreground shadow-glow hover:bg-white/90 transition-all duration-300 hover:scale-105 active:scale-95 overflow-hidden border border-white/20"
-          aria-label="Book a free consultation call"
+          aria-label="Book a free Discovery Call"
         >
           <img src="/images/support-agent.png" alt="Support Agent" className="h-full w-full object-cover" />
         </button>
@@ -201,13 +201,13 @@ export function FreeConsultationModal({
               <div>
                 <div className="space-y-1">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 border border-gold/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gold">
-                    ⚡ Free Consultation
+                    ⚡ Discovery call
                   </span>
                   <h3 className="font-display text-2xl font-semibold text-foreground mt-2">
                     Need Help Choosing the Right Service?
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Book a **FREE 10-minute consultation call** with us. We’ll understand your concern and help you select the path that fits you best.
+                    Book a FREE 10-minute Discovery call with us. We’ll understand your concern and help you select the path that fits you best.
                   </p>
                 </div>
 
@@ -234,7 +234,7 @@ export function FreeConsultationModal({
                       <Input
                         id="fc-phone"
                         type="tel"
-                        placeholder="8006880222"
+                        placeholder="0000000000"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         disabled={submitting}
@@ -317,10 +317,10 @@ export function FreeConsultationModal({
                     {submitting ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Booking Consultation...
+                        Booking Discovery Call...
                       </>
                     ) : (
-                      'Book Free Call'
+                      'Book Discovery Call'
                     )}
                   </Button>
                   <p className="text-[10px] text-center text-muted-foreground mt-1">No payment required.</p>
@@ -336,7 +336,7 @@ export function FreeConsultationModal({
                   Your Free Call is Booked! 🎉
                 </h3>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                  Your 10-minute consultation call has been successfully requested. We will contact you on the provided mobile number.
+                  Your 10-minute Discovery Call has been successfully requested. We will contact you on the provided mobile number.
                 </p>
 
                 <div className="bg-secondary/20 border border-white/5 rounded-2xl p-4 max-w-sm mx-auto text-left space-y-2 text-sm">

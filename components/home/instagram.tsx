@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Instagram, Heart, Loader2, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import { RevealText, Reveal } from '@/components/site/reveal';
@@ -9,6 +9,46 @@ import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+function LazyVideo({ src, className, onLoadedMetadata }: { src: string; className?: string; onLoadedMetadata?: (e: any) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(video);
+    return () => {
+      observer.unobserve(video);
+    };
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      className={className}
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      onLoadedMetadata={onLoadedMetadata}
+    />
+  );
+}
 
 export function HomeInstagram() {
   const [feedItems, setFeedItems] = useState<any[]>([]);
@@ -46,6 +86,7 @@ export function HomeInstagram() {
           url: (found && found.url) ? found.url : defaultPosts[i],
           type: found ? found.type : 'image',
           likes: Math.max((found && typeof found.likes === 'number') ? found.likes : 0, defaultLikes[i]),
+          link: found ? found.link : '',
         };
       });
       setFeedItems(items);
@@ -139,7 +180,7 @@ export function HomeInstagram() {
   const handleShare = async (item: any) => {
     const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/?post=${item.id}`;
     const shareData = {
-      title: 'The Lifeholics Somatic Feed',
+      title: 'The Lifeholics Feed',
       text: 'Check out this post from @thelifeholics!',
       url: shareUrl,
     };
@@ -206,14 +247,9 @@ export function HomeInstagram() {
                       )}
                     >
                       {item.type === 'video' ? (
-                        <video
+                        <LazyVideo
                           src={item.url}
                           className="h-full w-full object-cover"
-                          muted
-                          loop
-                          playsInline
-                          autoPlay
-                          preload="metadata"
                           onLoadedMetadata={(e) => handleVideoMetadata(item.id, e)}
                         />
                       ) : (
@@ -227,9 +263,32 @@ export function HomeInstagram() {
                       )}
 
                       {/* Hover Overlay */}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 transition-all duration-300 group-hover:opacity-100 pointer-events-none">
-                        <Instagram className="h-8 w-8 text-white mb-2 transform -translate-y-2 group-hover:translate-y-0 transition-transform duration-300" />
-                        <span className="text-xs text-white/90 font-medium">Double-tap to like</span>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 transition-all duration-300 group-hover:opacity-100">
+                        <div className="flex flex-col items-center justify-center pointer-events-none mb-3">
+                          <Instagram className="h-8 w-8 text-white mb-2 transform -translate-y-2 group-hover:translate-y-0 transition-transform duration-300" />
+                          <span className="text-xs text-white/90 font-medium">Double-tap to like</span>
+                        </div>
+                        {item.link && (
+                          <div className="mt-2 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                            {item.link.startsWith('http') ? (
+                              <a
+                                href={item.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 bg-gold hover:bg-gold/80 text-black font-semibold text-xs px-4 py-2 rounded-full shadow-glow transition-all duration-300 active:scale-95"
+                              >
+                                Explore
+                              </a>
+                            ) : (
+                              <Link
+                                href={item.link}
+                                className="inline-flex items-center gap-1 bg-gold hover:bg-gold/80 text-black font-semibold text-xs px-4 py-2 rounded-full shadow-glow transition-all duration-300 active:scale-95"
+                              >
+                                Explore
+                              </Link>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Central heart pop animation */}

@@ -6,7 +6,7 @@ const CERTS = [
   { icon: GraduationCap, t: 'M.A. Psychology', d: 'Formal clinical training' },
   { icon: BadgeCheck, t: 'Certified Spiritual Psychology', d: 'Soul-centred therapeutic practice' },
   { icon: HeartHandshake, t: 'Inner Child & Parts Work', d: 'Reparenting & developmental healing' },
-  { icon: Award, t: 'Somatic & Trauma-Informed', d: 'Nervous-system regulation' },
+  { icon: Award, t: 'Trauma-Informed', d: 'Nervous-system regulation' },
 ];
 
 export function AboutCerts() {

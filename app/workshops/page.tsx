@@ -68,7 +68,7 @@ export default function WorkshopsPage() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin text-gold mb-2" />
-        <p className="text-sm">Aligning somatic gatherings...</p>
+        <p className="text-sm">Loading workshops...</p>
       </div>
     );
   }

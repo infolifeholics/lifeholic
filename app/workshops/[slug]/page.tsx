@@ -391,7 +391,7 @@ export default function WorkshopDetailsPage() {
               className="space-y-4 rounded-[2rem] border border-white/10 backdrop-blur-md p-6 sm:p-8 text-white/95"
               style={{ backgroundColor: 'rgba(18, 15, 14, 0.75)' }}
             >
-              <h2 className="font-display text-xl font-semibold text-white">About this somatic Experience</h2>
+              <h2 className="font-display text-xl font-semibold text-white">About this Experience</h2>
               <div 
                 className="text-sm leading-relaxed text-white/90 font-medium space-y-4"
                 dangerouslySetInnerHTML={{ __html: ws.description }}
@@ -431,7 +431,7 @@ export default function WorkshopDetailsPage() {
             {ws.videos && ws.videos.length > 0 && (
               <div className="space-y-4">
                 <h2 className="font-display text-xl font-semibold text-foreground flex items-center gap-1.5">
-                  <Play className="h-5 w-5 text-gold" /> Somatic Promos &amp; Highlights
+                  <Play className="h-5 w-5 text-gold" /> Promos &amp; Highlights
                 </h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {ws.videos.map((vidUrl, idx) => {
@@ -524,7 +524,7 @@ export default function WorkshopDetailsPage() {
             {ws.speakers && ws.speakers.length > 0 && (
               <div className="space-y-6">
                 <h2 className="font-display text-xl font-semibold text-foreground flex items-center gap-1.5">
-                  <User className="h-5 w-5 text-gold" /> Meet Your Somatic Guide
+                  <User className="h-5 w-5 text-gold" /> Meet Your Guide
                 </h2>
                 <div className="grid gap-6 sm:grid-cols-2">
                   {ws.speakers.map((s, idx) => (
@@ -593,7 +593,7 @@ export default function WorkshopDetailsPage() {
             {/* Related Workshops */}
             {relatedWs.length > 0 && (
               <div className="space-y-4 pt-6 border-t border-border/40">
-                <h2 className="font-display text-xl font-semibold text-foreground">Recommended Somatic Gatherings</h2>
+                <h2 className="font-display text-xl font-semibold text-foreground">Recommended Gatherings</h2>
                 <div className="grid gap-4 sm:grid-cols-3">
                   {relatedWs.map((r) => (
                     <Link key={r.id} href={`/workshops/${r.slug}`}>
@@ -776,7 +776,7 @@ export default function WorkshopDetailsPage() {
                     Workshop Completed
                   </span>
                   <p className="text-[10px] text-muted-foreground">
-                    Registrations are closed for this somatic gathering.
+                    Registrations are closed for this gathering.
                   </p>
                 </div>
               )}

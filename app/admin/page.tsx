@@ -51,7 +51,7 @@ const NAV = [
   // { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'todays_bookings', label: "Today's Bookings", icon: CalendarDays },
   { id: 'bookings', label: 'Bookings & Calendar', icon: CalendarDays },
-  { id: 'free_calls', label: 'Free Consultation Calls', icon: PhoneCall },
+  { id: 'free_calls', label: 'Discovery Calls', icon: PhoneCall },
   { id: 'slots_management', label: 'Session Slots', icon: Settings },
   { id: 'workshops', label: 'Workshops', icon: CalendarDays },
   { id: 'healers', label: 'Healers', icon: Users },

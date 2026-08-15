@@ -148,7 +148,7 @@ export function SiteFooter() {
           <p>© {new Date().getFullYear()} TheLifeHolics. Crafted with intention.</p>
           <p className="flex items-center gap-2">
             <span className="inline-block h-2 w-2 rounded-full bg-success animate-breathe" />
-            Currently accepting new clients · IST &amp; global timezones
+            Working hours 10:00 AM to 05:30 PM · IST &amp; global timezones
           </p>
         </div>
       </div>

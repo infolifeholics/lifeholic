@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 
 const DICTIONARY: Record<string, Record<string, string>> = {
   en: {
-    'search.eyebrow': 'Begin your somatic recovery',
+    'search.eyebrow': 'Begin your recovery',
     'search.title': 'What are you struggling with today?',
     'search.desc': 'Select your concern category, choose your area, and tick off challenges to get direct healing options.',
     'search.btn': 'Explore concern areas',

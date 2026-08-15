@@ -51,12 +51,56 @@ export function CinematicVideoBg() {
     return () => unsubscribe();
   }, []);
 
+  // Pause background video when off-screen or tab is inactive to save CPU/GPU resources
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleVideoPlayState = () => {
+      if (document.hidden) {
+        video.pause();
+        return;
+      }
+      
+      const isVideoPage = pathname === '/' || pathname === '/about';
+      if (!isVideoPage) {
+        video.pause();
+        return;
+      }
+
+      if (window.scrollY > window.innerHeight * 1.2) {
+        if (!video.paused) {
+          video.pause();
+        }
+      } else {
+        if (video.paused) {
+          video.play().catch(() => {});
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleVideoPlayState, { passive: true });
+    document.addEventListener('visibilitychange', handleVideoPlayState);
+    
+    // Initial check
+    handleVideoPlayState();
+
+    return () => {
+      window.removeEventListener('scroll', handleVideoPlayState);
+      document.removeEventListener('visibilitychange', handleVideoPlayState);
+    };
+  }, [pathname]);
+
   useEffect(() => {
     // Disable mouse parallax on touch devices
     const isTouch = window.matchMedia('(pointer: coarse)').matches;
     if (isTouch) return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      const isVideoPage = pathname === '/' || pathname === '/about';
+      // Return early if tab is hidden, page is not a video page, or scrolled down past the hero section (covered)
+      if (document.hidden || !isVideoPage || window.scrollY > window.innerHeight * 1.2) return;
+
       // Normalize to range [-15, 15] for max 30px offset
       const xOffset = (e.clientX / window.innerWidth - 0.5) * -30;
       const yOffset = (e.clientY / window.innerHeight - 0.5) * -30;

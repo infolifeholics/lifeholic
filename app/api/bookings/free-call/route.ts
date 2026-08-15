@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     const duplicateSnap = await getDocs(qDuplicate);
     if (!duplicateSnap.empty) {
       return NextResponse.json(
-        { error: 'You already have an active pending consultation call request.' },
+        { error: 'You already have an active pending Discovery Call request.' },
         { status: 409 }
       );
     }
@@ -114,8 +114,8 @@ export async function POST(req: Request) {
     try {
       const emailBody = `
         <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
-          <h2 style="color: #c5a880; margin-bottom: 20px;">New Free 10-Minute Consultation Booked</h2>
-          <p>A new free consultation call has been requested.</p>
+          <h2 style="color: #c5a880; margin-bottom: 20px;">New Free 10-Minute Discovery Call Booked</h2>
+          <p>A new Discovery Call has been requested.</p>
           <div style="background-color: #fdfaf6; border-left: 4px solid #c5a880; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <p><strong>Booking ID:</strong> ${docRef.id}</p>
             <p><strong>Name:</strong> ${name}</p>

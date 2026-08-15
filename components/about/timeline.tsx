@@ -5,7 +5,7 @@ const TIMELINE = [
   { year: '2015', title: 'Began formal training in psychology', desc: 'A first degree, and the recognition that the mind alone was not enough.' },
   { year: '2017', title: 'First private clients', desc: 'Holding space for grief, anxiety and the search for meaning.' },
   { year: '2019', title: 'Certified in Spiritual Psychology', desc: 'Deepening into a soul-centred approach to healing.' },
-  { year: '2021', title: 'Inner child & somatic modalities', desc: 'Adding the body and the younger self to the work.' },
+  { year: '2021', title: 'Inner child & healing modalities', desc: 'Adding the body and the younger self to the work.' },
   { year: '2023', title: 'Practice goes global', desc: 'Serving clients across 14 countries online.' },
   { year: 'Today', title: 'TheLifeHolics', desc: 'A home for therapy, healing and the practice of becoming whole.' },
 ];

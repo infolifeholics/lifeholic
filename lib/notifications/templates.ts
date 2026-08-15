@@ -151,7 +151,7 @@ export const EMAIL_TEMPLATES = {
     const content = `
       <h2>Welcome to ${vars.orgName || DEFAULT_VARS.orgName}, ${vars.memberName}!</h2>
       <p>Thank you for registering with us. We are dedicated to supporting your healing and transformation journey.</p>
-      <p>You can now book healing sessions, enroll in somatic plan workshops, and track your progress in real-time on your dashboard.</p>
+      <p>You can now book healing sessions, enroll in workshops, and track your progress in real-time on your dashboard.</p>
       <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/account" class="btn">Go to Dashboard</a>
     `;
     return getBaseHtml('Welcome to TheLifeHolics', content, vars);
@@ -299,7 +299,7 @@ export const EMAIL_TEMPLATES = {
           Get ${vars.bookingStatus || 'Discount'} off on your next session!
         </p>
       </div>
-      <p>Use it at checkout while booking your next session or enrolling in somatic workshops.</p>
+      <p>Use it at checkout while booking your next session or enrolling in workshops.</p>
       <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/booking" class="btn">Book Session Now</a>
     `;
     return getBaseHtml(vars.actionDetails || 'Special Promo Offer', content, vars);

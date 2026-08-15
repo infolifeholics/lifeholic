@@ -79,7 +79,7 @@ export function AdminFreeCalls() {
     return (
       <div className="rounded-3xl border border-dashed border-border bg-secondary/40 p-16 text-center">
         <Phone className="mx-auto h-10 w-10 text-muted-foreground" />
-        <p className="mt-4 font-display text-xl text-foreground">No free consultation calls requested yet</p>
+        <p className="mt-4 font-display text-xl text-foreground">No Discovery Calls requested yet</p>
       </div>
     );
   }
@@ -101,7 +101,7 @@ export function AdminFreeCalls() {
     <div className="space-y-4">
       {/* Header Toolbar */}
       <div className="flex justify-between items-center bg-card/60 p-4 border border-border/60 rounded-2xl">
-        <span className="text-xs font-semibold text-muted-foreground">Showing latest {bookings.length} consultation requests</span>
+        <span className="text-xs font-semibold text-muted-foreground">Showing latest {bookings.length} Discovery Call requests</span>
         <button
           onClick={load}
           className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-all"

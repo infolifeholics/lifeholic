@@ -111,7 +111,14 @@ export function SiteHeader() {
   };
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    let lastValue = window.scrollY > 24;
+    const onScroll = () => {
+      const isScrolled = window.scrollY > 24;
+      if (isScrolled !== lastValue) {
+        lastValue = isScrolled;
+        setScrolled(isScrolled);
+      }
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
