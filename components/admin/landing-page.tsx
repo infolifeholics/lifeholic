@@ -780,116 +780,140 @@ export function AdminLandingPage() {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {feedItems.map((item, idx) => {
-            const [localLink, setLocalLink] = useState(item.link || '');
-            const [savingLink, setSavingLink] = useState(false);
-
-            useEffect(() => {
-              setLocalLink(item.link || '');
-            }, [item.link]);
-
-            const handleSaveLink = async () => {
-              setSavingLink(true);
-              const toastId = toast.loading('Saving explore link...');
-              try {
-                await setDoc(doc(db, 'landing_feed', item.id), {
-                  link: localLink.trim()
-                }, { merge: true });
-                toast.success('Explore link saved successfully!', { id: toastId });
-                // Update local state item
-                setFeedItems(prev => prev.map(f => f.id === item.id ? { ...f, link: localLink.trim() } : f));
-              } catch (err: any) {
-                toast.error('Failed to save link: ' + err.message, { id: toastId });
-              } finally {
-                setSavingLink(false);
-              }
-            };
-
-            return (
-              <div key={item.id} className="p-4 rounded-2xl border border-border/40 bg-secondary/10 space-y-4 flex flex-col justify-between">
-                <div className="flex items-center justify-between border-b border-border/20 pb-2">
-                  <span className="text-sm font-semibold text-foreground">
-                    Slot {idx + 1} ({item.type === 'video' ? 'Video' : 'Image'})
-                  </span>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-border/40 bg-card">
-                    {item.type === 'video' ? (
-                      <video
-                        src={item.url}
-                        muted
-                        loop
-                        playsInline
-                        autoPlay
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <img
-                        src={item.url}
-                        alt={`Slot ${idx + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                    )}
-                    {uploadingFeed[item.id] && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-                        <Loader2 className="h-6 w-6 animate-spin text-gold" />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block w-full">
-                      <input
-                        type="file"
-                        accept="image/*,video/*"
-                        disabled={uploadingFeed[item.id]}
-                        onChange={(e) => handleFeedUpload(item.id, e)}
-                        className="hidden"
-                        id={`feed-input-${item.id}`}
-                      />
-                      <Button
-                        asChild
-                        variant="outline"
-                        className="w-full rounded-full cursor-pointer flex items-center justify-center gap-1.5 h-9 text-xs"
-                        disabled={uploadingFeed[item.id]}
-                        onClick={() => document.getElementById(`feed-input-${item.id}`)?.click()}
-                      >
-                        <span>
-                          <UploadCloud className="h-3.5 w-3.5 text-muted-foreground" />
-                          Replace Slot {idx + 1}
-                        </span>
-                      </Button>
-                    </label>
-                  </div>
-
-                  <div className="space-y-2 border-t border-border/20 pt-3">
-                    <label className="block text-xs font-semibold text-muted-foreground">Explore Link</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="/workshops/example"
-                        value={localLink}
-                        onChange={(e) => setLocalLink(e.target.value)}
-                        className="flex-1 rounded-xl bg-card border border-border/40 text-xs px-3 py-1.5 focus:ring-1 focus:ring-gold"
-                      />
-                      <Button
-                        onClick={handleSaveLink}
-                        disabled={savingLink}
-                        size="sm"
-                        className="rounded-xl px-3 bg-gold text-black font-semibold text-xs h-8"
-                      >
-                        {savingLink ? 'Saving...' : 'Save'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {feedItems.map((item, idx) => (
+            <SomaticFeedItemEditor
+              key={item.id}
+              item={item}
+              idx={idx}
+              uploadingFeed={uploadingFeed}
+              handleFeedUpload={handleFeedUpload}
+              setFeedItems={setFeedItems}
+            />
+          ))}
         </div>
       </div>
 
+    </div>
+  );
+}
+
+interface SomaticFeedItemEditorProps {
+  item: any;
+  idx: number;
+  uploadingFeed: Record<string, boolean>;
+  handleFeedUpload: (id: string, e: React.ChangeEvent<HTMLInputElement>) => void;
+  setFeedItems: React.Dispatch<React.SetStateAction<any[]>>;
+}
+
+function SomaticFeedItemEditor({
+  item,
+  idx,
+  uploadingFeed,
+  handleFeedUpload,
+  setFeedItems,
+}: SomaticFeedItemEditorProps) {
+  const [localLink, setLocalLink] = useState(item.link || '');
+  const [savingLink, setSavingLink] = useState(false);
+
+  useEffect(() => {
+    setLocalLink(item.link || '');
+  }, [item.link]);
+
+  const handleSaveLink = async () => {
+    setSavingLink(true);
+    const toastId = toast.loading('Saving explore link...');
+    try {
+      await setDoc(doc(db, 'landing_feed', item.id), {
+        link: localLink.trim()
+      }, { merge: true });
+      toast.success('Explore link saved successfully!', { id: toastId });
+      setFeedItems(prev => prev.map(f => f.id === item.id ? { ...f, link: localLink.trim() } : f));
+    } catch (err: any) {
+      toast.error('Failed to save link: ' + err.message, { id: toastId });
+    } finally {
+      setSavingLink(false);
+    }
+  };
+
+  return (
+    <div className="p-4 rounded-2xl border border-border/40 bg-secondary/10 space-y-4 flex flex-col justify-between">
+      <div className="flex items-center justify-between border-b border-border/20 pb-2">
+        <span className="text-sm font-semibold text-foreground">
+          Slot {idx + 1} ({item.type === 'video' ? 'Video' : 'Image'})
+        </span>
+      </div>
+      
+      <div className="space-y-4">
+        <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-border/40 bg-card">
+          {item.type === 'video' ? (
+            <video
+              src={item.url}
+              muted
+              loop
+              playsInline
+              autoPlay
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <img
+              src={item.url}
+              alt={`Slot ${idx + 1}`}
+              className="h-full w-full object-cover"
+            />
+          )}
+          {uploadingFeed[item.id] && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+              <Loader2 className="h-6 w-6 animate-spin text-gold" />
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <label className="block w-full">
+            <input
+              type="file"
+              accept="image/*,video/*"
+              disabled={uploadingFeed[item.id]}
+              onChange={(e) => handleFeedUpload(item.id, e)}
+              className="hidden"
+              id={`feed-input-${item.id}`}
+            />
+            <Button
+              asChild
+              variant="outline"
+              className="w-full rounded-full cursor-pointer flex items-center justify-center gap-1.5 h-9 text-xs"
+              disabled={uploadingFeed[item.id]}
+              onClick={() => document.getElementById(`feed-input-${item.id}`)?.click()}
+            >
+              <span>
+                <UploadCloud className="h-3.5 w-3.5 text-muted-foreground" />
+                Replace Slot {idx + 1}
+              </span>
+            </Button>
+          </label>
+        </div>
+
+        <div className="space-y-2 border-t border-border/20 pt-3">
+          <label className="block text-xs font-semibold text-muted-foreground">Explore Link</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="/workshops/example"
+              value={localLink}
+              onChange={(e) => setLocalLink(e.target.value)}
+              className="flex-1 rounded-xl bg-card border border-border/40 text-xs px-3 py-1.5 focus:ring-1 focus:ring-gold"
+            />
+            <Button
+              onClick={handleSaveLink}
+              disabled={savingLink}
+              size="sm"
+              className="rounded-xl px-3 bg-gold text-black font-semibold text-xs h-8"
+            >
+              {savingLink ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
