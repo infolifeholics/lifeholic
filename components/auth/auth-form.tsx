@@ -188,27 +188,16 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="rounded-full flex items-center gap-2 py-5"
+              className="rounded-full flex items-center justify-center gap-2 py-5 w-full"
             >
               <Chrome className="h-4 w-4 text-rose-500" />
-              <span>Google</span>
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleWhatsAppSignIn}
-              disabled={loading}
-              className="rounded-full flex items-center gap-2 py-5 border-emerald-200/50 hover:bg-emerald-500/5"
-            >
-              <Phone className="h-4 w-4 text-emerald-500" />
-              <span>WhatsApp</span>
+              <span>Continue with Google</span>
             </Button>
           </div>
         </>

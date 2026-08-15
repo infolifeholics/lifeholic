@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function POST(req: Request) {
   try {
@@ -9,12 +8,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Valid email is required.' }, { status: 400 });
     }
 
-    const colRef = collection(db, 'newsletter');
-    const q = query(colRef, where('email', '==', email));
-    const snap = await getDocs(q);
+    const colRef = adminDb.collection('newsletter');
+    const snap = await colRef.where('email', '==', email.trim().toLowerCase()).get();
 
     if (snap.empty) {
-      await addDoc(colRef, { email, created_at: new Date().toISOString() });
+      await colRef.add({
+        email: email.trim().toLowerCase(),
+        created_at: new Date().toISOString(),
+      });
     }
 
     return NextResponse.json({ ok: true });
