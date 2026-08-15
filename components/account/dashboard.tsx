@@ -633,11 +633,11 @@ export function AccountDashboard() {
             </div>
 
             {/* Quick Actions (Sign Out) */}
-            {/* <div className="flex justify-end gap-2 pt-2 border-t border-border/20">
+            <div className="flex justify-end gap-2 pt-2 border-t border-border/20">
               <Button size="sm" variant="outline" onClick={() => signOut()} className="rounded-full text-xs">
                 Sign Out
               </Button>
-            </div> */}
+            </div>
           </div>
         </div>
 
