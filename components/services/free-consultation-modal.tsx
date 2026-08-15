@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useAuth } from '@/components/providers/auth-provider';
 import { createPortal } from 'react-dom';
 
 interface DiscoveryCallModalProps {
@@ -22,6 +23,7 @@ export function DiscoveryCallModal({
   showButtonOnly = false,
   showPopupOnly = false,
 }: DiscoveryCallModalProps) {
+  const { user, loading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -61,23 +63,24 @@ export function DiscoveryCallModal({
 
   // Handle auto-popup trigger with a 5-second delay
   useEffect(() => {
-    if (!mounted || showButtonOnly) return;
+    if (!mounted || showButtonOnly || loading) return;
 
     // Check for query parameter force_popup=true to bypass storage check in deployment testing
     const searchParams = new URLSearchParams(window.location.search);
     const forcePopup = searchParams.get('force_popup') === 'true';
 
-    const isBooked = localStorage.getItem('free_call_booked') === 'true';
-    const isDismissed = sessionStorage.getItem('free_call_popup_dismissed') === 'true';
-    const isDev = process.env.NODE_ENV === 'development';
+    const isBooked = localStorage.getItem('free_call_booked') === 'true' ||
+                     (user && localStorage.getItem(`free_call_booked_${user.uid}`) === 'true');
+    const isDismissed = sessionStorage.getItem('free_call_popup_dismissed') === 'true' ||
+                        (user && localStorage.getItem(`free_call_popup_dismissed_${user.uid}`) === 'true');
 
-    if (isDev || forcePopup || (!isBooked && !isDismissed)) {
+    if (forcePopup || (!isBooked && !isDismissed)) {
       const timer = setTimeout(() => {
         setIsOpen(true);
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [mounted, showButtonOnly]);
+  }, [mounted, showButtonOnly, user, loading]);
 
 
 
@@ -115,6 +118,9 @@ export function DiscoveryCallModal({
   const handleClose = () => {
     setIsOpen(false);
     sessionStorage.setItem('free_call_popup_dismissed', 'true');
+    if (user) {
+      localStorage.setItem(`free_call_popup_dismissed_${user.uid}`, 'true');
+    }
     // Clear form on close if not completed
     if (!successData) {
       setName('');
@@ -155,6 +161,9 @@ export function DiscoveryCallModal({
       }
 
       localStorage.setItem('free_call_booked', 'true');
+      if (user) {
+        localStorage.setItem(`free_call_booked_${user.uid}`, 'true');
+      }
       setSuccessData({
         date: new Date(selectedSlot.start).toLocaleDateString('en-IN', { timeZone: tz }),
         time: new Date(selectedSlot.start).toLocaleTimeString('en-IN', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: true }),
@@ -199,15 +208,21 @@ export function DiscoveryCallModal({
             {!successData ? (
               // Booking Form State
               <div>
-                <div className="space-y-1">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 border border-gold/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gold">
-                    ⚡ Discovery call
+                <div className="space-y-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-black border border-gold/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gold">
+                    ⚡ FREE 10 MINUTE DISCOVERY CALL
                   </span>
-                  <h3 className="font-display text-2xl font-semibold text-foreground mt-2">
-                    Need Help Choosing the Right Service?
+                  <h3 className="font-display text-xl font-semibold text-foreground mt-1">
+                    Understand How We Can Support You
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Book a FREE 10-minute Discovery call with us. We’ll understand your concern and help you select the path that fits you best.
+                  <p className="text-xs text-muted-foreground">
+                    A simple introductory call to understand what you are looking for, answer your questions, explain how we work, and guide you towards the right next step.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Your call may be with <strong className="text-foreground">Megha Pahwa or a trained member of our team</strong>, depending on availability.
+                  </p>
+                  <p className="text-[11px] text-muted-foreground/80 border-t border-white/5 pt-2 italic">
+                    <strong className="text-foreground font-semibold">Please note:</strong> This call is for clarity and understanding only. It does not include detailed healing, analysis, or consultation.
                   </p>
                 </div>
 
@@ -320,10 +335,10 @@ export function DiscoveryCallModal({
                         Booking Discovery Call...
                       </>
                     ) : (
-                      'Book Discovery Call'
+                      'Book My Free Discovery Call'
                     )}
                   </Button>
-                  <p className="text-[10px] text-center text-muted-foreground mt-1">No payment required.</p>
+                  <p className="text-xs text-center text-muted-foreground italic mt-1.5">No payment required</p>
                 </form>
               </div>
             ) : (
