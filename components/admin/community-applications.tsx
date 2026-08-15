@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Check, Inbox, Loader2, Trash2, Calendar, Mail, Phone, User, Eye, X } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, limit, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 type CommunityApplication = {
@@ -14,6 +14,8 @@ type CommunityApplication = {
   message: string;
   status: 'pending' | 'reviewed' | 'accepted' | 'rejected';
   created_at: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export function AdminCommunityApplications() {
@@ -21,33 +23,31 @@ export function AdminCommunityApplications() {
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState<CommunityApplication | null>(null);
 
-  const load = () => {
-    setLoading(true);
+  useEffect(() => {
     const q = query(collection(db, 'community_applications'), orderBy('created_at', 'desc'), limit(100));
-    getDocs(q)
-      .then((snap) => {
-        const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as CommunityApplication);
-        setApplications(list);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Error fetching community applications:', err);
-        setLoading(false);
-      });
-  };
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as CommunityApplication);
+      setApplications(list);
+      setLoading(false);
 
-  useEffect(load, []);
+      // Keep selectedApp details synchronized if it exists in the updated list
+      setSelectedApp((prev) => {
+        if (!prev) return null;
+        const current = list.find((app) => app.id === prev.id);
+        return current || null;
+      });
+    }, (err) => {
+      console.error('Error listening to community applications:', err);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const updateStatus = async (id: string, newStatus: CommunityApplication['status']) => {
     try {
-      await setDoc(doc(db, 'community_applications', id), { status: newStatus }, { merge: true });
+      await setDoc(doc(db, 'community_applications', id), { status: newStatus, updatedAt: new Date().toISOString() }, { merge: true });
       toast.success(`Application status updated to ${newStatus}.`);
-      
-      // Update local state
-      setApplications(prev => prev.map(app => app.id === id ? { ...app, status: newStatus } : app));
-      if (selectedApp && selectedApp.id === id) {
-        setSelectedApp(prev => prev ? { ...prev, status: newStatus } : null);
-      }
     } catch (error) {
       toast.error('Could not update status.');
     }
@@ -61,7 +61,6 @@ export function AdminCommunityApplications() {
       if (selectedApp && selectedApp.id === id) {
         setSelectedApp(null);
       }
-      load();
     } catch (error) {
       toast.error('Could not delete application.');
     }

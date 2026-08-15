@@ -17,7 +17,8 @@ service cloud.firestore {
     }
     match /testimonials/{document} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && request.resource.data.featured == false;
+      allow update, delete: if isAdmin();
     }
     match /faqs/{document} {
       allow read: if true;

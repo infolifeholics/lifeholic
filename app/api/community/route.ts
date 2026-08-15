@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, limit } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import { queueNotification } from '@/lib/notifications/notification-service';
 import { logSystemError } from '@/lib/error-tracker';
 
@@ -31,13 +30,14 @@ export async function POST(req: Request) {
     }
 
     // 2. Prevent duplicate pending applications
-    const q = query(
-      collection(db, 'community_applications'),
-      where('email', '==', email.trim().toLowerCase()),
-      where('status', '==', 'pending'),
-      limit(1)
-    );
-    const existingSnap = await getDocs(q);
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingSnap = await adminDb
+      .collection('community_applications')
+      .where('email', '==', normalizedEmail)
+      .where('status', '==', 'pending')
+      .limit(1)
+      .get();
+
     if (!existingSnap.empty) {
       return NextResponse.json(
         { error: 'You already have a pending Community application. Our team will get back to you after reviewing it.' },
@@ -46,16 +46,19 @@ export async function POST(req: Request) {
     }
 
     // 3. Create document in firestore
+    const nowStr = new Date().toISOString();
     const newDoc = {
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       phone: phone.trim(),
       message: message.trim(),
       status: 'pending',
-      created_at: new Date().toISOString(),
+      created_at: nowStr,
+      createdAt: nowStr,
+      updatedAt: nowStr,
     };
 
-    const docRef = await addDoc(collection(db, 'community_applications'), newDoc);
+    const docRef = await adminDb.collection('community_applications').add(newDoc);
 
     // 4. Send Notifications
     try {
