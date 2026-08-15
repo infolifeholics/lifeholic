@@ -434,9 +434,14 @@ export function AccountDashboard() {
   if (!user) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-        <h1 className="font-display text-3xl font-medium text-foreground">Please sign in</h1>
-        <p className="mt-3 text-muted-foreground">Sign in to view your account.</p>
-        <Button asChild className="mt-6 rounded-full"><Link href="/auth/login">Sign in</Link></Button>
+        <div
+          className="flex flex-col items-center rounded-3xl border border-white/10 p-10 sm:p-14 backdrop-blur-md shadow-2xl"
+          style={{ backgroundColor: 'rgba(10, 8, 6, 0.85)' }}
+        >
+          <h1 className="font-display text-3xl font-medium" style={{ color: '#D4AF37' }}>Please sign in</h1>
+          <p className="mt-3 text-white/75">Sign in to view your account.</p>
+          <Button asChild className="mt-6 rounded-full"><Link href="/auth/login">Sign in</Link></Button>
+        </div>
       </div>
     );
   }
