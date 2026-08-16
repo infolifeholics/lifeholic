@@ -210,7 +210,7 @@ export function ContactInfo() {
       </div>
 
       {/* WhatsApp */}
-      <div className="rounded-3xl border border-border/60 bg-card/50 p-5">
+      {/* <div className="rounded-3xl border border-border/60 bg-card/50 p-5">
         <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-foreground">
           <MessageCircle className="h-4 w-4" />
         </span>
@@ -228,10 +228,10 @@ export function ContactInfo() {
         >
           Chat on WhatsApp
         </a>
-      </div>
+      </div> */}
 
       {/* Studio */}
-      <div className="rounded-3xl border border-border/60 bg-card/50 p-5">
+      {/* <div className="rounded-3xl border border-border/60 bg-card/50 p-5">
         <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-foreground">
           <MapPin className="h-4 w-4" />
         </span>
@@ -243,7 +243,7 @@ export function ContactInfo() {
         <p className="mt-1 font-medium text-foreground">
           Online worldwide · In India
         </p>
-      </div>
+      </div> */}
     </div>
   );
 }
