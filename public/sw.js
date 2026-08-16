@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lifeholics-cache-v1';
+const CACHE_NAME = 'lifeholics-cache-v2';
 const OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', (event) => {
