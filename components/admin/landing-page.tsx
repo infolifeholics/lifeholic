@@ -415,7 +415,7 @@ export function AdminLandingPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|ogg|mov|m4v|avi|mkv)$/i.test(file.name);
+    const isVideo = file.type.startsWith('video/');
     const typeLabel = isVideo ? 'video' : 'image';
 
     setUploadingFeed(prev => ({ ...prev, [slotId]: true }));
