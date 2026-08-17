@@ -78,7 +78,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
   let targetTo = to;
   let finalSubject = subject;
   if (process.env.EMAIL_DEMO_MODE === 'true') {
-    targetTo = 'support@thelifeholics.com';
+    targetTo = process.env.EMAIL_DEMO_RECIPIENT || 'support@thelifeholics.com';
     finalSubject = `DEMO - [To: ${to}] - ${subject}`;
   }
 

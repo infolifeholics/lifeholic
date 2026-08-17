@@ -22,7 +22,7 @@ const originalSendMail = mailTransport.sendMail.bind(mailTransport);
 mailTransport.sendMail = function (mailOptions, callback) {
   if (process.env.EMAIL_DEMO_MODE === 'true') {
     mailOptions.subject = `DEMO - [To: ${mailOptions.to}] - ${mailOptions.subject}`;
-    mailOptions.to = 'support@thelifeholics.com';
+    mailOptions.to = process.env.EMAIL_DEMO_RECIPIENT || 'support@thelifeholics.com';
   }
   return originalSendMail(mailOptions, callback);
 };
@@ -510,7 +510,7 @@ async function sendOtpEmail(to, otp) {
   let targetTo = to;
   let finalSubject = subject;
   if (process.env.EMAIL_DEMO_MODE === 'true') {
-    targetTo = 'support@thelifeholics.com';
+    targetTo = process.env.EMAIL_DEMO_RECIPIENT || 'support@thelifeholics.com';
     finalSubject = `DEMO - [To: ${to}] - ${subject}`;
   }
 

@@ -57,7 +57,7 @@ export async function sendEmailNotification(options: { to: string; subject: stri
   let targetTo = options.to;
   let finalSubject = options.subject;
   if (process.env.EMAIL_DEMO_MODE === 'true') {
-    targetTo = 'support@thelifeholics.com';
+    targetTo = process.env.EMAIL_DEMO_RECIPIENT || 'support@thelifeholics.com';
     finalSubject = `DEMO - [To: ${options.to}] - ${options.subject}`;
   }
   
