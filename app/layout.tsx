@@ -125,7 +125,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               data-cfasync="false"
               type="text/javascript"
               src="https://cache.consentframework.com/js/pa/53540/c/PNlIj/stub?source=google-tag"
-              strategy="beforeInteractive"
+              strategy="afterInteractive"
             />
             <Script
               data-cfasync="false"

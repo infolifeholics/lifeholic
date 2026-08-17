@@ -18,12 +18,15 @@ function LazyVideo({ src, className, onLoadedMetadata }: { src: string; classNam
     if (!video) return;
 
     video.muted = true;
+    video.load();
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            video.play().catch(() => {});
+            video.play().catch((err) => {
+              console.warn("Autoplay failed:", err);
+            });
           } else {
             video.pause();
           }
@@ -36,17 +39,18 @@ function LazyVideo({ src, className, onLoadedMetadata }: { src: string; classNam
     return () => {
       observer.unobserve(video);
     };
-  }, []);
+  }, [src]);
 
   return (
     <video
       ref={videoRef}
       src={src}
       className={className}
+      autoPlay
       muted
       loop
       playsInline
-      preload="metadata"
+      preload="auto"
       onLoadedMetadata={onLoadedMetadata}
     />
   );
@@ -250,12 +254,14 @@ export function HomeInstagram() {
                     >
                       {item.type === 'video' ? (
                         <LazyVideo
+                          key={item.url}
                           src={item.url}
                           className="h-full w-full object-cover"
                           onLoadedMetadata={(e) => handleVideoMetadata(item.id, e)}
                         />
                       ) : (
                         <img
+                          key={item.url}
                           src={item.url}
                           alt="Feed post"
                           className="h-full w-full object-cover transition-transform duration-700 ease-soft group-hover:scale-105"
