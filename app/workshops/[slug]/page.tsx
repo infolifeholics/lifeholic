@@ -356,12 +356,12 @@ export default function WorkshopDetailsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background-2/30 py-16 sm:py-24 text-left">
+    <div className="min-h-screen bg-background-2/30 pt-32 sm:pt-40 pb-16 sm:pb-24 text-left">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
         
-        {/* Hero banner — 21:7 (1400×500) */}
-        <div className="relative rounded-3xl overflow-hidden aspect-[21/7] border border-border/40 shadow-soft">
+        {/* Hero banner — 4:3 ratio */}
+        <div className="relative rounded-3xl overflow-hidden aspect-[4/3] max-w-2xl mx-auto border border-border/40 shadow-soft">
           <img src={ws.image} alt={ws.title} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
           <div className="absolute bottom-6 left-6 right-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">

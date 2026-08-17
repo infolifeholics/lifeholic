@@ -48,8 +48,8 @@ export function AdminWorkshops() {
     reader.addEventListener('load', () => {
       setCropperSrc(reader.result as string);
       setCropperTarget(target);
-      // Banner: 21:7 (1400×500 wide cinematic), Thumbnail: 4:3 (800×600)
-      setCropperAspect(target === 'image' ? 21 / 7 : 4 / 3);
+      // Both cover image (banner) and thumbnail are 4:3 aspect ratio
+      setCropperAspect(4 / 3);
       setCropperOpen(true);
     });
     reader.readAsDataURL(file);
@@ -766,8 +766,8 @@ export function AdminWorkshops() {
                 />
                 {editingWs.image && (
                   <div className="mt-2 space-y-1">
-                    {/* Banner preview: 21:7 ratio */}
-                    <div className="relative w-full aspect-[21/7] max-w-xs rounded-xl overflow-hidden border border-border bg-card">
+                    {/* Banner preview: 4:3 ratio */}
+                    <div className="relative w-full aspect-[4/3] max-w-xs rounded-xl overflow-hidden border border-border bg-card">
                       <img src={editingWs.image} alt="Cover Preview" className="h-full w-full object-cover" />
                     </div>
                     <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">Current: {editingWs.image}</p>
