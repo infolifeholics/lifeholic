@@ -35,7 +35,7 @@ export const viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://thelifeholics.com'),
   title: {
-    default: 'TheLifeHolics — Spiritual Psychology & Therapy',
+    default: 'TheLifeHolics — Holistic Health Services ',
     template: '%s · TheLifeHolics',
   },
   description:
