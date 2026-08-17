@@ -6,7 +6,7 @@ import { sendWhatsAppMessage } from '@/lib/notifications/whatsapp';
 // Setup dynamic SMTP Transporter
 function getMailTransporter() {
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    host: process.env.SMTP_HOST || 'smtp.titan.email',
     port: parseInt(process.env.SMTP_PORT || '465'),
     secure: true,
     auth: {
@@ -51,7 +51,7 @@ export async function sendWhatsAppNotification(to: string, bodyText: string, tem
  * Sends an email using Nodemailer.
  */
 export async function sendEmailNotification(options: { to: string; subject: string; html: string }) {
-  const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || '"TheLifeHolics" <no-reply@thelifeholics.com>';
+  const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || '"LifeHolics" <support@thelifeholics.com>';
   const transporter = getMailTransporter();
   
   try {

@@ -179,13 +179,13 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
 
     try {
       await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
+        from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
         to: client_email,
         subject: emailSubject,
         html: emailBody,
       });
       await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
+        from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
         to: adminEmail,
         subject: `[ADMIN] ${emailSubject}`,
         html: emailBody,
@@ -233,7 +233,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
 
     try {
       await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
+        from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
         to: client_email,
         subject: emailSubject,
         html: emailBody,
@@ -277,7 +277,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
 
     try {
       await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
+        from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
         to: client_email,
         subject: emailSubject,
         html: emailBody,
@@ -314,7 +314,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
 
     try {
       await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
+        from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
         to: client_email,
         subject: emailSubject,
         html: emailBody,
@@ -395,7 +395,7 @@ exports.sendSessionReminders = onSchedule("every 15 minutes", async (event) => {
 
         try {
           await mailTransport.sendMail({
-            from: process.env.SMTP_FROM || '"TheLifeHolics" <no-reply@thelifeholics.com>',
+            from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
             to: client_email,
             subject: emailSubject,
             html: emailBody,
