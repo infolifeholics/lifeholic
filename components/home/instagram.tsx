@@ -17,6 +17,8 @@ function LazyVideo({ src, className, onLoadedMetadata }: { src: string; classNam
     const video = videoRef.current;
     if (!video) return;
 
+    video.muted = true;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {

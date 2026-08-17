@@ -55,6 +55,8 @@ export function CinematicVideoBg() {
     const video = videoRef.current;
     if (!video) return;
 
+    video.muted = true;
+
     const handleVideoPlayState = () => {
       if (document.hidden) {
         video.pause();
