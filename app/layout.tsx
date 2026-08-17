@@ -122,7 +122,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               }}
             />
             <Script
-              src="https://www.googletagmanager.com/gtag/js?id=G-FLNEL4HJQ0"
+              src="https://www.googletagmanager.com/gtag/js?id=G-XL22R8SDH9"
               strategy="afterInteractive"
             />
             <Script id="google-analytics" strategy="afterInteractive">
@@ -130,7 +130,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 window.dataLayer = window.dataLayer || [];
                 function gtag(){window.dataLayer.push(arguments);}
                 gtag('js', new Date());
-                gtag('config', 'G-FLNEL4HJQ0');
+                gtag('config', 'G-XL22R8SDH9');
               `}
             </Script>
             <Script id="service-worker-reg" strategy="afterInteractive">
