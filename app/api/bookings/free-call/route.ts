@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     const docRef = await adminDb.collection('free_call_bookings').add(bookingDoc);
 
     // 5. Trigger Admin Notifications (Failures should not fail the booking itself)
-    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'info.lifeholics@gmail.com';
+    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'support@thelifeholics.com';
     const ownerPhone = process.env.WASENDER_OWNER_PHONE || '917485001044';
 
     const formattedDate = new Date(start_time).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });

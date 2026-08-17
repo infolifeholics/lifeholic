@@ -460,11 +460,11 @@ async function getEmailConfig() {
   }
 
   return {
-    smtp_host: process.env.SMTP_HOST || "smtp.gmail.com",
+    smtp_host: process.env.SMTP_HOST || "smtp.titan.email",
     smtp_port: parseInt(process.env.SMTP_PORT || "465"),
     smtp_user: process.env.SMTP_USER || "",
     smtp_password: process.env.SMTP_PASSWORD || "",
-    smtp_from: process.env.SMTP_FROM || '"TheLifeHolics" <info.lifeholics@gmail.com>',
+    smtp_from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
   };
 }
 

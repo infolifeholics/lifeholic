@@ -53,7 +53,7 @@ export async function getEmailConfig(): Promise<EmailConfig> {
     smtp_port: Number(process.env.SMTP_PORT || 465),
     smtp_user: process.env.SMTP_USER,
     smtp_password: process.env.SMTP_PASSWORD,
-    smtp_from: process.env.SMTP_FROM || '"TheLifeHolics" <info.lifeholics@gmail.com>',
+    smtp_from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
   };
 }
 

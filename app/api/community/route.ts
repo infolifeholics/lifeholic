@@ -63,7 +63,7 @@ export async function POST(req: Request) {
     // 4. Send Notifications
     try {
       // 4a. Admin alert (Email + WhatsApp)
-      const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'info.lifeholics@gmail.com';
+      const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'support@thelifeholics.com';
       const adminPhone = process.env.WASENDER_OWNER_PHONE || '917485001044';
       const formattedDate = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }) + ' IST';
 

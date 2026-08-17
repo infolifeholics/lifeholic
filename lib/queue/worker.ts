@@ -43,7 +43,7 @@ export async function processNotificationJob(job: NotificationJob): Promise<void
       whatsappEnabled = data.whatsapp_notifications_enabled !== false;
       notificationToggles = data.toggles || {};
       vars.orgName = data.sender_name || vars.orgName || 'TheLifeHolics';
-      vars.supportEmail = data.support_email || vars.supportEmail || 'info.lifeholics@gmail.com';
+      vars.supportEmail = data.support_email || vars.supportEmail || 'support@thelifeholics.com';
       vars.supportPhone = data.support_phone || vars.supportPhone || '+919999999999';
     }
   } catch (e) {

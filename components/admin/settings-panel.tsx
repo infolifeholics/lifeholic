@@ -202,7 +202,7 @@ export function AdminSettingsPanel() {
     email_notifications_enabled: true,
     whatsapp_notifications_enabled: true,
     sender_name: 'TheLifeHolics',
-    support_email: 'info.lifeholics@gmail.com',
+    support_email: 'support@thelifeholics.com',
     support_phone: '+919999999999',
     whatsapp_provider: 'meta',
     whatsapp_access_token: '',

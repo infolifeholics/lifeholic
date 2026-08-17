@@ -120,7 +120,7 @@ export async function POST(req: Request) {
                 </div>
                 <div class="footer">
                   <p>Crafted with intention.</p>
-                  <p>Questions? Contact us at <a href="mailto:info.lifeholics@gmail.com">info.lifeholics@gmail.com</a></p>
+                  <p>Questions? Contact us at <a href="mailto:support@thelifeholics.com">support@thelifeholics.com</a></p>
                 </div>
               </div>
             </div>
