@@ -122,6 +122,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               }}
             />
             <Script
+              data-cfasync="false"
+              type="text/javascript"
+              src="https://cache.consentframework.com/js/pa/53540/c/PNlIj/stub?source=google-tag"
+              strategy="beforeInteractive"
+            />
+            <Script
+              data-cfasync="false"
+              type="text/javascript"
+              src="https://choices.consentframework.com/js/pa/53540/c/PNlIj/cmp?source=google-tag"
+              strategy="afterInteractive"
+            />
+            <Script
               src="https://www.googletagmanager.com/gtag/js?id=G-XL22R8SDH9"
               strategy="afterInteractive"
             />
