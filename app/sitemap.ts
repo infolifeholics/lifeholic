@@ -4,7 +4,7 @@ import { getServices, getProducts, getBlogPosts } from '@/lib/data';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = 'https://thelifeholics.com';
   const staticRoutes = [
-    '', '/about', '/services', '/booking', '/shop', '/blog', '/contact', '/faq', '/account', '/admin',
+    '', '/about', '/services', '/booking', '/shop', '/blog', '/contact', '/faq',
     '/legal/privacy', '/legal/refund', '/legal/terms', '/legal/shipping', '/legal/cookies',
   ].map((p) => ({
     url: `${base}${p}`,

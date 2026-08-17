@@ -6,9 +6,9 @@ import { SectionHeading } from '@/components/site/section-heading';
 import { Reveal } from '@/components/site/reveal';
 
 export const metadata: Metadata = {
-  title: 'Book a Session',
+  title: 'Book a Healing Session',
   description:
-    'Book a one-on-one therapy or healing session. Choose your service, date, time and timezone. Slots are reserved instantly — no double bookings.',
+    'Book a one-on-one spiritual psychology, therapy, or emotional healing session with LifeHolics. Secure your preferred slot instantly.',
   alternates: { canonical: 'https://thelifeholics.com/booking' },
 };
 

@@ -5,7 +5,7 @@ import { CommunityForm } from '@/components/community/community-form';
 import { CommunityFaq } from '@/components/community/community-faq';
 
 export const metadata: Metadata = {
-  title: 'Join the Lifeholics Exclusive Community',
+  title: 'Join the LifeHolics Exclusive Community',
   description: 'Apply to join a small, intimate, and thoughtfully curated space for people genuinely committed to their personal growth and healing journey.',
   alternates: { canonical: 'https://thelifeholics.com/community' },
 };

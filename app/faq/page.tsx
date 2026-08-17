@@ -3,8 +3,8 @@ import { SectionHeading } from '@/components/site/section-heading';
 import { GeneralFaq } from '@/components/site/general-faq';
 
 export const metadata: Metadata = {
-  title: 'FAQ',
-  description: 'Answers to common questions about sessions, booking, payments and more.',
+  title: 'Frequently Asked Questions',
+  description: 'Answers to common questions about LifeHolics spiritual therapy, session bookings, workshops, and payments.',
   alternates: { canonical: 'https://thelifeholics.com/faq' },
 };
 

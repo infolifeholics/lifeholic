@@ -5,8 +5,8 @@ import { Reveal } from '@/components/site/reveal';
 import { GeneralFaq } from '@/components/site/general-faq';
 
 export const metadata: Metadata = {
-  title: 'Contact',
-  description: 'Reach TheLifeHolics for sessions, workshops, press or simply to say hello.',
+  title: 'Contact Us',
+  description: 'Reach out to LifeHolics for personal healing sessions, upcoming workshops, collaborations, or general inquiries.',
   alternates: { canonical: 'https://thelifeholics.com/contact' },
 };
 

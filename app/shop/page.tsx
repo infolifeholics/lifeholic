@@ -4,9 +4,9 @@ import { ShopGrid } from '@/components/shop/shop-grid';
 import { SectionHeading } from '@/components/site/section-heading';
 
 export const metadata: Metadata = {
-  title: 'Shop',
+  title: 'Shop Wellness & Spiritual Products',
   description:
-    'Meditations, journals, courses and ritual objects to support your healing practice — between sessions and beyond.',
+    'Browse custom wellness journals, crystal rods, tools, and courses by LifeHolics to support your daily healing practice.',
   alternates: { canonical: 'https://thelifeholics.com/shop' },
 };
 

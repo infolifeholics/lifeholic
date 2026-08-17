@@ -4,9 +4,9 @@ import { SectionHeading } from '@/components/site/section-heading';
 import { ServicesList } from '@/components/services/services-list';
 
 export const metadata: Metadata = {
-  title: 'Services',
+  title: 'Personal Healing & Transformation Services',
   description:
-    'Spiritual psychology, therapy, relationship guidance, emotional & inner child healing, meditation and personal growth coaching — online and in person.',
+    'Explore spiritual psychology, therapy sessions, relationship guidance, inner child healing, and personal transformation sessions by LifeHolics.',
   alternates: { canonical: 'https://thelifeholics.com/services' },
 };
 
