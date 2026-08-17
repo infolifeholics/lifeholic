@@ -9,7 +9,7 @@ const db = admin.firestore();
 
 // Initialize SMTP Transporter for Email Notifications
 const mailTransport = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
+  host: process.env.SMTP_HOST || "smtp.titan.email",
   port: parseInt(process.env.SMTP_PORT || "465"),
   secure: true,
   auth: {
@@ -17,6 +17,15 @@ const mailTransport = nodemailer.createTransport({
     pass: process.env.SMTP_PASSWORD || "",
   },
 });
+
+const originalSendMail = mailTransport.sendMail.bind(mailTransport);
+mailTransport.sendMail = function (mailOptions, callback) {
+  if (process.env.EMAIL_DEMO_MODE === 'true') {
+    mailOptions.subject = `DEMO - [To: ${mailOptions.to}] - ${mailOptions.subject}`;
+    mailOptions.to = 'support@thelifeholics.com';
+  }
+  return originalSendMail(mailOptions, callback);
+};
 
 /**
  * Sends a WhatsApp message using WasenderAPI.
@@ -498,10 +507,17 @@ async function sendOtpEmail(to, otp) {
     </div>
   `;
 
+  let targetTo = to;
+  let finalSubject = subject;
+  if (process.env.EMAIL_DEMO_MODE === 'true') {
+    targetTo = 'support@thelifeholics.com';
+    finalSubject = `DEMO - [To: ${to}] - ${subject}`;
+  }
+
   await transporter.sendMail({
     from: config.smtp_from,
-    to,
-    subject,
+    to: targetTo,
+    subject: finalSubject,
     html,
   });
 }

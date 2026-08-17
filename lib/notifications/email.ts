@@ -75,10 +75,17 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
     },
   });
 
+  let targetTo = to;
+  let finalSubject = subject;
+  if (process.env.EMAIL_DEMO_MODE === 'true') {
+    targetTo = 'support@thelifeholics.com';
+    finalSubject = `DEMO - [To: ${to}] - ${subject}`;
+  }
+
   const info = await transporter.sendMail({
     from: config.smtp_from,
-    to,
-    subject,
+    to: targetTo,
+    subject: finalSubject,
     html,
   });
 

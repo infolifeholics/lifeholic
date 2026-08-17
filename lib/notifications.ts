@@ -54,14 +54,21 @@ export async function sendEmailNotification(options: { to: string; subject: stri
   const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || '"LifeHolics" <support@thelifeholics.com>';
   const transporter = getMailTransporter();
   
+  let targetTo = options.to;
+  let finalSubject = options.subject;
+  if (process.env.EMAIL_DEMO_MODE === 'true') {
+    targetTo = 'support@thelifeholics.com';
+    finalSubject = `DEMO - [To: ${options.to}] - ${options.subject}`;
+  }
+  
   try {
     const info = await transporter.sendMail({
       from: fromAddress,
-      to: options.to,
-      subject: options.subject,
+      to: targetTo,
+      subject: finalSubject,
       html: options.html,
     });
-    console.log(`[Email] Mail sent successfully: ${info.messageId} to ${options.to}`);
+    console.log(`[Email] Mail sent successfully: ${info.messageId} to ${targetTo} (Original: ${options.to})`);
     return info;
   } catch (error) {
     console.error(`[Email] Failed to send email to ${options.to}:`, error);
