@@ -49,44 +49,96 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
 
       <section className="relative py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl mx-auto">
-            {/* Summary details */}
-            <aside className="w-full">
-              <div className="rounded-3xl border border-border/60 bg-card/60 p-7 shadow-soft">
-                <h3 className="font-display text-2xl font-semibold text-black">Session details</h3>
+          <div className="grid gap-10 lg:grid-cols-[1.5fr_1fr] lg:items-start">
+            
+            {/* Left Column: Full Description & other details */}
+            <div className="space-y-8 text-left">
+              {service.description && (
+                <div className="rounded-3xl border border-white/10 bg-black/90 p-7 sm:p-8 shadow-soft text-white">
+                  <h2 className="font-display text-2xl font-semibold text-white">About this session</h2>
+                  <p className="mt-4 text-base leading-relaxed text-white/80 font-medium whitespace-pre-line">
+                    {service.description}
+                  </p>
+                </div>
+              )}
+
+              {service.who_for && (
+                <div className="rounded-3xl border border-white/10 bg-black/90 p-7 sm:p-8 shadow-soft text-white">
+                  <h2 className="font-display text-2xl font-semibold text-white">Who is this for?</h2>
+                  <p className="mt-4 text-base leading-relaxed text-white/80 font-medium whitespace-pre-line">
+                    {service.who_for}
+                  </p>
+                </div>
+              )}
+
+              {service.benefits && service.benefits.length > 0 && (
+                <div className="rounded-3xl border border-white/10 bg-black/90 p-7 sm:p-8 shadow-soft text-white">
+                  <h2 className="font-display text-2xl font-semibold text-white">What you will experience</h2>
+                  <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {service.benefits.map((benefit, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-white/80 font-semibold">
+                        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                        <span>{benefit}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {service.process && service.process.length > 0 && (
+                <div className="rounded-3xl border border-white/10 bg-black/90 p-7 sm:p-8 shadow-soft text-white">
+                  <h2 className="font-display text-2xl font-semibold text-white">The Journey</h2>
+                  <ol className="mt-4 space-y-4">
+                    {service.process.map((step, i) => (
+                      <li key={i} className="flex gap-4">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gold text-xs font-bold text-black">
+                          {i + 1}
+                        </span>
+                        <p className="text-sm text-white/80 font-semibold">{step}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Session Details card (Sticky on Desktop) */}
+            <aside className="lg:sticky lg:top-28 w-full text-left">
+              <div className="rounded-3xl border border-white/10 bg-black/90 p-7 shadow-soft text-white">
+                <h3 className="font-display text-2xl font-semibold text-white">Session details</h3>
                 <dl className="mt-5 space-y-4 text-sm">
-                  <div className="flex items-center justify-between border-b border-border/50 pb-3">
-                    <dt className="inline-flex items-center gap-2 text-black/80 font-semibold"><Clock className="h-4 w-4" /> Duration</dt>
-                    <dd className="font-bold text-black">{service.duration_minutes} minutes</dd>
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <dt className="inline-flex items-center gap-2 text-white/80 font-semibold"><Clock className="h-4 w-4 text-gold" /> Duration</dt>
+                    <dd className="font-bold text-white">{service.duration_minutes} minutes</dd>
                   </div>
-                  <div className="flex items-center justify-between border-b border-border/50 pb-3">
-                    <dt className="inline-flex items-center gap-2 text-black/80 font-semibold"><Sparkles className="h-4 w-4" /> Format</dt>
-                    <dd className="font-bold text-black capitalize">online</dd>
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <dt className="inline-flex items-center gap-2 text-white/80 font-semibold"><Sparkles className="h-4 w-4 text-gold" /> Format</dt>
+                    <dd className="font-bold text-white capitalize">online</dd>
                   </div>
-                  <div className="flex items-center justify-between border-b border-border/50 pb-3">
-                    <dt className="inline-flex items-center gap-2 text-black/80 font-semibold"><Sparkles className="h-4 w-4" /> Sessions</dt>
-                    <dd className="font-bold text-black">{service.duration_minutes} Mins × {service.included_sessions || 1} {(service.included_sessions || 1) === 1 ? 'Session' : 'Sessions'}</dd>
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <dt className="inline-flex items-center gap-2 text-white/80 font-semibold"><Sparkles className="h-4 w-4 text-gold" /> Sessions</dt>
+                    <dd className="font-bold text-white">{service.duration_minutes} Mins × {service.included_sessions || 1} {(service.included_sessions || 1) === 1 ? 'Session' : 'Sessions'}</dd>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2.5 py-1 text-xs text-black/80 font-semibold">
-                      <Video className="h-3 w-3" /> Online
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/80 font-semibold">
+                      <Video className="h-3 w-3 text-gold" /> Online
                     </span>
                   </div>
-                  <div className="flex items-end justify-between border-t border-border/50 pt-4">
-                    <dt className="text-black/80 font-semibold">Starting from</dt>
+                  <div className="flex items-end justify-between border-t border-white/10 pt-4">
+                    <dt className="text-white/80 font-semibold">Starting from</dt>
                     <dd className="text-right">
-                      <p className="font-display text-2xl font-bold text-black">{formatPrice(service.price_inr, 'INR')}</p>
-                      <p className="text-xs text-black/70 font-semibold">≈ {formatPrice(service.price_usd, 'USD')}</p>
+                      <p className="font-display text-2xl font-bold text-gold">{formatPrice(service.price_inr, 'INR')}</p>
+                      <p className="text-xs text-white/70 font-semibold">≈ {formatPrice(service.price_usd, 'USD')}</p>
                     </dd>
                   </div>
                 </dl>
                 <Link
                   href={`/booking?service=${service.slug}`}
-                  className="group mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                  className="group mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-gold px-6 py-3.5 text-sm font-semibold text-black transition-colors hover:bg-gold/90"
                 >
                   Book this session <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
-                <p className="mt-3 text-center text-xs text-black/70 font-semibold">
+                <p className="mt-3 text-center text-xs text-white/70 font-semibold">
                   Confident &amp; confidential · Cancel free up to 24h before
                 </p>
               </div>

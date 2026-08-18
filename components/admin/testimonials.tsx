@@ -165,7 +165,7 @@ export function AdminTestimonials() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this testimonial permanently?')) return;
+    if (!await (window as any).customConfirm('Delete this testimonial permanently?')) return;
     try {
       await deleteDoc(doc(db, 'testimonials', id));
       await fetch('/api/revalidate', { method: 'POST' }).catch(() => {});

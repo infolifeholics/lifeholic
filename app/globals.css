@@ -396,3 +396,77 @@
 .workshop-description-container * {
   color: rgba(255, 255, 255, 0.95) !important;
 }
+
+/* Premium Black Card Admin Panel Theme */
+.admin-theme {
+  --background: 0 0% 5%; /* very dark grey/black */
+  --background-2: 0 0% 4%;
+  --foreground: 0 0% 100%; /* pure white text */
+  
+  --card: 0 0% 2%; /* black card background */
+  --card-foreground: 0 0% 100%;
+  
+  --popover: 0 0% 3%;
+  --popover-foreground: 0 0% 100%;
+  
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 75%; /* light gray descriptions/metadata */
+  
+  --border: 0 0% 15%; /* subtle border */
+  --input: 0 0% 10%;
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 0 0% 100%;
+  
+  --ring: 41 50% 72%;
+}
+
+.admin-theme .bg-card,
+.admin-theme .bg-card\/60,
+.admin-theme .bg-card\/70,
+.admin-theme .bg-card\/50,
+.admin-theme .bg-card\/40,
+.admin-theme .bg-card\/30,
+.admin-theme .bg-card\/80 {
+  background-color: #030303 !important;
+  color: #ffffff !important;
+  border-color: #262626 !important;
+}
+
+/* th headers, inputs, selects, textareas, and interactive states styling */
+.admin-theme input,
+.admin-theme select,
+.admin-theme textarea {
+  background-color: #0d0d0d !important;
+  color: #ffffff !important;
+  border-color: #262626 !important;
+}
+
+.admin-theme input::placeholder,
+.admin-theme textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.admin-theme input:focus,
+.admin-theme select:focus,
+.admin-theme textarea:focus {
+  border-color: #d4af37 !important;
+  outline: none;
+}
+
+/* Modals & Dialog overlays inside admin theme */
+.admin-theme [role="dialog"],
+.admin-theme .bg-background {
+  background-color: #050505 !important;
+  border-color: #262626 !important;
+  color: #ffffff !important;
+}
+
+.admin-theme th {
+  color: rgba(255, 255, 255, 0.6) !important;
+  background-color: #0c0c0c !important;
+}
+
+/* Ensure background of body/wrapper matches the theme while letting the background image shine through */
+div.admin-theme-wrapper {
+  background-color: rgba(10, 10, 10, 0.55) !important;
+}

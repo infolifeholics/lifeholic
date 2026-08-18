@@ -118,7 +118,7 @@ export function AdminHealers() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this healer?')) return;
+    if (!await (window as any).customConfirm('Are you sure you want to remove this healer?')) return;
     const toastId = toast.loading('Removing healer...');
     try {
       await deleteDoc(doc(db, 'healers', id));

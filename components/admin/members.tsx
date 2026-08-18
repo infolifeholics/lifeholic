@@ -400,7 +400,7 @@ export function AdminMembers() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={async () => {
-                                    if (!confirm('Clear notes for this session?')) return;
+                                    if (!await (window as any).customConfirm('Clear notes for this session?')) return;
                                     try {
                                       const { doc, setDoc } = await import('firebase/firestore');
                                       await setDoc(doc(db, 'bookings', b.id), {

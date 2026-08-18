@@ -385,8 +385,8 @@ export function AdminSearchOptions() {
     toast.success('Category added.');
   };
 
-  const deleteCategory = (idx: number) => {
-    if (!confirm('Are you sure you want to delete this entire category and its subcategories?')) return;
+  const deleteCategory = async (idx: number) => {
+    if (!await (window as any).customConfirm('Are you sure you want to delete this entire category and its subcategories?')) return;
     setCategories((prev) => prev.filter((_, i) => i !== idx));
     setSelectedCatIdx(0);
     setSelectedSubIdx(0);
@@ -408,8 +408,8 @@ export function AdminSearchOptions() {
     toast.success('Subcategory added.');
   };
 
-  const deleteSubcategory = (subIdx: number) => {
-    if (!confirm('Are you sure you want to delete this subcategory and all its checklist problems?')) return;
+  const deleteSubcategory = async (subIdx: number) => {
+    if (!await (window as any).customConfirm('Are you sure you want to delete this subcategory and all its checklist problems?')) return;
     const updated = [...categories];
     updated[selectedCatIdx].subs = updated[selectedCatIdx].subs.filter((_, i) => i !== subIdx);
     setCategories(updated);

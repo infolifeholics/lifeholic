@@ -153,7 +153,7 @@ export function AdminRecommendations() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this rule?')) return;
+    if (!await (window as any).customConfirm('Delete this rule?')) return;
     try {
       await deleteDoc(doc(db, 'recommendation_rules', id));
       toast.success('Recommendation rule deleted.');

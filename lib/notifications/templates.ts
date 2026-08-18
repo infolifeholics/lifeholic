@@ -15,6 +15,12 @@ export interface TemplateVars {
   window?: string; // reminder window label e.g. "24h", "2h", "30m"
   clientEmail?: string;
   clientPhone?: string;
+  // Order fields
+  orderNumber?: string;
+  orderItems?: any[];
+  orderTotal?: number;
+  orderCurrency?: string;
+  shippingAddress?: string;
 }
 
 const DEFAULT_VARS = {
@@ -231,6 +237,7 @@ export const EMAIL_TEMPLATES = {
         <div class="details-row"><span class="label">Date:</span><span class="value">${vars.sessionDate || 'N/A'}</span></div>
         <div class="details-row"><span class="label">Time:</span><span class="value">${vars.sessionTime || 'N/A'} (IST)</span></div>
         <div class="details-row"><span class="label">New Status:</span><span class="value" style="text-transform: capitalize; font-weight: bold; color: #22c55e;">${vars.bookingStatus || 'N/A'}</span></div>
+        ${(vars.bookingStatus === 'confirmed' || vars.bookingStatus === 'confirmed') && vars.meetLink ? `<div class="details-row"><span class="label">Meeting Link:</span><span class="value"><a href="${vars.meetLink}" style="color:#d4af37; text-decoration:underline;">${vars.meetLink}</a></span></div>` : ''}
       </div>
       <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/account" class="btn">View Booking Details</a>
     `;
@@ -338,6 +345,80 @@ export const EMAIL_TEMPLATES = {
     `;
     return getBaseHtml('Thank You for Your Interest in the Lifeholics Community', content, vars);
   },
+
+  order_confirmation: (vars: TemplateVars) => {
+    const items = vars.orderItems || [];
+    const total = vars.orderTotal || 0;
+    const currency = vars.orderCurrency || 'INR';
+    const content = `
+      <h2 style="color: #c5a880; margin-bottom: 20px;">Lifeholics Order Confirmation</h2>
+      <p>Hello ${vars.memberName || 'Customer'}, thank you for your order!</p>
+      <p>We are processing your order <strong>${vars.orderNumber || 'N/A'}</strong>. Here are the details:</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+      <h3 style="color: #333; margin-bottom: 10px;">Order Items</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+          <tr style="border-bottom: 2px solid #eee; font-weight: bold; color: #555;">
+            <th style="text-align: left; padding: 8px;">Item</th>
+            <th style="text-align: center; padding: 8px;">Qty</th>
+            <th style="text-align: right; padding: 8px;">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map((item: any) => `
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 8px;">${item.title || item.name || 'Product'}</td>
+              <td style="text-align: center; padding: 8px;">${item.quantity || 1}</td>
+              <td style="text-align: right; padding: 8px;">${item.price} ${currency}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top: 15px; text-align: right; font-weight: bold; font-size: 16px; color: #333;">
+        Total: ${total} ${currency}
+      </div>
+      ${vars.shippingAddress ? `<p style="margin-top: 20px;"><strong>Shipping Address:</strong><br/>${vars.shippingAddress}</p>` : ''}
+    `;
+    return getBaseHtml('Order Confirmed', content, vars);
+  },
+
+  admin_order_alert: (vars: TemplateVars) => {
+    const items = vars.orderItems || [];
+    const total = vars.orderTotal || 0;
+    const currency = vars.orderCurrency || 'INR';
+    const content = `
+      <h2 style="color: #c5a880; margin-bottom: 20px;">New Product Order Placed</h2>
+      <p>A new order has been placed by <strong>${vars.memberName || 'Customer'}</strong>.</p>
+      <p><strong>Order ID:</strong> ${vars.orderNumber || 'N/A'}</p>
+      <p><strong>Email:</strong> ${vars.clientEmail || 'N/A'}</p>
+      <p><strong>Phone:</strong> ${vars.clientPhone || 'N/A'}</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+      <h3 style="color: #333; margin-bottom: 10px;">Order Items</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+          <tr style="border-bottom: 2px solid #eee; font-weight: bold; color: #555;">
+            <th style="text-align: left; padding: 8px;">Item</th>
+            <th style="text-align: center; padding: 8px;">Qty</th>
+            <th style="text-align: right; padding: 8px;">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map((item: any) => `
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 8px;">${item.title || item.name || 'Product'}</td>
+              <td style="text-align: center; padding: 8px;">${item.quantity || 1}</td>
+              <td style="text-align: right; padding: 8px;">${item.price} ${currency}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top: 15px; text-align: right; font-weight: bold; font-size: 16px; color: #333;">
+        Total: ${total} ${currency}
+      </div>
+      ${vars.shippingAddress ? `<p style="margin-top: 20px;"><strong>Shipping Address:</strong><br/>${vars.shippingAddress}</p>` : ''}
+    `;
+    return getBaseHtml('New Order Alert', content, vars);
+  },
 };
 
 export const WHATSAPP_TEMPLATES = {
@@ -384,5 +465,25 @@ export const WHATSAPP_TEMPLATES = {
   },
   community_user_confirmation: (vars: TemplateVars) => {
     return `Hi ${vars.memberName},\n\nThank you for applying to join the Lifeholics Exclusive Community.\n\nYour application has been successfully received and is currently under review.\n\nOur team will personally review your application and get back to you soon.\n\nStatus: Pending\n\n— The Lifeholics Team`;
+  },
+  order_confirmation: (vars: TemplateVars) => {
+    const items = vars.orderItems || [];
+    const formattedItems = items.map((item: any) => 
+      `- ${item.name || item.title || 'Product'} (x${item.quantity || 1})`
+    ).join('\n');
+    const total = vars.orderTotal || 0;
+    const currency = vars.orderCurrency || 'INR';
+    const address = vars.shippingAddress || 'Digital Delivery';
+    return `🛍️ Order Confirmed\n\nHi ${vars.memberName || 'Customer'},\n\nYour order has been successfully placed.\n\nOrder ID: ${vars.orderNumber}\n\nItems:\n${formattedItems}\n\nTotal Amount: ${total} ${currency}\n\nPayment Status: Paid\n\nShipping Address:\n${address}\n\nThank you for shopping with Lifeholics.`;
+  },
+  admin_order_alert: (vars: TemplateVars) => {
+    const items = vars.orderItems || [];
+    const formattedItems = items.map((item: any) => 
+      `- ${item.name || item.title || 'Product'} (x${item.quantity || 1})`
+    ).join('\n');
+    const total = vars.orderTotal || 0;
+    const currency = vars.orderCurrency || 'INR';
+    const address = vars.shippingAddress || 'Digital Delivery';
+    return `🛍️ New Product Order\n\nA new order has been placed.\n\nOrder ID: ${vars.orderNumber}\n\nCustomer:\n${vars.memberName || 'Customer'}\n\nPhone:\n${vars.clientPhone || 'N/A'}\n\nEmail:\n${vars.clientEmail}\n\nItems:\n${formattedItems}\n\nTotal:\n${total} ${currency}\n\nPayment:\nPaid\n\nShipping Address:\n${address}`;
   },
 };

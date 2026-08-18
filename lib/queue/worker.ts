@@ -19,6 +19,8 @@ const EMAIL_SUBJECTS: Record<string, string> = {
   admin_alert: 'Admin System Notification',
   community_admin_alert: 'New Lifeholics Community Application',
   community_user_confirmation: 'Thank You for Your Interest in the Lifeholics Community',
+  order_confirmation: 'Order Confirmation',
+  admin_order_alert: 'New Product Order Placed',
 };
 
 /**

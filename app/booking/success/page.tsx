@@ -53,10 +53,10 @@ export default async function BookingSuccessPage({
               Back home <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/shop"
+              href="/account?tab=upcoming"
               className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
             >
-              Explore the shop
+              Manage session
             </Link>
           </div>
 

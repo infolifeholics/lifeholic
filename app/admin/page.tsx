@@ -111,12 +111,14 @@ function AdminShell() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background-2/40 pb-16">
+    <div className="min-h-screen bg-background-2/40 pb-16 admin-theme admin-theme-wrapper">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:px-8">
         <aside className="lg:w-64 lg:shrink-0">
           <div ref={sidebarRef} className="rounded-3xl border border-border/60 bg-card/70 p-5 shadow-soft lg:sticky lg:top-8 max-h-[90vh] lg:max-h-[calc(100vh-4rem)] overflow-y-auto overscroll-contain custom-scrollbar">
-            <div className="flex items-center justify-between">
-              <Logo showWordmark={false} />
+            <div className="flex items-center justify-between pb-3 border-b border-border/40">
+              <a href="/" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="h-3.5 w-3.5" /> Back to site
+              </a>
               <span className="rounded-full bg-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">Admin</span>
             </div>
             <nav className="mt-6 flex flex-row gap-1 lg:flex-col overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0">
@@ -137,9 +139,6 @@ function AdminShell() {
                 </button>
               ))}
             </nav>
-            <Link href="/" className="mt-6 flex items-center gap-2 rounded-full px-3.5 py-2.5 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" /> Back to site
-            </Link>
           </div>
         </aside>
 

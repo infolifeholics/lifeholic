@@ -46,7 +46,7 @@ export function AdminMessages() {
   };
 
   const deleteMessage = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this message?')) return;
+    if (!await (window as any).customConfirm('Are you sure you want to permanently delete this message?')) return;
     try {
       await deleteDoc(doc(db, 'messages', id));
       toast.success('Message deleted successfully.');

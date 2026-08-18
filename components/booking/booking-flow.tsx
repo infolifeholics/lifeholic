@@ -133,8 +133,14 @@ export function BookingFlow({ services }: { services: Service[] }) {
       } catch (e) {
         console.error(e);
       }
+    } else {
+      const serviceParam = search.get('service');
+      if (serviceParam && step === 0) {
+        setServiceSlug(serviceParam);
+        setStep(1); // skip service selection
+      }
     }
-  }, [search]);
+  }, [search, step]);
 
   const service = useMemo(
     () => servicesList.find((s) => s.slug === serviceSlug) || servicesList[0],
@@ -331,7 +337,17 @@ export function BookingFlow({ services }: { services: Service[] }) {
     }
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   };
-  const back = () => setStep((s) => Math.max(s - 1, 0));
+  const back = () => {
+    if (step === 1 && search.get('service')) {
+      if (window.history.length > 1) {
+        router.back();
+      } else {
+        router.push('/services');
+      }
+      return;
+    }
+    setStep((s) => Math.max(s - 1, 0));
+  };
 
   // We only support online mode
   const availableModes = ['online'] as ('online' | 'offline')[];

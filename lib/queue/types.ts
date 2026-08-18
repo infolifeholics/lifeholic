@@ -13,7 +13,9 @@ export type NotificationType =
   | 'password_reset'
   | 'admin_alert'
   | 'community_admin_alert'
-  | 'community_user_confirmation';
+  | 'community_user_confirmation'
+  | 'order_confirmation'
+  | 'admin_order_alert';
 
 export interface NotificationJob {
   /** Unique idempotency key — used to prevent duplicate sends */

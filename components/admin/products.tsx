@@ -303,7 +303,7 @@ export function AdminProducts() {
 
   // Delete product and cleanup Cloudinary assets
   const handleDelete = async (p: Product) => {
-    if (!confirm(`Are you sure you want to delete "${p.name}"? This will permanently remove the product and clean up all its images.`)) return;
+    if (!await (window as any).customConfirm(`Are you sure you want to delete "${p.name}"? This will permanently remove the product and clean up all its images.`)) return;
 
     const toastId = toast.loading('Deleting product and images...');
     try {

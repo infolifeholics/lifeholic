@@ -33,7 +33,9 @@ import {
   FileText,
   Download,
   X,
-  Search
+  Search,
+  ArrowLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { CartView } from '@/components/shop/cart-view';
@@ -119,12 +121,14 @@ export function AccountDashboard() {
   const { count: cartCount } = useCart();
 
   // Route/Tab control sync
-  const [activeTab, setActiveTab] = useState('upcoming');
+  const [activeTab, setActiveTab] = useState('menu');
 
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab) {
       setActiveTab(tab);
+    } else {
+      setActiveTab('menu');
     }
   }, [searchParams]);
 
@@ -148,6 +152,7 @@ export function AccountDashboard() {
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
   const [city, setCity] = useState(profile?.city || '');
   const [country, setCountry] = useState(profile?.country || '');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // Notifications filtering
   const [notifCategory, setNotifCategory] = useState('all');
@@ -381,6 +386,7 @@ export function AccountDashboard() {
       await refreshProfile();
       toast.success('Personal Information updated.');
       setShowSettingsModal(false);
+      setIsEditingProfile(false);
     } catch (error) {
       toast.error('Could not save profile details.');
     } finally {
@@ -530,9 +536,348 @@ export function AccountDashboard() {
           </div>
         )}
 
-        {/* 1. INSTAGRAM INSPIRED PROFILE HEADER */}
-        <div className="rounded-3xl border border-zinc-800 bg-black text-white p-6 md:p-8 shadow-soft mb-8">
-          <div className="flex items-center gap-6 sm:gap-8">
+        <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-8 lg:items-start text-left mt-8">
+          {/* DESKTOP SIDEBAR MENU (Visible on lg and above) */}
+          <aside className="hidden lg:flex flex-col rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft sticky top-28 w-full">
+            <div className="flex flex-col items-center text-center pb-6 border-b border-zinc-800 mb-6">
+              <div className="h-16 w-16 rounded-full border border-gold overflow-hidden bg-zinc-900 shadow-soft p-0.5 mb-3 relative">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={fullName} className="h-full w-full rounded-full object-cover" />
+                ) : (
+                  <div className="h-full w-full rounded-full flex items-center justify-center text-white/60 bg-zinc-900 font-display text-lg uppercase font-bold">
+                    {fullName ? fullName.charAt(0) : user.email?.charAt(0)}
+                  </div>
+                )}
+              </div>
+              <h3 className="font-display font-semibold text-white text-sm truncate max-w-full">
+                {fullName || 'Spiritual Seeker'}
+              </h3>
+              <p className="text-[10px] text-white/50 font-mono mt-0.5">ID: {profile?.member_id || 'Generating...'}</p>
+              <div className="flex flex-col gap-2 mt-3 w-full">
+                {profile?.is_admin && (
+                  <Link href="/admin" className="w-full">
+                    <Button size="sm" className="w-full h-8 rounded-full bg-gold hover:bg-gold-hover text-gold-foreground text-[10px] font-semibold flex items-center justify-center gap-1.5">
+                      Admin Panel &rarr;
+                    </Button>
+                  </Link>
+                )}
+                <button
+                  onClick={() => handleTabChange('personal')}
+                  className="w-full h-8 rounded-full border border-gold/30 hover:border-gold/60 text-gold text-[10px] font-semibold flex items-center justify-center gap-1.5 bg-zinc-900/40 transition-colors"
+                >
+                  Profile Detail
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-5 text-xs text-white/80">
+              {/* SESSIONS GROUP */}
+              <div>
+                <p className="text-[9px] text-white/40 font-bold uppercase tracking-wider mb-2">Sessions</p>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => handleTabChange('upcoming')}
+                    className={cn(
+                      "w-full text-left py-2 px-3 rounded-xl transition-all font-medium flex items-center gap-2",
+                      ['upcoming', 'completed', 'cancelled', 'menu'].includes(activeTab) ? "bg-gold text-black font-bold" : "hover:bg-zinc-900 text-white/80"
+                    )}
+                  >
+                    <CalendarDays className="h-3.5 w-3.5" /> Session Booking
+                  </button>
+                </div>
+              </div>
+
+              {/* MESSAGES & PAYMENTS GROUP */}
+              <div>
+                <p className="text-[9px] text-white/40 font-bold uppercase tracking-wider mb-2">Credits & Inbox</p>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => handleTabChange('notifications')}
+                    className={cn(
+                      "w-full text-left py-2 px-3 rounded-xl transition-all font-medium flex items-center justify-between relative",
+                      activeTab === 'notifications' ? "bg-gold text-black font-bold" : "hover:bg-zinc-900 text-white/80"
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Bell className="h-3.5 w-3.5" /> Inbox
+                    </span>
+                    {unreadCount > 0 && (
+                      <span className={cn("flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-bold", activeTab === 'notifications' ? "bg-black text-gold" : "bg-gold text-black")}>
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleTabChange('payments')}
+                    className={cn(
+                      "w-full text-left py-2 px-3 rounded-xl transition-all font-medium flex items-center gap-2",
+                      activeTab === 'payments' ? "bg-gold text-black font-bold" : "hover:bg-zinc-900 text-white/80"
+                    )}
+                  >
+                    <CreditCard className="h-3.5 w-3.5" /> Payments
+                  </button>
+                </div>
+              </div>
+
+              {/* SHOP & WORKSHOPS GROUP */}
+              <div>
+                <p className="text-[9px] text-white/40 font-bold uppercase tracking-wider mb-2">Shop & Workshops</p>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => handleTabChange('workshops')}
+                    className={cn(
+                      "w-full text-left py-2 px-3 rounded-xl transition-all font-medium flex items-center gap-2",
+                      activeTab === 'workshops' ? "bg-gold text-black font-bold" : "hover:bg-zinc-900 text-white/80"
+                    )}
+                  >
+                    <Ticket className="h-3.5 w-3.5" /> Workshops
+                  </button>
+                  <button
+                    onClick={() => handleTabChange('orders')}
+                    className={cn(
+                      "w-full text-left py-2 px-3 rounded-xl transition-all font-medium flex items-center gap-2",
+                      activeTab === 'orders' ? "bg-gold text-black font-bold" : "hover:bg-zinc-900 text-white/80"
+                    )}
+                  >
+                    <Package className="h-3.5 w-3.5" /> Orders
+                  </button>
+                  <button
+                    onClick={() => handleTabChange('cart')}
+                    className={cn(
+                      "w-full text-left py-2 px-3 rounded-xl transition-all font-medium flex items-center justify-between relative",
+                      activeTab === 'cart' ? "bg-gold text-black font-bold" : "hover:bg-zinc-900 text-white/80"
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <ShoppingBag className="h-3.5 w-3.5" /> Cart
+                    </span>
+                    {cartCount > 0 && (
+                      <span className={cn("flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-bold", activeTab === 'cart' ? "bg-black text-gold" : "bg-gold text-black")}>
+                        {cartCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* SYSTEM GROUP */}
+              <div className="pt-4 border-t border-zinc-800">
+                <button
+                  onClick={() => signOut()}
+                  className="w-full text-left py-2.5 px-3 rounded-xl transition-all font-bold hover:bg-rose-500/10 text-rose-400 flex items-center gap-2"
+                >
+                  <LogOut className="h-3.5 w-3.5" /> Sign Out
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          {/* RIGHT COLUMN: MAIN CONTENT (Active Tab + Tracker Cards) */}
+          <div className="flex-1 min-w-0 space-y-6">
+            {/* MOBILE MENU LIST (Visible on lg and below when activeTab is 'menu') */}
+            {activeTab === 'menu' && (
+              <div className="space-y-6 lg:hidden">
+                {/* 1. INSTAGRAM INSPIRED PROFILE HEADER (Mobile Only - landing menu) */}
+                <div className="rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft">
+                  <div className="flex items-center gap-5">
+                    {/* Profile Picture */}
+                    <div className="relative group shrink-0">
+                      <div className="h-16 w-16 rounded-full border border-gold overflow-hidden bg-zinc-900 relative shadow-soft p-0.5">
+                        <div className="h-full w-full rounded-full overflow-hidden">
+                          {avatarUrl ? (
+                            <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-white/60 bg-zinc-900 font-display text-xl uppercase">
+                              {fullName ? fullName.charAt(0) : user.email?.charAt(0)}
+                            </div>
+                          )}
+                        </div>
+                        {uploading && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
+                            <Loader2 className="h-4 w-4 animate-spin text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <label className="absolute bottom-0 right-0 p-1 rounded-full bg-gold hover:bg-gold-hover text-gold-foreground cursor-pointer shadow-soft border border-black">
+                        <Camera className="h-3 w-3" />
+                        <input type="file" onChange={handleAvatarReplace} accept="image/*" className="hidden" />
+                      </label>
+                    </div>
+                    {/* User info */}
+                    <div className="min-w-0">
+                      <h3 className="font-display font-semibold text-white text-base truncate">
+                        {fullName || 'Spiritual Seeker'}
+                      </h3>
+                      <p className="text-xs text-white/60 truncate">{user?.email}</p>
+                      <p className="text-[10px] text-white/40 font-mono mt-0.5">ID: {profile?.member_id || 'Generating...'}</p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {profile?.is_admin && (
+                          <Link href="/admin">
+                            <span className="inline-block bg-gold text-gold-foreground text-[9px] font-bold px-2.5 py-1 rounded-full hover:bg-gold-hover transition-colors">
+                              Admin Panel &rarr;
+                            </span>
+                          </Link>
+                        )}
+                        <button
+                          onClick={() => handleTabChange('personal')}
+                          className="inline-block bg-zinc-900 border border-zinc-800 text-gold text-[9px] font-bold px-2.5 py-1 rounded-full hover:bg-zinc-850 transition-colors"
+                        >
+                          Profile Detail
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* MYNTRA STYLE VERTICAL MENU LIST (Mobile Only) */}
+                <div className="rounded-3xl border border-zinc-800 bg-black overflow-hidden divide-y divide-zinc-900">
+                  <button
+                    onClick={() => handleTabChange('upcoming')}
+                    className="w-full flex items-center justify-between p-4 hover:bg-zinc-900 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-zinc-900 text-gold group-hover:bg-gold group-hover:text-black transition-colors">
+                        <CalendarDays className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Session Booking</p>
+                        <p className="text-[11px] text-white/40 mt-0.5 font-normal">View your sessions and active booking packages</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-white/30 group-hover:text-gold transition-colors" />
+                  </button>
+
+
+                  <button
+                    onClick={() => handleTabChange('notifications')}
+                    className="w-full flex items-center justify-between p-4 hover:bg-zinc-900 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-zinc-900 text-gold group-hover:bg-gold group-hover:text-black transition-colors relative">
+                        <Bell className="h-4 w-4" />
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[8px] font-bold text-white">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Inbox & Alerts</p>
+                        <p className="text-[11px] text-white/40 mt-0.5 font-normal">Notifications and messages</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-white/30 group-hover:text-gold transition-colors" />
+                  </button>
+
+                  <button
+                    onClick={() => handleTabChange('payments')}
+                    className="w-full flex items-center justify-between p-4 hover:bg-zinc-900 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-zinc-900 text-gold group-hover:bg-gold group-hover:text-black transition-colors">
+                        <CreditCard className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Payments & Receipts</p>
+                        <p className="text-[11px] text-white/40 mt-0.5 font-normal">Your transaction history and receipts</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-white/30 group-hover:text-gold transition-colors" />
+                  </button>
+
+                  <button
+                    onClick={() => handleTabChange('workshops')}
+                    className="w-full flex items-center justify-between p-4 hover:bg-zinc-900 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-zinc-900 text-gold group-hover:bg-gold group-hover:text-black transition-colors">
+                        <Ticket className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Workshops</p>
+                        <p className="text-[11px] text-white/40 mt-0.5 font-normal">Your registered workshops and tickets</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-white/30 group-hover:text-gold transition-colors" />
+                  </button>
+
+                  <button
+                    onClick={() => handleTabChange('orders')}
+                    className="w-full flex items-center justify-between p-4 hover:bg-zinc-900 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-zinc-900 text-gold group-hover:bg-gold group-hover:text-black transition-colors">
+                        <Package className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Orders</p>
+                        <p className="text-[11px] text-white/40 mt-0.5 font-normal">Check your product orders and status</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-white/30 group-hover:text-gold transition-colors" />
+                  </button>
+
+                  <button
+                    onClick={() => handleTabChange('cart')}
+                    className="w-full flex items-center justify-between p-4 hover:bg-zinc-900 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-zinc-900 text-gold group-hover:bg-gold group-hover:text-black transition-colors relative">
+                        <ShoppingBag className="h-4 w-4" />
+                        {cartCount > 0 && (
+                          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[8px] font-bold text-white">
+                            {cartCount}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Cart</p>
+                        <p className="text-[11px] text-white/40 mt-0.5 font-normal">View items in your shopping cart</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-white/30 group-hover:text-gold transition-colors" />
+                  </button>
+
+
+                  <button
+                    onClick={() => signOut()}
+                    className="w-full flex items-center justify-between p-4 hover:bg-rose-950/15 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-zinc-900 text-rose-400 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                        <LogOut className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-rose-400 font-bold">Sign Out</p>
+                        <p className="text-[11px] text-rose-400/50 mt-0.5 font-normal">Sign out of your account</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-rose-400/30 group-hover:text-rose-400 transition-colors" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* DETAILED ACTIVE TAB CONTENT PANE (Hidden on mobile if activeTab is 'menu') */}
+            <div className={cn("space-y-6", activeTab === 'menu' ? "hidden lg:block" : "block")}>
+              {/* Back to Account Menu Header for Mobile */}
+              {activeTab !== 'menu' && (
+                <div className="lg:hidden flex items-center gap-2 pb-2 mb-4 border-b border-zinc-900">
+                  <button
+                    onClick={() => handleTabChange('menu')}
+                    className="flex items-center gap-1.5 text-xs text-gold hover:text-gold-hover font-semibold transition-colors bg-zinc-900/60 px-3 py-1.5 rounded-full"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" /> Back to Menu
+                  </button>
+                  <span className="text-[11px] text-white/40 uppercase font-bold tracking-wider">
+                    / {activeTab === 'personal' ? 'Profile Details' : activeTab}
+                  </span>
+                </div>
+              )}
+
+              {/* 1. INSTAGRAM INSPIRED PROFILE HEADER (Mobile Only - Hidden) */}
+              <div className="hidden lg:hidden rounded-3xl border border-zinc-800 bg-black text-white p-6 md:p-8 shadow-soft mb-8">
+                <div className="flex items-center gap-6 sm:gap-8">
             {/* Left Side: Profile Picture */}
             <div className="relative group shrink-0">
               <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full border-2 border-gold overflow-hidden bg-zinc-900 relative shadow-soft p-1">
@@ -677,7 +1022,7 @@ export function AccountDashboard() {
           }
 
           return (
-            <div key={pkg.id} className="rounded-3xl border border-gold/30 bg-black text-white p-6 shadow-glow mb-8 text-left animate-fade-in">
+            <div key={pkg.id} className={cn("rounded-3xl border border-gold/30 bg-black text-white p-6 shadow-glow mb-8 text-left animate-fade-in", ['upcoming', 'completed', 'cancelled'].includes(activeTab) ? "block" : "hidden lg:block")}>
               <div className="flex justify-between items-center mb-4 border-b border-zinc-800 pb-3 flex-wrap gap-2">
                 <div>
                   <h3 className="font-display font-medium text-lg text-gold flex items-center gap-2">
@@ -788,36 +1133,16 @@ export function AccountDashboard() {
           );
         })}
 
-        {/* 5. NAVIGATION TABS (INSTAGRAM INSPIRED) */}
-        <div>
-          <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="flex w-full justify-around rounded-full bg-secondary/60 p-1 overflow-x-auto flex-nowrap min-w-full custom-scrollbar mb-6 border border-border/40">
+        {/* 5. NAVIGATION TABS (INSTAGRAM INSPIRED - Mobile Only) */}
+        <div className="lg:mt-0">
+          <Tabs value={activeTab === 'menu' ? 'upcoming' : activeTab} onValueChange={handleTabChange}>
+            <TabsList className={cn(
+              "w-full max-w-lg justify-around rounded-full bg-secondary/60 p-1 overflow-x-auto flex-nowrap custom-scrollbar mb-6 border border-border/40",
+              ['upcoming', 'completed', 'cancelled'].includes(activeTab) ? "flex" : "hidden"
+            )}>
               <TabsTrigger value="upcoming" className="flex-1 rounded-full py-2.5 whitespace-nowrap text-xs sm:text-sm"><CalendarDays className="mr-1 h-3.5 w-3.5" /> Upcoming</TabsTrigger>
               <TabsTrigger value="completed" className="flex-1 rounded-full py-2.5 whitespace-nowrap text-xs sm:text-sm"><CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Completed</TabsTrigger>
               <TabsTrigger value="cancelled" className="flex-1 rounded-full py-2.5 whitespace-nowrap text-xs sm:text-sm"><AlertCircle className="mr-1 h-3.5 w-3.5" /> Cancelled</TabsTrigger>
-              <TabsTrigger value="visits" className="flex-1 rounded-full py-2.5 whitespace-nowrap text-xs sm:text-sm"><Activity className="mr-1 h-3.5 w-3.5" /> Visits</TabsTrigger>
-              <TabsTrigger value="notifications" className="flex-1 rounded-full py-2.5 whitespace-nowrap text-xs sm:text-sm relative">
-                <Bell className="mr-1 h-3.5 w-3.5" />
-                <span>Inbox</span>
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[8px] font-bold text-gold-foreground animate-pulse">
-                    {unreadCount}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="payments" className="flex-1 rounded-full py-2.5 whitespace-nowrap text-xs sm:text-sm"><CreditCard className="mr-1 h-3.5 w-3.5" /> Payments</TabsTrigger>
-              <TabsTrigger value="workshops" className="flex-1 rounded-full py-2.5 whitespace-nowrap text-xs sm:text-sm"><Ticket className="mr-1 h-3.5 w-3.5" /> Workshops</TabsTrigger>
-              <TabsTrigger value="orders" className="flex-1 rounded-full py-2.5 whitespace-nowrap text-xs sm:text-sm"><Package className="mr-1 h-3.5 w-3.5" /> Orders</TabsTrigger>
-              <TabsTrigger value="cart" className="flex-1 rounded-full py-2.5 whitespace-nowrap text-xs sm:text-sm relative">
-                <ShoppingBag className="mr-1 h-3.5 w-3.5" />
-                <span>Cart</span>
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[8px] font-bold text-gold-foreground">
-                    {cartCount}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="personal" className="flex-1 rounded-full py-2.5 whitespace-nowrap text-xs sm:text-sm"><Settings className="mr-1 h-3.5 w-3.5" /> Settings</TabsTrigger>
             </TabsList>
 
             {/* UPCOMING BOOKINGS */}
@@ -1261,61 +1586,131 @@ export function AccountDashboard() {
 
             {/* SETTINGS TAB */}
             <TabsContent value="personal">
-              <div className="space-y-4 rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft text-left">
-                <div>
-                  <h3 className="font-display font-medium text-lg text-white">Account Information</h3>
-                  <p className="text-xs text-white/60 mt-0.5">Manage your personal profiles details here.</p>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 pt-2">
-                  <div>
-                    <Label htmlFor="p-name" className="text-xs font-semibold text-white/60">Full name</Label>
-                    <Input id="p-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5 rounded-xl text-sm" />
+              {!isEditingProfile ? (
+                <div className="space-y-6 rounded-3xl border border-zinc-800 bg-black text-white p-6 sm:p-8 shadow-soft text-left animate-fade-in">
+                  <div className="flex justify-between items-center pb-4 border-b border-zinc-800">
+                    <div>
+                      <h3 className="font-display font-semibold text-lg text-white">Profile Details</h3>
+                      <p className="text-xs text-white/50 mt-0.5">Your personal identity and delivery preferences.</p>
+                    </div>
+                    <Button
+                      onClick={() => setIsEditingProfile(true)}
+                      className="rounded-full px-5 bg-gold hover:bg-gold-hover text-gold-foreground font-semibold text-xs h-9"
+                    >
+                      EDIT DETAILS
+                    </Button>
                   </div>
-                  <div>
-                    <Label htmlFor="p-phone" className="text-xs font-semibold text-white/60">Phone number</Label>
-                    <Input id="p-phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 rounded-xl text-sm" placeholder="e.g. +91 9876543210" />
+
+                  <div className="space-y-4 text-sm pt-2">
+                    <div className="grid grid-cols-[140px_1fr] gap-4 py-2 border-b border-zinc-900/60">
+                      <span className="text-white/50 font-semibold">Full Name</span>
+                      <span className="font-semibold text-white">{fullName || 'Spiritual Seeker'}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-4 py-2 border-b border-zinc-900/60">
+                      <span className="text-white/50 font-semibold">Mobile Number</span>
+                      <span className="font-semibold text-white">{phone || '- not added -'}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-4 py-2 border-b border-zinc-900/60">
+                      <span className="text-white/50 font-semibold">Email ID</span>
+                      <span className="font-semibold text-white">{user.email || '—'}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-4 py-2 border-b border-zinc-900/60">
+                      <span className="text-white/50 font-semibold">City</span>
+                      <span className="font-semibold text-white">{city || '- not added -'}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-4 py-2 border-b border-zinc-900/60">
+                      <span className="text-white/50 font-semibold">Country</span>
+                      <span className="font-semibold text-white">{country || '- not added -'}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-4 py-2 border-b border-zinc-900/60">
+                      <span className="text-white/50 font-semibold">Timezone</span>
+                      <span className="font-semibold text-white">{timezone || 'Asia/Kolkata'}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-4 py-2 border-b border-zinc-900/60">
+                      <span className="text-white/50 font-semibold">Bio</span>
+                      <span className="font-semibold text-white whitespace-pre-line leading-relaxed">{bio || '- not added -'}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-4 py-2">
+                      <span className="text-white/50 font-semibold">Delivery Address</span>
+                      <span className="font-semibold text-white whitespace-pre-line leading-relaxed">{address || '- not added -'}</span>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="p-city" className="text-xs font-semibold text-white/60">City</Label>
-                    <Input id="p-city" value={city} onChange={(e) => setCity(e.target.value)} className="mt-1.5 rounded-xl text-sm" placeholder="City" />
+
+                  <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-zinc-800">
+                    <Button
+                      variant="outline"
+                      onClick={handlePassResetEmail}
+                      disabled={sendingPassReset}
+                      className="w-full sm:w-auto rounded-full px-6 border-zinc-800 hover:bg-zinc-900 bg-transparent text-white"
+                    >
+                      {sendingPassReset ? 'Sending link...' : 'Reset Password'}
+                    </Button>
                   </div>
+                </div>
+              ) : (
+                <div className="space-y-4 rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft text-left animate-fade-in">
                   <div>
-                    <Label htmlFor="p-country" className="text-xs font-semibold text-white/60">Country</Label>
-                    <Input id="p-country" value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1.5 rounded-xl text-sm" placeholder="Country" />
+                    <h3 className="font-display font-medium text-lg text-white">Edit Profile Details</h3>
+                    <p className="text-xs text-white/60 mt-0.5">Modify your profile details and click save.</p>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                    <div>
+                      <Label htmlFor="p-name" className="text-xs font-semibold text-white/60">Full name</Label>
+                      <Input id="p-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5 rounded-xl text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold" />
+                    </div>
+                    <div>
+                      <Label htmlFor="p-phone" className="text-xs font-semibold text-white/60">Phone number</Label>
+                      <Input id="p-phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 rounded-xl text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold" placeholder="e.g. +91 9876543210" />
+                    </div>
+                    <div>
+                      <Label htmlFor="p-city" className="text-xs font-semibold text-white/60">City</Label>
+                      <Input id="p-city" value={city} onChange={(e) => setCity(e.target.value)} className="mt-1.5 rounded-xl text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold" placeholder="City" />
+                    </div>
+                    <div>
+                      <Label htmlFor="p-country" className="text-xs font-semibold text-white/60">Country</Label>
+                      <Input id="p-country" value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1.5 rounded-xl text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold" placeholder="Country" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="p-email" className="text-xs font-semibold text-white/60">Email (Cannot be changed)</Label>
+                    <Input id="p-email" value={user.email || ''} disabled className="mt-1.5 bg-zinc-900/50 border-zinc-800/40 text-white/50 cursor-not-allowed rounded-xl text-sm" />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="p-tz" className="text-xs font-semibold text-white/60">Timezone</Label>
+                    <Input id="p-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)} className="mt-1.5 rounded-xl text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold" />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="p-bio" className="text-xs font-semibold text-white/60">Bio</Label>
+                    <Textarea id="p-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="mt-1.5 min-h-[80px] rounded-xl text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold" placeholder="Tell us about yourself..." />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="p-addr" className="text-xs font-semibold text-white/60">Delivery Address</Label>
+                    <Textarea id="p-addr" value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1.5 min-h-[80px] rounded-xl text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold" placeholder="Full address for shipping orders..." />
+                  </div>
+
+                  <div className="flex gap-3 pt-3 border-t border-zinc-800">
+                    <Button onClick={saveProfile} disabled={saving} className="rounded-full px-8 bg-gold hover:bg-gold-hover text-gold-foreground font-semibold">
+                      {saving ? 'Saving…' : 'Save Changes'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsEditingProfile(false)}
+                      className="rounded-full px-6 border-zinc-800 hover:bg-zinc-900 bg-transparent text-white"
+                    >
+                      Cancel
+                    </Button>
                   </div>
                 </div>
-
-                <div>
-                  <Label htmlFor="p-email" className="text-xs font-semibold text-white/60">Email (Cannot be changed)</Label>
-                  <Input id="p-email" value={user.email || ''} disabled className="mt-1.5 bg-zinc-900/50 cursor-not-allowed rounded-xl text-sm" />
-                </div>
-
-                <div>
-                  <Label htmlFor="p-tz" className="text-xs font-semibold text-white/60">Timezone</Label>
-                  <Input id="p-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)} className="mt-1.5 rounded-xl text-sm" />
-                </div>
-
-                <div>
-                  <Label htmlFor="p-bio" className="text-xs font-semibold text-white/60">Bio</Label>
-                  <Textarea id="p-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="mt-1.5 min-h-[80px] rounded-xl text-sm" placeholder="Tell us about yourself..." />
-                </div>
-
-                <div>
-                  <Label htmlFor="p-addr" className="text-xs font-semibold text-white/60">Delivery Address</Label>
-                  <Textarea id="p-addr" value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1.5 min-h-[80px] rounded-xl text-sm" placeholder="Full address for shipping orders..." />
-                </div>
-
-                <div className="flex gap-3 pt-3 border-t border-zinc-800">
-                  <Button onClick={saveProfile} disabled={saving} className="rounded-full px-8">
-                    {saving ? 'Saving…' : 'Save Changes'}
-                  </Button>
-                  <Button variant="outline" onClick={handlePassResetEmail} disabled={sendingPassReset} className="rounded-full px-6 border-gold/45 hover:bg-gold/10 bg-transparent text-white">
-                    {sendingPassReset ? 'Sending link...' : 'Reset Password'}
-                  </Button>
-                </div>
-              </div>
+              )}
             </TabsContent>
           </Tabs>
+          </div> {/* Closes detailed active tab content pane */}
+          </div> {/* Closes flex-1 min-w-0 */}
+          </div> {/* Closes lg:grid */}
         </div>
       </div>
 
@@ -1575,10 +1970,9 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
   const [reschedTime, setReschedTime] = useState('');
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-  const handleCancelBooking = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm('Are you sure you want to cancel this healing session? This will immediately free up the slot.')) return;
+  const handleCancelBooking = async () => {
     setCancelling(true);
     try {
       const { doc, setDoc, deleteDoc } = await import('firebase/firestore');
@@ -1770,7 +2164,10 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
                   size="sm"
                   variant="outline"
                   disabled={cancelling}
-                  onClick={handleCancelBooking}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCancelConfirm(true);
+                  }}
                   className="rounded-full text-xs h-8 border-rose-500/50 text-rose-400 hover:bg-rose-500/10"
                 >
                   {cancelling ? 'Cancelling...' : 'Cancel Session'}
@@ -1780,6 +2177,62 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
           </div>
         )}
       </div>
+
+      {/* CANCEL CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showCancelConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCancelConfirm(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-sm rounded-3xl border border-zinc-800 bg-black text-white shadow-glow p-6 text-left overflow-hidden"
+            >
+              <div className="flex justify-between items-center pb-3 border-b border-zinc-800">
+                <span className="font-display font-semibold text-base text-white">Cancel Session</span>
+                <button onClick={() => setShowCancelConfirm(false)} className="p-1 rounded-full hover:bg-zinc-900 text-muted-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="py-4">
+                <p className="text-sm text-zinc-300 leading-relaxed font-medium">
+                  Are you sure you want to cancel this healing session? This will immediately free up the slot.
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-3 border-t border-zinc-800">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowCancelConfirm(false)}
+                  className="rounded-full text-xs h-9 px-4 border border-white/20 text-white bg-white/5 hover:bg-white/10 hover:text-white"
+                >
+                  No, keep it
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={cancelling}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCancelBooking();
+                  }}
+                  className="rounded-full text-xs h-9 px-4 bg-rose-600 hover:bg-rose-700 text-white font-semibold"
+                >
+                  {cancelling ? 'Cancelling...' : 'Yes, cancel session'}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

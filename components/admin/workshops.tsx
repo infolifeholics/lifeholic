@@ -247,7 +247,7 @@ export function AdminWorkshops() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this workshop and clean up all media permanently?')) return;
+    if (!await (window as any).customConfirm('Delete this workshop and clean up all media permanently?')) return;
     const toastId = toast.loading('Deleting workshop and purging Cloudinary files...');
     try {
       const matchWs = workshops.find(w => w.id === id);
@@ -506,7 +506,7 @@ export function AdminWorkshops() {
   };
 
   const handleDeleteFeedback = async (id: string) => {
-    if (!confirm('Delete this feedback review permanently?')) return;
+    if (!await (window as any).customConfirm('Delete this feedback review permanently?')) return;
     try {
       await deleteDoc(doc(db, 'workshopFeedback', id));
       toast.success('Feedback deleted.');

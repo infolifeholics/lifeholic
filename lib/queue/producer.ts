@@ -24,7 +24,11 @@ function generateJobId(
   bookingId?: string,
   suffix?: string
 ): string {
-  const base = [type, recipient, bookingId || 'no-booking', suffix || Date.now().toString()]
+  const parts = [type, recipient, bookingId || 'no-booking'];
+  if (suffix) {
+    parts.push(suffix);
+  }
+  const base = parts
     .join('::')
     .replace(/[^a-zA-Z0-9:_-]/g, '_');
   // Keep it reasonably short
@@ -87,8 +91,9 @@ export async function pushNotificationJob(
   };
 
   const client = getQStashClient();
+  const isDev = process.env.NODE_ENV === 'development';
 
-  if (client) {
+  if (client && !isDev) {
     // ── QStash path ────────────────────────────────────────────────────────
     const workerUrl = process.env.QSTASH_WORKER_URL;
     if (!workerUrl) {

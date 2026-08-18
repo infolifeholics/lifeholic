@@ -78,7 +78,7 @@ export function AdminOrders() {
   };
 
   const handleDeleteOrder = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this order?')) return;
+    if (!await (window as any).customConfirm('Are you sure you want to permanently delete this order?')) return;
     const toastId = toast.loading('Deleting order...');
     try {
       await deleteDoc(doc(db, 'orders', id));

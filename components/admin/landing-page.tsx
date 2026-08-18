@@ -156,7 +156,7 @@ export function AdminLandingPage() {
 
   const handleDeleteVideo = async () => {
     if (!videoUrl) return;
-    const confirm = window.confirm('Are you sure you want to restore the default cinematic video?');
+    const confirm = await (window as any).customConfirm('Are you sure you want to restore the default cinematic video?');
     if (!confirm) return;
 
     const toastId = toast.loading('Restoring default video...');
@@ -215,7 +215,7 @@ export function AdminLandingPage() {
 
   const handleDeleteAudio = async () => {
     if (!audioUrl) return;
-    const confirm = window.confirm('Are you sure you want to restore the default calming audio?');
+    const confirm = await (window as any).customConfirm('Are you sure you want to restore the default calming audio?');
     if (!confirm) return;
 
     const toastId = toast.loading('Restoring default audio...');
@@ -273,7 +273,7 @@ export function AdminLandingPage() {
 
   const handleDeleteFounder = async () => {
     if (founderImage === DEFAULT_FOUNDER_IMAGE) return;
-    const confirm = window.confirm('Are you sure you want to restore the default founder portrait?');
+    const confirm = await (window as any).customConfirm('Are you sure you want to restore the default founder portrait?');
     if (!confirm) return;
 
     const toastId = toast.loading('Restoring default portrait...');
@@ -330,7 +330,7 @@ export function AdminLandingPage() {
 
   const handleDeleteFounder2 = async () => {
     if (founderImage2 === DEFAULT_FOUNDER_IMAGE_2) return;
-    const confirm = window.confirm('Are you sure you want to restore the default story secondary image?');
+    const confirm = await (window as any).customConfirm('Are you sure you want to restore the default story secondary image?');
     if (!confirm) return;
 
     const toastId = toast.loading('Restoring default image...');
@@ -387,7 +387,7 @@ export function AdminLandingPage() {
 
   const handleDeleteBgImage = async () => {
     if (bgImage === DEFAULT_BG_IMAGE) return;
-    const confirm = window.confirm('Are you sure you want to restore the default background image?');
+    const confirm = await (window as any).customConfirm('Are you sure you want to restore the default background image?');
     if (!confirm) return;
 
     const toastId = toast.loading('Restoring default background image...');

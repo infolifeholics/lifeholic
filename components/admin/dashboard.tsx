@@ -1004,7 +1004,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                             const amt = prompt('Enter refund amount (number only):', String(selectedBooking.amount));
                             if (!amt) return;
                             const note = prompt('Enter refund note/reason:');
-                            const confirmOk = confirm(`Confirm refund of ${amt}?`);
+                            const confirmOk = await (window as any).customConfirm(`Confirm refund of ${amt}?`);
                             if (!confirmOk) return;
 
                             try {

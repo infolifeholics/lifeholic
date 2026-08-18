@@ -99,7 +99,7 @@ export function AdminBlog() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this article?')) return;
+    if (!await (window as any).customConfirm('Are you sure you want to delete this article?')) return;
     try {
       await deleteDoc(doc(db, 'blog_posts', id));
       toast.success('Article deleted.');

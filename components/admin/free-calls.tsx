@@ -57,7 +57,7 @@ export function AdminFreeCalls() {
   };
 
   const deleteBooking = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this free call request?')) return;
+    if (!await (window as any).customConfirm('Are you sure you want to permanently delete this free call request?')) return;
     try {
       await deleteDoc(doc(db, 'free_call_bookings', id));
       toast.success('Booking deleted.');

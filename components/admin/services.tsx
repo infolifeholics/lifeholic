@@ -161,7 +161,7 @@ export function AdminServices() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this service?')) return;
+    if (!await (window as any).customConfirm('Are you sure you want to delete this service?')) return;
     const toastId = toast.loading('Deleting service...');
     try {
       await deleteDoc(doc(db, 'services', id));

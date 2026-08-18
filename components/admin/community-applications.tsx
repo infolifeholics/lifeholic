@@ -54,7 +54,7 @@ export function AdminCommunityApplications() {
   };
 
   const deleteApplication = async (id: string) => {
-    if (!confirm('Are you sure you want to permanently delete this application?')) return;
+    if (!await (window as any).customConfirm('Are you sure you want to permanently delete this application?')) return;
     try {
       await deleteDoc(doc(db, 'community_applications', id));
       toast.success('Application deleted successfully.');

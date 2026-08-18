@@ -31,6 +31,8 @@ const FloatingPetals = dynamic(
   { ssr: false }
 );
 
+import { ConfirmProvider } from '@/components/providers/confirm-provider';
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
@@ -39,12 +41,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <CartProvider>
           <WishlistProvider>
             <SmoothScroll>
-              <PageTransition>
-                <CinematicVideoBg />
-                <SoundToggle />
-                <FloatingPetals />
-                {children}
-              </PageTransition>
+              <ConfirmProvider>
+                <PageTransition>
+                  <CinematicVideoBg />
+                  <SoundToggle />
+                  <FloatingPetals />
+                  {children}
+                </PageTransition>
+              </ConfirmProvider>
             </SmoothScroll>
             <Toaster />
             <SonnerToaster />

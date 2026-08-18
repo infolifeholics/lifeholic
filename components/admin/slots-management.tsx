@@ -201,7 +201,7 @@ export function AdminSlotsManagement() {
   };
 
   const handleDeleteSlot = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this slot?')) return;
+    if (!await (window as any).customConfirm('Are you sure you want to delete this slot?')) return;
     try {
       const token = await auth.currentUser?.getIdToken();
       const res = await fetch('/api/admin/slots', {
@@ -279,7 +279,7 @@ export function AdminSlotsManagement() {
   };
 
   const handleDeleteHoliday = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this holiday?')) return;
+    if (!await (window as any).customConfirm('Are you sure you want to remove this holiday?')) return;
     try {
       const token = await auth.currentUser?.getIdToken();
       const res = await fetch('/api/admin/holidays', {

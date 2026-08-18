@@ -57,7 +57,7 @@ export function AdminErrorLogsViewer() {
   };
 
   const clearAllLogs = async () => {
-    if (!confirm('Are you sure you want to purge all error logs?')) return;
+    if (!await (window as any).customConfirm('Are you sure you want to purge all error logs?')) return;
     const toastId = toast.loading('Clearing error logs...');
     try {
       const snap = await getDocs(collection(db, 'error_logs'));

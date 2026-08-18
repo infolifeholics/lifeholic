@@ -129,7 +129,7 @@ export async function triggerBookingNotification(
     };
 
     let templateType: any = 'booking_status_changed';
-    if (eventType === 'created') {
+    if (eventType === 'created' || eventType === 'confirmed') {
       templateType = 'booking_confirmation';
     } else if (eventType === 'cancelled') {
       templateType = 'booking_cancelled';
@@ -203,76 +203,47 @@ export async function triggerOrderNotification(orderId: string, orderData: any) 
     }
   }
 
-  // Construct Email HTML
-  const emailSubject = `Order Confirmation (ID: ${orderNumber})`;
-  const emailBody = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
-      <h2 style="color: #c5a880; margin-bottom: 20px;">Lifeholics Order Confirmation</h2>
-      <p>Hello ${full_name || 'Customer'}, thank you for your order!</p>
-      <p>We are processing your order <strong>${orderNumber}</strong>. Here are the details:</p>
-      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-      <h3 style="color: #333; margin-bottom: 10px;">Order Items</h3>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-        <thead>
-          <tr style="border-bottom: 2px solid #eee; font-weight: bold; color: #555;">
-            <th style="text-align: left; padding: 8px;">Item</th>
-            <th style="text-align: center; padding: 8px;">Qty</th>
-            <th style="text-align: right; padding: 8px;">Price</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${items.map((item: any) => `
-            <tr style="border-bottom: 1px solid #eee;">
-              <td style="padding: 8px;">${item.title || 'Product'}</td>
-              <td style="text-align: center; padding: 8px;">${item.quantity || 1}</td>
-              <td style="text-align: right; padding: 8px;">${item.price} ${currency}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      <div style="margin-top: 15px; text-align: right; font-weight: bold; font-size: 16px; color: #333;">
-        Total: ${total} ${currency}
-      </div>
-    </div>
-  `;
+  const formattedAddress = orderData.address 
+    ? `${orderData.address.line1 || ''}, ${orderData.address.city || ''}, ${orderData.address.state || ''}, ${orderData.address.postal_code || ''}, ${orderData.address.country || ''}`
+    : 'Digital Delivery';
+
+  const vars = {
+    memberName: full_name || 'Customer',
+    orderNumber: orderNumber || 'N/A',
+    orderItems: items || [],
+    orderTotal: total || 0,
+    orderCurrency: currency || 'INR',
+    shippingAddress: formattedAddress,
+    clientEmail: email || '',
+    clientPhone: phone || '',
+  };
 
   try {
-    await sendEmailNotification({
-      to: email,
-      subject: emailSubject,
-      html: emailBody,
-    });
-    await sendEmailNotification({
-      to: adminEmail,
-      subject: `[ADMIN] ${emailSubject}`,
-      html: emailBody,
-    });
-  } catch (e) {
-    console.error('[Notifications] Failed to send order emails:', e);
-  }
-
-  // Send WhatsApp Notifications
-  try {
-    const formattedItems = items.map((item: any) => 
-      `- ${item.name || item.title || 'Product'} (x${item.quantity || 1})`
-    ).join('\n');
+    const { queueNotification } = await import('@/lib/notifications/notification-service');
     
-    const formattedAddress = orderData.address 
-      ? `${orderData.address.line1 || ''}, ${orderData.address.city || ''}, ${orderData.address.state || ''}, ${orderData.address.postal_code || ''}, ${orderData.address.country || ''}`
-      : 'Digital Delivery';
+    // 1. Queue User Notification
+    await queueNotification(
+      'order_confirmation',
+      email,
+      phone || null,
+      vars,
+      undefined,
+      user_id || undefined
+    );
 
-    const customerMsg = `🛍️ Order Confirmed\n\nHi ${full_name || 'Customer'},\n\nYour order has been successfully placed.\n\nOrder ID: ${orderNumber}\n\nItems:\n${formattedItems}\n\nTotal Amount: ${total} ${currency}\n\nPayment Status: ${orderData.payment_status || 'Paid'}\n\nShipping Address:\n${formattedAddress}\n\nThank you for shopping with Lifeholics.`;
-    
-    if (phone) {
-      await sendWhatsAppNotification(phone, customerMsg);
-    }
-
+    // 2. Queue Admin Notification
     const ownerPhone = process.env.WASENDER_OWNER_PHONE || '917485001044';
-    const ownerMsg = `🛍️ New Product Order\n\nA new order has been placed.\n\nOrder ID: ${orderNumber}\n\nCustomer:\n${full_name || 'Customer'}\n\nPhone:\n${phone || 'N/A'}\n\nEmail:\n${email}\n\nItems:\n${formattedItems}\n\nTotal:\n${total} ${currency}\n\nPayment:\n${orderData.payment_status || 'Paid'}\n\nShipping Address:\n${formattedAddress}`;
-    
-    await sendWhatsAppNotification(ownerPhone, ownerMsg);
-  } catch (waErr) {
-    console.error('[Notifications] Failed to send order WhatsApp messages:', waErr);
+    await queueNotification(
+      'admin_order_alert',
+      adminEmail,
+      ownerPhone,
+      vars,
+      undefined,
+      undefined
+    );
+    console.log(`[Notifications] Successfully queued order notifications for Order Number: ${orderNumber}`);
+  } catch (err) {
+    console.error('[Notifications] Failed to queue order notifications:', err);
   }
 }
 

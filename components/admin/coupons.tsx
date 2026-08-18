@@ -144,7 +144,7 @@ export function AdminCoupons() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this coupon?')) return;
+    if (!await (window as any).customConfirm('Delete this coupon?')) return;
     try {
       await deleteDoc(doc(db, 'coupons', id));
       toast.success('Coupon deleted.');
