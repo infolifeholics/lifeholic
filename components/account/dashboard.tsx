@@ -119,7 +119,14 @@ export function AccountDashboard() {
   const { count: cartCount } = useCart();
 
   // Route/Tab control sync
-  const activeTab = searchParams.get('tab') || 'upcoming';
+  const [activeTab, setActiveTab] = useState('upcoming');
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -460,6 +467,7 @@ export function AccountDashboard() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleTabChange = (val: string) => {
+    setActiveTab(val);
     router.push(`/account?tab=${val}`);
   };
 
