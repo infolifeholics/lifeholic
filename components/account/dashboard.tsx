@@ -523,16 +523,16 @@ export function AccountDashboard() {
         )}
 
         {/* 1. INSTAGRAM INSPIRED PROFILE HEADER */}
-        <div className="rounded-3xl border border-border/60 bg-card/40 p-6 md:p-8 shadow-soft mb-8">
+        <div className="rounded-3xl border border-zinc-800 bg-black text-white p-6 md:p-8 shadow-soft mb-8">
           <div className="flex items-center gap-6 sm:gap-8">
             {/* Left Side: Profile Picture */}
             <div className="relative group shrink-0">
-              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full border-2 border-gold overflow-hidden bg-secondary relative shadow-soft p-1">
+              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full border-2 border-gold overflow-hidden bg-zinc-900 relative shadow-soft p-1">
                 <div className="h-full w-full rounded-full overflow-hidden">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="h-full w-full flex items-center justify-center text-muted-foreground bg-secondary font-display text-2xl uppercase">
+                    <div className="h-full w-full flex items-center justify-center text-white/60 bg-zinc-900 font-display text-2xl uppercase">
                       {fullName ? fullName.charAt(0) : user.email?.charAt(0)}
                     </div>
                   )}
@@ -544,7 +544,7 @@ export function AccountDashboard() {
                   </div>
                 )}
               </div>
-              <label className="absolute bottom-0 right-0 p-1.5 rounded-full bg-gold hover:bg-gold-hover text-gold-foreground cursor-pointer shadow-soft transition-colors border border-card">
+              <label className="absolute bottom-0 right-0 p-1.5 rounded-full bg-gold hover:bg-gold-hover text-gold-foreground cursor-pointer shadow-soft transition-colors border border-black">
                 <Camera className="h-3.5 w-3.5" />
                 <input type="file" onChange={handleAvatarReplace} accept="image/*" className="hidden" />
               </label>
@@ -554,7 +554,7 @@ export function AccountDashboard() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <h2 className="font-display text-xl sm:text-2xl font-medium text-foreground truncate">{fullName || 'Spiritual Seeker'}</h2>
+                  <h2 className="font-display text-xl sm:text-2xl font-medium text-white truncate">{fullName || 'Spiritual Seeker'}</h2>
                   {profile?.is_admin && (
                     <Link href="/admin" className="shrink-0">
                       <Button size="sm" className="h-6 rounded-full bg-gold hover:bg-gold-hover text-gold-foreground text-[10px] font-semibold px-2.5 py-0 flex items-center justify-center">
@@ -565,51 +565,51 @@ export function AccountDashboard() {
                 </div>
                 <button
                   onClick={() => setShowSettingsModal(true)}
-                  className="p-1.5 rounded-full hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0 ml-auto"
+                  className="p-1.5 rounded-full hover:bg-zinc-800 transition-colors text-white/60 hover:text-white shrink-0 ml-auto"
                 >
                   <Settings className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                 </button>
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground font-mono mt-0.5">Member ID: {profile?.member_id || 'Generating...'}</p>
+              <p className="text-xs sm:text-sm text-white/60 font-mono mt-0.5">Member ID: {profile?.member_id || 'Generating...'}</p>
 
               {/* Clickable Statistics Panel */}
-              <div className="flex items-center gap-6 sm:gap-8 mt-3 pt-2 border-t border-border/20">
+              <div className="flex items-center gap-6 sm:gap-8 mt-3 pt-2 border-t border-zinc-800">
                 <button
                   onClick={() => handleTabChange('upcoming')}
                   className="flex flex-col items-start hover:text-gold transition-colors text-left"
                 >
-                  <span className="font-display text-lg font-bold text-foreground leading-none">{bookings.length}</span>
-                  <span className="text-muted-foreground text-[10px] sm:text-xs font-medium tracking-wide mt-1">Sessions</span>
+                  <span className="font-display text-lg font-bold text-white leading-none">{bookings.length}</span>
+                  <span className="text-white/60 text-[10px] sm:text-xs font-medium tracking-wide mt-1">Sessions</span>
                 </button>
                 <button
                   onClick={() => handleTabChange('orders')}
                   className="flex flex-col items-start hover:text-gold transition-colors text-left"
                 >
-                  <span className="font-display text-lg font-bold text-foreground leading-none">{orders.length}</span>
-                  <span className="text-muted-foreground text-[10px] sm:text-xs font-medium tracking-wide mt-1">Orders</span>
+                  <span className="font-display text-lg font-bold text-white leading-none">{orders.length}</span>
+                  <span className="text-white/60 text-[10px] sm:text-xs font-medium tracking-wide mt-1">Orders</span>
                 </button>
                 <button
                   onClick={() => handleTabChange('cart')}
                   className="flex flex-col items-start hover:text-gold transition-colors text-left"
                 >
-                  <span className="font-display text-lg font-bold text-foreground leading-none">{cartCount}</span>
-                  <span className="text-muted-foreground text-[10px] sm:text-xs font-medium tracking-wide mt-1">Cart</span>
+                  <span className="font-display text-lg font-bold text-white leading-none">{cartCount}</span>
+                  <span className="text-white/60 text-[10px] sm:text-xs font-medium tracking-wide mt-1">Cart</span>
                 </button>
               </div>
             </div>
           </div>
 
           {/* 2. USER BIO & INFO SECTION BELOW THE MAIN FLEX HEADER */}
-          <div className="space-y-3 pt-4 text-sm text-left border-t border-border/40 mt-5">
+          <div className="space-y-3 pt-4 text-sm text-left border-t border-zinc-800 mt-5">
             {bio ? (
-              <p className="text-xs text-foreground/90 whitespace-pre-line leading-relaxed italic bg-secondary/20 p-3 rounded-xl border border-border/30">
+              <p className="text-xs text-white/90 whitespace-pre-line leading-relaxed italic bg-zinc-900/50 p-3 rounded-xl border border-zinc-800">
                 &ldquo;{bio}&rdquo;
               </p>
             ) : (
-              <p className="text-xs text-muted-foreground italic">No bio added yet.</p>
+              <p className="text-xs text-white/60 italic">No bio added yet.</p>
             )}
 
-            <div className="grid gap-2 sm:grid-cols-2 text-xs text-muted-foreground pt-1">
+            <div className="grid gap-2 sm:grid-cols-2 text-xs text-white/60 pt-1">
               <div className="flex items-center gap-2">
                 <span>📧</span>
                 <span>{user.email}</span>
@@ -638,8 +638,8 @@ export function AccountDashboard() {
             </div>
 
             {/* Quick Actions (Sign Out) */}
-            <div className="flex justify-end gap-2 pt-2 border-t border-border/20">
-              <Button size="sm" variant="outline" onClick={() => signOut()} className="rounded-full text-xs">
+            <div className="flex justify-end gap-2 pt-2 border-t border-zinc-800">
+              <Button size="sm" variant="outline" onClick={() => signOut()} className="rounded-full text-xs text-white hover:text-black border-zinc-700 hover:bg-white bg-transparent">
                 Sign Out
               </Button>
             </div>
@@ -654,14 +654,28 @@ export function AccountDashboard() {
           const remainingSessions = pkg.remaining_sessions || 0;
           const stepArray = Array.from({ length: totalSessions }, (_, i) => i + 1);
 
+          let displayPackageName = pkg.package_name;
+          if (isSomaticPkg) {
+            const planKey = pkg.plan_key || (pkg.package_name?.toLowerCase().includes('essential') ? 'essential' : pkg.package_name?.toLowerCase().includes('elite') ? 'elite' : 'premium');
+            if (planKey === 'essential') {
+              displayPackageName = 'Personal Healing & Clarity Session';
+            } else if (planKey === 'elite') {
+              displayPackageName = 'Ancestral Healing Session';
+            } else {
+              displayPackageName = '4-Week Deep Transformation Program';
+            }
+          } else if (!displayPackageName) {
+            displayPackageName = 'Healing Service Package';
+          }
+
           return (
-            <div key={pkg.id} className="rounded-3xl border border-gold/30 bg-gradient-to-r from-card to-secondary/30 p-6 shadow-glow mb-8 text-left animate-fade-in">
-              <div className="flex justify-between items-center mb-4 border-b border-border/20 pb-3 flex-wrap gap-2">
+            <div key={pkg.id} className="rounded-3xl border border-gold/30 bg-black text-white p-6 shadow-glow mb-8 text-left animate-fade-in">
+              <div className="flex justify-between items-center mb-4 border-b border-zinc-800 pb-3 flex-wrap gap-2">
                 <div>
                   <h3 className="font-display font-medium text-lg text-gold flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-gold" /> {pkg.package_name || (isSomaticPkg ? 'Somatic Transformation Program' : 'Healing Service Package')}
+                    <Activity className="h-5 w-5 text-gold" /> {displayPackageName}
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                  <p className="text-xs text-white/60 mt-0.5 font-medium">
                     Validity: {new Date(pkg.purchase_date).toLocaleDateString()} – {new Date(pkg.expiry_date).toLocaleDateString()}{' '}
                     ({(pkg.status === 'expired' || new Date().getTime() > new Date(pkg.expiry_date).getTime()) ? <span className="text-destructive font-bold">Expired</span> : (pkg.status === 'completed' || completedSessions >= totalSessions) ? <span className="text-emerald-400 font-bold">Completed</span> : <span className="text-gold font-bold">Active</span>})
                   </p>
@@ -670,13 +684,13 @@ export function AccountDashboard() {
                   <span className="text-xs font-semibold text-gold" style={{ backgroundColor: '#121212', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(212, 175, 55, 0.3)' }}>
                     30 Mins × {totalSessions} {totalSessions === 1 ? 'Session' : 'Sessions'}
                   </span>
-                  <span className="text-xs text-muted-foreground mt-1.5">{completedSessions} / {totalSessions} Completed</span>
+                  <span className="text-xs text-white/60 mt-1.5">{completedSessions} / {totalSessions} Completed</span>
                   {(pkg.status === 'expired' || new Date().getTime() > new Date(pkg.expiry_date).getTime()) ? (
                     <span className="text-[10px] font-bold text-destructive mt-0.5">
                       {isSomaticPkg ? 'Plan has expired' : 'Package has expired'}
                     </span>
                   ) : (
-                    <span className="text-[10px] text-muted-foreground mt-0.5">{remainingSessions} {remainingSessions === 1 ? 'Session' : 'Sessions'} Remaining</span>
+                    <span className="text-[10px] text-white/60 mt-0.5">{remainingSessions} {remainingSessions === 1 ? 'Session' : 'Sessions'} Remaining</span>
                   )}
                 </div>
               </div>
@@ -710,7 +724,7 @@ export function AccountDashboard() {
                       if (prevBookingId) {
                         const prevB = bookings.find(b => b.id === prevBookingId);
                         if (prevB && prevB.status === 'completed') {
-                          stepStatus = 'available';
+                           stepStatus = 'available';
                         } else {
                           stepStatus = 'locked';
                         }
@@ -734,16 +748,16 @@ export function AccountDashboard() {
                   return (
                     <div key={stepNum} className={cn(
                       "p-4 rounded-2xl border text-center transition-all",
-                      stepStatus === 'completed' && "bg-emerald-500/5 border-emerald-500/20 text-emerald-400",
-                      stepStatus === 'booked' && "bg-amber-500/5 border-gold/30 text-gold",
-                      stepStatus === 'available' && "bg-card border-border/60 text-foreground hover:border-gold/30 cursor-pointer",
-                      stepStatus === 'locked' && "bg-secondary/40 border-border/20 text-muted-foreground opacity-60"
+                      stepStatus === 'completed' && "bg-black border-emerald-500/30 text-emerald-400",
+                      stepStatus === 'booked' && "bg-black border-gold/30 text-gold",
+                      stepStatus === 'available' && "bg-black border-zinc-800 text-white hover:border-gold/30 cursor-pointer",
+                      stepStatus === 'locked' && "bg-black border-zinc-900 text-white/40 opacity-60"
                     )}>
                       <div className="flex justify-center mb-2">
                         {stepStatus === 'completed' && <CheckCircle2 className="h-5 w-5 text-emerald-400" />}
                         {stepStatus === 'booked' && <CalendarDays className="h-5 w-5 text-gold" />}
-                        {stepStatus === 'available' && <Clock className="h-5 w-5 text-foreground" />}
-                        {stepStatus === 'locked' && <Lock className="h-5 w-5 text-muted-foreground" />}
+                        {stepStatus === 'available' && <Clock className="h-5 w-5 text-white" />}
+                        {stepStatus === 'locked' && <Lock className="h-5 w-5 text-white/40" />}
                       </div>
                       <span className="block text-xs font-bold uppercase tracking-wider">Session {stepNum}</span>
                       <span className="block text-[10px] mt-1 capitalize">
@@ -842,11 +856,11 @@ export function AccountDashboard() {
               {recentVisits.length === 0 ? (
                 <Empty icon={Activity} title="No visits recorded" desc="Explore concern areas in the search dropdown to populate this." cta={{ href: '/', label: 'Go to Search' }} />
               ) : (
-                <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft space-y-6">
-                  <div className="flex justify-between items-center pb-2 border-b border-border/40">
+                <div className="rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft space-y-6">
+                  <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
                     <div>
-                      <h3 className="font-display text-lg font-medium text-foreground">Recent Explored Pathways</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">Last login details and recently explored sections.</p>
+                      <h3 className="font-display text-lg font-medium text-white">Recent Explored Pathways</h3>
+                      <p className="text-xs text-white/60 mt-0.5">Last login details and recently explored sections.</p>
                     </div>
                     <button
                       onClick={() => {
@@ -861,7 +875,7 @@ export function AccountDashboard() {
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     {recentVisits.map((v, idx) => (
-                      <div key={idx} className="p-5 border border-border/50 bg-card rounded-2xl shadow-soft flex flex-col justify-between space-y-4 text-left">
+                      <div key={idx} className="p-5 border border-zinc-800 bg-black rounded-2xl shadow-soft flex flex-col justify-between space-y-4 text-left text-white">
                         <div className="space-y-2">
                           <div className="flex items-center gap-1.5 text-[10px] text-gold uppercase font-semibold tracking-wider">
                             <span>{v.category}</span>
@@ -870,22 +884,22 @@ export function AccountDashboard() {
                           </div>
                           {v.problems && v.problems.length > 0 && (
                             <div className="text-xs">
-                              <span className="font-semibold text-foreground">Selected Challenges:</span>
-                              <p className="text-muted-foreground mt-0.5">{v.problems.join(', ')}</p>
+                              <span className="font-semibold text-white">Selected Challenges:</span>
+                              <p className="text-white/60 mt-0.5">{v.problems.join(', ')}</p>
                             </div>
                           )}
                           {v.recommended_service && (
-                            <div className="text-xs bg-secondary/50 p-2 rounded-lg mt-1 border border-border/30">
-                              <span className="font-semibold text-foreground">Recommended:</span>{' '}
+                            <div className="text-xs bg-zinc-900/50 p-2 rounded-lg mt-1 border border-zinc-800">
+                              <span className="font-semibold text-white">Recommended:</span>{' '}
                               <span className="text-gold font-medium">{v.recommended_service}</span>
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center justify-between pt-2 border-t border-border/20 mt-2 gap-2 flex-wrap text-[10px] text-muted-foreground">
+                        <div className="flex items-center justify-between pt-2 border-t border-zinc-800 mt-2 gap-2 flex-wrap text-[10px] text-white/60">
                           <span>
                             Visited: {v.timestamp ? new Date(v.timestamp).toLocaleDateString() : ''}
                           </span>
-                          <Button asChild size="sm" variant="outline" className="rounded-full text-[10px] h-7 px-3 border-gold/40 hover:bg-gold/10 hover:text-gold">
+                          <Button asChild size="sm" variant="outline" className="rounded-full text-[10px] h-7 px-3 border-gold/40 hover:bg-gold/10 hover:text-gold bg-transparent text-white">
                             <Link href={`/?category=${encodeURIComponent(v.category)}&subcategory=${encodeURIComponent(v.sub)}&problems=${encodeURIComponent((v.problems || []).join(','))}`}>
                               Reopen
                             </Link>
@@ -900,11 +914,11 @@ export function AccountDashboard() {
 
             {/* 6. NOTIFICATION CENTER */}
             <TabsContent value="notifications">
-              <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border/40 gap-3">
+              <div className="rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-zinc-800 gap-3">
                   <div>
-                    <h3 className="font-display text-lg font-medium text-foreground">Notification Center</h3>
-                    <p className="text-xs text-muted-foreground">Real-time updates regarding your account activities.</p>
+                    <h3 className="font-display text-lg font-medium text-white">Notification Center</h3>
+                    <p className="text-xs text-white/60">Real-time updates regarding your account activities.</p>
                   </div>
                   <div className="flex items-center gap-3">
                     {unreadCount > 0 && (
@@ -935,7 +949,7 @@ export function AccountDashboard() {
                         "px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors border",
                         notifCategory === category.id
                           ? "bg-gold border-gold text-gold-foreground"
-                          : "bg-secondary/40 border-border/60 text-muted-foreground hover:bg-secondary"
+                          : "bg-zinc-900 border-zinc-800 text-white/60 hover:bg-zinc-800"
                       )}
                     >
                       {category.label}
@@ -956,27 +970,27 @@ export function AccountDashboard() {
                           className={cn(
                             "p-4 rounded-2xl border text-left flex items-start gap-4 transition-all relative overflow-hidden",
                             n.read
-                              ? "bg-card border-border/40 text-muted-foreground/80"
-                              : "bg-gold/5 border-gold/30 text-foreground cursor-pointer hover:bg-gold/10 shadow-sm"
+                              ? "bg-zinc-950 border-zinc-800 text-white/60"
+                              : "bg-gold/10 border-gold/30 text-white cursor-pointer hover:bg-gold/20 shadow-sm"
                           )}
                         >
                           {!n.read && (
                             <span className="absolute left-0 top-0 bottom-0 w-1.5 bg-gold animate-pulse" />
                           )}
-                          <Bell className={cn("h-5 w-5 shrink-0 mt-0.5", !n.read ? "text-gold" : "text-muted-foreground")} />
+                          <Bell className={cn("h-5 w-5 shrink-0 mt-0.5", !n.read ? "text-gold" : "text-white/40")} />
                           <div className="flex-1 space-y-1 pr-6">
                             <div className="flex justify-between items-start gap-2 flex-wrap">
-                              <p className="font-semibold text-xs text-foreground uppercase tracking-wider">{n.category || 'General'}</p>
-                              <p className="text-[10px] text-muted-foreground">
+                              <p className="font-semibold text-xs text-white uppercase tracking-wider">{n.category || 'General'}</p>
+                              <p className="text-[10px] text-white/40">
                                 {dt.toLocaleDateString()} {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
                               </p>
                             </div>
-                            <p className="font-medium text-xs text-foreground mt-0.5">{n.title}</p>
-                            <p className="text-xs leading-relaxed text-muted-foreground mt-1">{n.message}</p>
+                            <p className="font-medium text-xs text-white mt-0.5">{n.title}</p>
+                            <p className="text-xs leading-relaxed text-white/60 mt-1">{n.message}</p>
                           </div>
                           <button
                             onClick={(e) => handleDeleteNotification(n.id, e)}
-                            className="absolute top-4 right-4 p-1 rounded-full text-muted-foreground hover:text-destructive hover:bg-secondary transition-colors"
+                            className="absolute top-4 right-4 p-1 rounded-full text-white/40 hover:text-destructive hover:bg-zinc-900 transition-colors"
                             aria-label="Delete Notification"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -996,26 +1010,26 @@ export function AccountDashboard() {
               ) : (
                 <div className="space-y-4">
                   {paidBookings.map((b) => (
-                    <div key={b.id} className="rounded-2xl border border-border bg-card p-5 shadow-soft flex items-center justify-between text-sm hover:border-gold/35 transition-colors">
+                    <div key={b.id} className="rounded-2xl border border-zinc-800 bg-black text-white p-5 shadow-soft flex items-center justify-between text-sm hover:border-gold/35 transition-colors">
                       <div className="space-y-1">
-                        <p className="font-medium text-foreground">{b.service_title || 'Session Booking'}</p>
-                        <p className="text-xs text-muted-foreground">Type: Booking &middot; {new Date(b.start_time).toLocaleDateString()}</p>
+                        <p className="font-medium text-white">{b.service_title || 'Session Booking'}</p>
+                        <p className="text-xs text-white/60">Type: Booking &middot; {new Date(b.start_time).toLocaleDateString()}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-foreground">{formatPrice(b.amount || 0, b.currency as any)}</p>
+                        <p className="font-semibold text-white">{formatPrice(b.amount || 0, b.currency as any)}</p>
                         <span className="rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">Paid</span>
                       </div>
                     </div>
                   ))}
 
                   {orders.map((o) => (
-                    <div key={o.id} className="rounded-2xl border border-border bg-card p-5 shadow-soft flex items-center justify-between text-sm hover:border-gold/35 transition-colors">
+                    <div key={o.id} className="rounded-2xl border border-zinc-800 bg-black text-white p-5 shadow-soft flex items-center justify-between text-sm hover:border-gold/35 transition-colors">
                       <div className="space-y-1">
-                        <p className="font-medium text-foreground">Order #{o.number}</p>
-                        <p className="text-xs text-muted-foreground">Type: Shop Order &middot; {new Date(o.created_at).toLocaleDateString()}</p>
+                        <p className="font-medium text-white">Order #{o.number}</p>
+                        <p className="text-xs text-white/60">Type: Shop Order &middot; {new Date(o.created_at).toLocaleDateString()}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-foreground">{formatPrice(o.total, o.currency as any)}</p>
+                        <p className="font-semibold text-white">{formatPrice(o.total, o.currency as any)}</p>
                         <span className="rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">{o.status}</span>
                       </div>
                     </div>
@@ -1041,12 +1055,12 @@ export function AccountDashboard() {
                     const hasMeeting = workshop?.meeting_link && w.status === 'confirmed';
 
                     return (
-                      <div key={w.id} className="rounded-3xl border border-border bg-card p-5 hover:border-gold/30 hover:shadow-soft transition-all duration-300 flex flex-col justify-between text-left space-y-4">
+                      <div key={w.id} className="rounded-3xl border border-zinc-800 bg-black text-white p-5 hover:border-gold/30 hover:shadow-soft transition-all duration-300 flex flex-col justify-between text-left space-y-4">
                         <div>
                           <div className="flex items-start justify-between">
                             <div>
-                              <span className="text-[10px] text-muted-foreground font-mono">ID: {w.id}</span>
-                              <h4 className="font-semibold text-foreground text-sm mt-0.5">{w.workshop_title}</h4>
+                              <span className="text-[10px] text-white/60 font-mono">ID: {w.id}</span>
+                              <h4 className="font-semibold text-white text-sm mt-0.5">{w.workshop_title}</h4>
                             </div>
                             <div className="flex gap-1.5 items-center">
                               {isWsCompleted && w.certificate_url && (
@@ -1064,7 +1078,7 @@ export function AccountDashboard() {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 justify-end pt-3 border-t border-border/20 mt-2">
+                        <div className="flex flex-wrap gap-2 justify-end pt-3 border-t border-zinc-800 mt-2">
                           {w.status === 'confirmed' && (
                             <Link href={`/workshops/${w.id}/ticket`}>
                               <Button size="sm" className="rounded-full text-xs gap-1.5 bg-gold hover:bg-gold-hover text-gold-foreground">
@@ -1169,45 +1183,45 @@ export function AccountDashboard() {
               ) : (
                 <div className="space-y-4">
                   {orders.map((order) => (
-                    <div key={order.id} className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft space-y-4 hover:border-gold/30 transition-colors">
-                      <div className="flex flex-wrap items-center justify-between border-b border-border/40 pb-4 gap-2">
+                    <div key={order.id} className="rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft space-y-4 hover:border-gold/30 transition-colors">
+                      <div className="flex flex-wrap items-center justify-between border-b border-zinc-800 pb-4 gap-2">
                         <div>
-                          <p className="font-display font-medium text-foreground text-lg">Order ID: {order.number}</p>
-                          <p className="text-xs text-muted-foreground">Order Date: {new Date(order.created_at).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>
+                          <p className="font-display font-medium text-white text-lg">Order ID: {order.number}</p>
+                          <p className="text-xs text-white/60">Order Date: {new Date(order.created_at).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold capitalize tracking-wider border',
                             order.status === 'paid' || order.status === 'fulfilled' ? 'bg-success/15 border-success/30 text-success' :
-                              order.status === 'pending' ? 'bg-warning/15 border-warning/30 text-warning' : 'bg-secondary border-border/60 text-muted-foreground'
+                              order.status === 'pending' ? 'bg-warning/15 border-warning/30 text-warning' : 'bg-zinc-900 border-zinc-800 text-white/60'
                           )}>
                             Status: {order.status}
                           </span>
-                          <Button size="sm" variant="outline" className="rounded-full text-xs gap-1.5 h-8 border-gold/40 text-gold hover:bg-gold/10" onClick={() => window.print()}>
+                          <Button size="sm" variant="outline" className="rounded-full text-xs gap-1.5 h-8 border-gold/40 text-gold hover:bg-gold/10 bg-transparent" onClick={() => window.print()}>
                             <FileText className="h-3.5 w-3.5" /> Invoice
                           </Button>
                         </div>
                       </div>
-                      <ul className="divide-y divide-border/20">
+                      <ul className="divide-y divide-zinc-850">
                         {order.items?.map((item: any, idx: number) => {
                           const itemSlug = item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                           return (
                             <li key={idx} className="flex py-3.5 gap-4 items-center justify-between">
                               <div className="flex items-center gap-4">
                                 {item.image ? (
-                                  <img src={item.image} alt="" className="h-14 w-14 rounded-2xl object-cover border border-border/50 shadow-sm" />
+                                  <img src={item.image} alt="" className="h-14 w-14 rounded-2xl object-cover border border-zinc-800 shadow-sm" />
                                 ) : (
-                                  <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center border border-border/50">
-                                    <Package className="h-6 w-6 text-muted-foreground" />
+                                  <div className="h-14 w-14 rounded-2xl bg-zinc-900 flex items-center justify-center border border-zinc-800">
+                                    <Package className="h-6 w-6 text-white/40" />
                                   </div>
                                 )}
                                 <div>
-                                  <p className="font-semibold text-sm text-foreground">{item.name}</p>
-                                  <p className="text-xs text-muted-foreground capitalize">{item.type || 'Physical'} · Qty {item.quantity}</p>
+                                  <p className="font-semibold text-sm text-white">{item.name}</p>
+                                  <p className="text-xs text-white/60 capitalize">{item.type || 'Physical'} · Qty {item.quantity}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
-                                <span className="font-semibold text-sm text-foreground">{formatPrice(item.price * item.quantity, order.currency as 'INR' | 'USD')}</span>
-                                <Button asChild size="sm" variant="ghost" className="h-8 rounded-full hover:bg-secondary text-xs gap-1">
+                                <span className="font-semibold text-sm text-white">{formatPrice(item.price * item.quantity, order.currency as 'INR' | 'USD')}</span>
+                                <Button asChild size="sm" variant="ghost" className="h-8 rounded-full hover:bg-zinc-800 text-xs gap-1 text-white hover:text-white bg-transparent">
                                   <Link href={`/shop/${itemSlug}`} target="_blank">
                                     View <ExternalLink className="h-3 w-3" />
                                   </Link>
@@ -1217,11 +1231,11 @@ export function AccountDashboard() {
                           );
                         })}
                       </ul>
-                      <div className="flex justify-between items-center border-t border-border/40 pt-4 text-xs text-muted-foreground">
+                      <div className="flex justify-between items-center border-t border-zinc-800 pt-4 text-xs text-white/60">
                         <span>Paid via: {order.payment_provider || 'Manual Payment Gateway'}</span>
                         <div className="text-right">
                           <span className="text-xs">Amount Paid: </span>
-                          <span className="font-bold text-sm text-foreground">{formatPrice(order.total, order.currency as 'INR' | 'USD')}</span>
+                          <span className="font-bold text-sm text-white">{formatPrice(order.total, order.currency as 'INR' | 'USD')}</span>
                         </div>
                       </div>
                     </div>
@@ -1232,62 +1246,62 @@ export function AccountDashboard() {
 
             {/* 11. CART TAB */}
             <TabsContent value="cart">
-              <div className="rounded-3xl border border-border/60 bg-card/40 p-6 shadow-soft">
+              <div className="rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft">
                 <CartView />
               </div>
             </TabsContent>
 
             {/* SETTINGS TAB */}
             <TabsContent value="personal">
-              <div className="space-y-4 rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft text-left">
+              <div className="space-y-4 rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft text-left">
                 <div>
-                  <h3 className="font-display font-medium text-lg text-foreground">Account Information</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Manage your personal profiles details here.</p>
+                  <h3 className="font-display font-medium text-lg text-white">Account Information</h3>
+                  <p className="text-xs text-white/60 mt-0.5">Manage your personal profiles details here.</p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 pt-2">
                   <div>
-                    <Label htmlFor="p-name" className="text-xs font-semibold text-muted-foreground">Full name</Label>
+                    <Label htmlFor="p-name" className="text-xs font-semibold text-white/60">Full name</Label>
                     <Input id="p-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5 rounded-xl text-sm" />
                   </div>
                   <div>
-                    <Label htmlFor="p-phone" className="text-xs font-semibold text-muted-foreground">Phone number</Label>
+                    <Label htmlFor="p-phone" className="text-xs font-semibold text-white/60">Phone number</Label>
                     <Input id="p-phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 rounded-xl text-sm" placeholder="e.g. +91 9876543210" />
                   </div>
                   <div>
-                    <Label htmlFor="p-city" className="text-xs font-semibold text-muted-foreground">City</Label>
+                    <Label htmlFor="p-city" className="text-xs font-semibold text-white/60">City</Label>
                     <Input id="p-city" value={city} onChange={(e) => setCity(e.target.value)} className="mt-1.5 rounded-xl text-sm" placeholder="City" />
                   </div>
                   <div>
-                    <Label htmlFor="p-country" className="text-xs font-semibold text-muted-foreground">Country</Label>
+                    <Label htmlFor="p-country" className="text-xs font-semibold text-white/60">Country</Label>
                     <Input id="p-country" value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1.5 rounded-xl text-sm" placeholder="Country" />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="p-email" className="text-xs font-semibold text-muted-foreground">Email (Cannot be changed)</Label>
-                  <Input id="p-email" value={user.email || ''} disabled className="mt-1.5 bg-secondary/50 cursor-not-allowed rounded-xl text-sm" />
+                  <Label htmlFor="p-email" className="text-xs font-semibold text-white/60">Email (Cannot be changed)</Label>
+                  <Input id="p-email" value={user.email || ''} disabled className="mt-1.5 bg-zinc-900/50 cursor-not-allowed rounded-xl text-sm" />
                 </div>
 
                 <div>
-                  <Label htmlFor="p-tz" className="text-xs font-semibold text-muted-foreground">Timezone</Label>
+                  <Label htmlFor="p-tz" className="text-xs font-semibold text-white/60">Timezone</Label>
                   <Input id="p-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)} className="mt-1.5 rounded-xl text-sm" />
                 </div>
 
                 <div>
-                  <Label htmlFor="p-bio" className="text-xs font-semibold text-muted-foreground">Bio</Label>
+                  <Label htmlFor="p-bio" className="text-xs font-semibold text-white/60">Bio</Label>
                   <Textarea id="p-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="mt-1.5 min-h-[80px] rounded-xl text-sm" placeholder="Tell us about yourself..." />
                 </div>
 
                 <div>
-                  <Label htmlFor="p-addr" className="text-xs font-semibold text-muted-foreground">Delivery Address</Label>
+                  <Label htmlFor="p-addr" className="text-xs font-semibold text-white/60">Delivery Address</Label>
                   <Textarea id="p-addr" value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1.5 min-h-[80px] rounded-xl text-sm" placeholder="Full address for shipping orders..." />
                 </div>
 
-                <div className="flex gap-3 pt-3 border-t border-border/20">
+                <div className="flex gap-3 pt-3 border-t border-zinc-800">
                   <Button onClick={saveProfile} disabled={saving} className="rounded-full px-8">
                     {saving ? 'Saving…' : 'Save Changes'}
                   </Button>
-                  <Button variant="outline" onClick={handlePassResetEmail} disabled={sendingPassReset} className="rounded-full px-6 border-gold/45 hover:bg-gold/10">
+                  <Button variant="outline" onClick={handlePassResetEmail} disabled={sendingPassReset} className="rounded-full px-6 border-gold/45 hover:bg-gold/10 bg-transparent text-white">
                     {sendingPassReset ? 'Sending link...' : 'Reset Password'}
                   </Button>
                 </div>
@@ -1538,10 +1552,10 @@ export function AccountDashboard() {
 
 function Empty({ icon: Icon, title, desc, cta }: { icon: any; title: string; desc: string; cta: { href: string; label: string } }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-secondary/40 p-12 text-center">
-      <Icon className="h-10 w-10 text-muted-foreground" />
-      <p className="mt-4 font-display text-xl text-foreground">{title}</p>
-      <p className="mt-2 text-sm text-muted-foreground">{desc}</p>
+    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-800 bg-black text-white p-12 text-center">
+      <Icon className="h-10 w-10 text-white/40" />
+      <p className="mt-4 font-display text-xl text-white">{title}</p>
+      <p className="mt-2 text-sm text-white/60">{desc}</p>
       <Button asChild className="mt-5 rounded-full"><Link href={cta.href}>{cta.label}</Link></Button>
     </div>
   );
@@ -1652,18 +1666,18 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
   return (
     <div
       onClick={onSelect}
-      className="rounded-3xl border border-border bg-card p-6 shadow-soft hover:border-gold/30 hover:shadow-glow transition-all space-y-4 text-left cursor-pointer"
+      className="rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft hover:border-gold/30 hover:shadow-glow transition-all space-y-4 text-left cursor-pointer"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-4">
         <div>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Booking ID</p>
-          <p className="text-xs font-mono font-semibold text-foreground">{b.id}</p>
+          <p className="text-[10px] text-white/60 uppercase tracking-wider font-semibold">Booking ID</p>
+          <p className="text-xs font-mono font-semibold text-white">{b.id}</p>
         </div>
         <div className="flex gap-2">
           <span className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border',
             b.status === 'confirmed' && 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
             b.status === 'pending' && 'bg-warning/10 text-warning border-warning/20',
-            b.status === 'completed' && 'bg-primary/10 text-primary border-primary/20',
+            b.status === 'completed' && 'bg-zinc-800 text-white border-zinc-700',
             (b.status === 'cancelled' || b.status === 'rejected') && 'bg-destructive/10 text-destructive border-destructive/20'
           )}>
             Status: {b.status}
@@ -1678,21 +1692,21 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
 
       <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
         <div>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Service</p>
-          <p className="font-semibold text-foreground">{b.service_title || 'Healing Session'}</p>
+          <p className="text-[10px] text-white/60 uppercase tracking-wider">Service</p>
+          <p className="font-semibold text-white">{b.service_title || 'Healing Session'}</p>
         </div>
         <div>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Session Time</p>
-          <p className="font-medium text-foreground">{formatInTz(b.start_time, timezone, { dateStyle: 'medium', timeStyle: 'short' })}</p>
-          <p className="text-[10px] text-muted-foreground capitalize">Mode: {b.mode}</p>
+          <p className="text-[10px] text-white/60 uppercase tracking-wider">Session Time</p>
+          <p className="font-medium text-white">{formatInTz(b.start_time, timezone, { dateStyle: 'medium', timeStyle: 'short' })}</p>
+          <p className="text-[10px] text-white/60 capitalize">Mode: {b.mode}</p>
         </div>
         <div>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Amount Paid</p>
-          <p className="font-semibold text-foreground">{formatPrice(b.amount || 0, b.currency as any)}</p>
+          <p className="text-[10px] text-white/60 uppercase tracking-wider">Amount Paid</p>
+          <p className="font-semibold text-white">{formatPrice(b.amount || 0, b.currency as any)}</p>
         </div>
       </div>
 
-      <div className="pt-2 border-t border-border/20 flex flex-wrap justify-between items-center gap-2">
+      <div className="pt-2 border-t border-zinc-800 flex flex-wrap justify-between items-center gap-2">
         <span className="text-xs text-gold font-medium hover:underline flex items-center gap-1">
           View full details &rarr;
         </span>
@@ -1706,8 +1720,8 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
             )}
 
             {requesting ? (
-              <div className="space-y-3 p-3 rounded-2xl bg-secondary/50 border border-border/30 w-full mt-2">
-                <p className="font-semibold text-foreground text-xs">Propose New Session Time</p>
+              <div className="space-y-3 p-3 rounded-2xl bg-zinc-900/50 border border-zinc-800 w-full mt-2">
+                <p className="font-semibold text-white text-xs">Propose New Session Time</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[9px] text-muted-foreground uppercase font-semibold">Date</label>

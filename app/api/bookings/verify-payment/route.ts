@@ -92,6 +92,15 @@ export async function POST(req: Request) {
     
     let totalSessions = 1;
     let packageName = isSomatic ? (b.somatic_plan_name || 'Somatic Plan') : (b.service_title || 'Service Plan');
+    if (isSomatic && b.somatic_plan_name) {
+      if (b.somatic_plan_name.toLowerCase().includes('essential')) {
+        packageName = 'Personal Healing & Clarity Session';
+      } else if (b.somatic_plan_name.toLowerCase().includes('elite')) {
+        packageName = 'Ancestral Healing Session';
+      } else if (b.somatic_plan_name.toLowerCase().includes('premium')) {
+        packageName = '4-Week Deep Transformation Program';
+      }
+    }
     let packageType: 'somatic_plan' | 'service' = isSomatic ? 'somatic_plan' : 'service';
     
     if (isSomatic && b.user_id) {

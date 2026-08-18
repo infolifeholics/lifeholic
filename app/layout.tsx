@@ -97,7 +97,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <OfferPopup />
             <PwaInstall />
             <DiscoveryCallModal showButtonOnly={true} serviceId="general" serviceName="General Site Help" />
-            <script
+            <Script
+              id="ld-json"
               type="application/ld+json"
               dangerouslySetInnerHTML={{
                 __html: JSON.stringify({
