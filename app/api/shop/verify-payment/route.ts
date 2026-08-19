@@ -28,11 +28,91 @@ export async function POST(req: Request) {
 
     // Retrieve order
     const orderRef = doc(db, 'orders', order_id);
-    const orderSnap = await getDoc(orderRef);
+    let orderSnap = await getDoc(orderRef);
+    let o: any;
+
+    if (!orderSnap.exists()) {
+      console.warn(`[VerifyPayment] Order ${order_id} not found in Firestore. Attempting self-healing recovery...`);
+      // Retrieve order metadata securely from Razorpay API to reconstruct
+      const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
+      const keySecret = process.env.RAZORPAY_KEY_SECRET || 'rzp_test_secret';
+
+      if (keyId !== 'rzp_test_mockKey123') {
+        try {
+          const rzpOrderResponse = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
+            headers: {
+              'Authorization': 'Basic ' + Buffer.from(keyId + ':' + keySecret).toString('base64'),
+            }
+          });
+
+          if (rzpOrderResponse.ok) {
+            const rzpOrder = await rzpOrderResponse.json();
+            const notes = rzpOrder.notes || {};
+
+            let itemsParsed = [];
+            try {
+              if (notes.items) {
+                const simplifiedItems = JSON.parse(notes.items);
+                for (const sItem of simplifiedItems) {
+                  const prodDoc = await getDoc(doc(db, 'products', sItem.id));
+                  if (prodDoc.exists()) {
+                    const p = prodDoc.data();
+                    itemsParsed.push({
+                      id: sItem.id,
+                      slug: p.slug || '',
+                      name: p.name || '',
+                      price: sItem.p,
+                      quantity: sItem.q,
+                      image: p.image || '',
+                      type: p.type || 'digital',
+                    });
+                  }
+                }
+              }
+            } catch (e) {
+              console.error('Error parsing items from notes:', e);
+            }
+
+            let addressParsed = null;
+            try {
+              if (notes.address) {
+                addressParsed = JSON.parse(notes.address);
+              }
+            } catch (e) {}
+
+            const orderData = {
+              number: rzpOrder.receipt || `THL-${Date.now().toString(36).toUpperCase()}`,
+              email: notes.email || '',
+              full_name: notes.full_name || null,
+              phone: notes.phone || null,
+              address: addressParsed,
+              items: itemsParsed,
+              total: rzpOrder.amount / 100,
+              currency: rzpOrder.currency || 'INR',
+              status: 'pending',
+              payment_status: 'unpaid',
+              payment_provider: 'razorpay',
+              payment_ref: rzpOrder.id,
+              coupon_code: notes.coupon_code || null,
+              user_id: notes.user_id || null,
+              created_at: new Date().toISOString(),
+            };
+
+            await setDoc(orderRef, orderData);
+            orderSnap = await getDoc(orderRef);
+          } else {
+            console.error('Failed to retrieve Razorpay order during self-healing recovery:', await rzpOrderResponse.text());
+          }
+        } catch (err) {
+          console.error('Error during self-healing recovery checkout:', err);
+        }
+      }
+    }
+
     if (!orderSnap.exists()) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
-    const o = orderSnap.data();
+    o = orderSnap.data();
 
     // Create payment entry in payments collection
     const paymentRef = doc(db, 'payments', razorpay_payment_id);

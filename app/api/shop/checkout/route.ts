@@ -130,6 +130,15 @@ export async function POST(req: Request) {
             amount: Math.round(Number(finalTotal) * 100), // paise/cents
             currency: chargeCurrency,
             receipt: number,
+            notes: {
+              email: email || '',
+              full_name: full_name || '',
+              phone: phone || '',
+              address: address ? JSON.stringify(address) : '',
+              items: JSON.stringify(validatedItems.map(i => ({ id: i.id, q: i.quantity, p: i.price }))),
+              coupon_code: coupon_code || '',
+              user_id: user_id || '',
+            }
           }),
         });
 
