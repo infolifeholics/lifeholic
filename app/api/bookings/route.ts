@@ -186,6 +186,36 @@ export async function POST(req: Request) {
       assignedHealerName = chosen.name;
     }
 
+    // Final server-side availability check
+    const paidClashQuery = query(
+      collection(db, 'bookings'),
+      where('start_time', '<', end.toISOString()),
+      where('status', 'in', ['pending', 'confirmed'])
+    );
+    const paidClashSnap = await getDocs(paidClashQuery);
+    const hasPaidClash = paidClashSnap.docs.some(doc => {
+      const b = doc.data();
+      return start.toISOString() < b.end_time;
+    });
+
+    if (hasPaidClash) {
+      return NextResponse.json({ error: 'This slot is already booked. Please select another time.' }, { status: 409 });
+    }
+
+    const freeClashQuery = query(
+      collection(db, 'free_call_bookings'),
+      where('start_time', '<', end.toISOString())
+    );
+    const freeClashSnap = await getDocs(freeClashQuery);
+    const hasFreeClash = freeClashSnap.docs.some(doc => {
+      const b = doc.data();
+      return b.status !== 'cancelled' && start.toISOString() < b.end_time;
+    });
+
+    if (hasFreeClash) {
+      return NextResponse.json({ error: 'This slot is already booked. Please select another time.' }, { status: 409 });
+    }
+
     // 1. Prevent booking for past dates
     if (start.getTime() < Date.now()) {
       return NextResponse.json({ error: 'Cannot book sessions in the past.' }, { status: 400 });

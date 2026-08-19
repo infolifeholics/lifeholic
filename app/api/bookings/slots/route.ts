@@ -79,12 +79,16 @@ export async function GET(req: Request) {
       .map(slot => {
         const startUTC = istDateTimeToUtc(dateStr, slot.start_time);
         const endUTC = istDateTimeToUtc(dateStr, slot.end_time);
+        const sTime = startUTC.getTime();
+        const eTime = endUTC.getTime();
+        const isBooked = bookedRanges.some(r => sTime < r.end && eTime > r.start);
         return {
           start: startUTC.toISOString(),
           end: endUTC.toISOString(),
           start_time: slot.start_time,
           end_time: slot.end_time,
-          modes: ['online'] as ('online' | 'offline')[]
+          modes: ['online'] as ('online' | 'offline')[],
+          booked: isBooked
         };
       })
       .filter(slot => {
@@ -94,8 +98,7 @@ export async function GET(req: Request) {
         // 1. Prevent past bookings (1 hour buffer)
         if (sTime < now + 60 * 60_000) return false;
 
-        // 2. Prevent overlapping with existing bookings
-        if (bookedRanges.some(r => sTime < r.end && eTime > r.start)) return false;
+        // 2. Do NOT filter out booked slots anymore; we keep them visible with booked flag
 
         // 3. Prevent booking during a holiday slot
         const isHolidaySlot = holidays.some(h => {

@@ -31,6 +31,7 @@ type Slot = {
   start: string;
   end: string;
   modes: ('online' | 'offline')[];
+  booked?: boolean;
 };
 
 const STEPS = ['Service', 'Date & time', 'Your details', 'Confirm'] as const;
@@ -169,8 +170,8 @@ export function BookingFlow({ services }: { services: Service[] }) {
   // Load holidays collection once on mount
   useEffect(() => {
     let active = true;
-    let unsubHolidays: () => void = () => {};
-    
+    let unsubHolidays: () => void = () => { };
+
     const initHolidaysListener = async () => {
       const { collection, query, onSnapshot } = await import('firebase/firestore');
       const { db } = await import('@/lib/firebase');
@@ -212,14 +213,14 @@ export function BookingFlow({ services }: { services: Service[] }) {
             setHolidayNote(null);
           }
         })
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => {
           if (active) setLoadingSlots(false);
         });
     };
 
-    let unsubBookings: () => void = () => {};
-    let unsubSlots: () => void = () => {};
+    let unsubBookings: () => void = () => { };
+    let unsubSlots: () => void = () => { };
 
     // Load firebase dynamic listeners dynamically to support SSR
     const initListeners = async () => {
@@ -561,7 +562,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
                           {holidayNote ? 'Holiday - No Sessions Available' : 'No sessions available this day.'}
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {holidayNote ? holidayNote : 'Working hours are Mon–Sat (IST). Try another date.'}
+                          {holidayNote ? holidayNote : 'Working hours are Mon–Fri (IST). Try another date.'}
                         </p>
                       </div>
                     ) : (
@@ -598,6 +599,10 @@ export function BookingFlow({ services }: { services: Service[] }) {
                                 <button
                                   key={s.start}
                                   onClick={() => {
+                                    if (s.booked) {
+                                      toast.error("This slot is already booked. Please select another time.");
+                                      return;
+                                    }
                                     setSelectedSlot(s);
                                     setTimeout(() => {
                                       continueBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -605,9 +610,11 @@ export function BookingFlow({ services }: { services: Service[] }) {
                                   }}
                                   className={cn(
                                     'rounded-xl border px-2 py-2.5 text-sm transition-all',
-                                    active
-                                      ? 'border-primary bg-primary/5 text-foreground shadow-soft'
-                                      : 'border-border bg-card text-muted-foreground hover:border-gold/50 hover:text-foreground'
+                                    s.booked
+                                      ? 'border-rose-500/20 bg-rose-500/5 text-muted-foreground/60 line-through cursor-pointer'
+                                      : active
+                                        ? 'border-primary bg-primary/5 text-foreground shadow-soft'
+                                        : 'border-border bg-card text-muted-foreground hover:border-gold/50 hover:text-foreground'
                                   )}
                                 >
                                   {formatInTz(s.start, tz, { timeStyle: 'short' })}
