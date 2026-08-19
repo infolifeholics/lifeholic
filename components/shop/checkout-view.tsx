@@ -105,7 +105,7 @@ export function CheckoutView() {
   const discount = applied?.discount || 0;
   const convertedDiscount = discount / currencyRate;
 
-  const baseShippingInr = subtotal > 1500 || !hasPhysical ? 0 : 149;
+  const baseShippingInr = 0;
   const convertedShipping = detectedCurrency === 'USD' ? Math.round(baseShippingInr / (exchangeRate || 1)) : baseShippingInr;
 
   const total = Math.max(0, convertedSubtotal - convertedDiscount + convertedShipping);

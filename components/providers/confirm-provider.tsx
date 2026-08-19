@@ -16,6 +16,10 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [message, setMessage] = useState('');
   const resolveRef = useRef<(value: boolean) => void>(() => {});
 
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const alertResolveRef = useRef<() => void>(() => {});
+
   const confirm = (msg: string) => {
     setMessage(msg);
     setIsOpen(true);
@@ -24,9 +28,18 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const customAlert = (msg: string) => {
+    setAlertMessage(msg);
+    setIsAlertOpen(true);
+    return new Promise<void>((resolve) => {
+      alertResolveRef.current = resolve;
+    });
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).customConfirm = confirm;
+      (window as any).customAlert = customAlert;
     }
   }, []);
 
@@ -38,6 +51,11 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const handleConfirm = () => {
     setIsOpen(false);
     resolveRef.current(true);
+  };
+
+  const handleAlertClose = () => {
+    setIsAlertOpen(false);
+    alertResolveRef.current();
   };
 
   return (
@@ -87,6 +105,50 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   className="rounded-full text-xs h-9 px-4 bg-rose-600 hover:bg-rose-700 text-white font-semibold"
                 >
                   Confirm
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isAlertOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleAlertClose}
+              className="absolute inset-0"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-sm rounded-[2rem] border border-white/10 bg-black/85 text-white shadow-2xl p-6 text-left overflow-hidden z-10 backdrop-blur-md"
+            >
+              <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                <span className="font-display font-semibold text-base text-gold" style={{ color: '#D4AF37' }}>Notification</span>
+                <button onClick={handleAlertClose} className="p-1 rounded-full hover:bg-white/10 text-white/60">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="py-5">
+                <p className="text-sm text-white/90 leading-relaxed font-medium">
+                  {alertMessage}
+                </p>
+              </div>
+
+              <div className="flex justify-end pt-3 border-t border-white/10">
+                <Button
+                  size="sm"
+                  onClick={handleAlertClose}
+                  className="rounded-full text-xs h-9 px-5 bg-gold hover:bg-gold-hover text-gold-foreground font-semibold"
+                  style={{ backgroundColor: '#D4AF37', color: '#000000' }}
+                >
+                  OK
                 </Button>
               </div>
             </motion.div>

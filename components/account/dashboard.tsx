@@ -2176,18 +2176,6 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
                     Request Reschedule
                   </Button>
                 )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={cancelling}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowCancelConfirm(true);
-                  }}
-                  className="rounded-full text-xs h-8 border-rose-500/50 text-rose-400 hover:bg-rose-500/10 bg-transparent"
-                >
-                  {cancelling ? 'Cancelling...' : 'Cancel Session'}
-                </Button>
               </div>
             )}
           </div>

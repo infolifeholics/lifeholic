@@ -26,7 +26,7 @@ export interface TemplateVars {
 const DEFAULT_VARS = {
   orgName: 'TheLifeHolics',
   supportEmail: 'support@thelifeholics.com',
-  supportPhone: '+919999999999',
+  supportPhone: process.env.NEXT_PUBLIC_CONTACT_PHONE || process.env.PUBLIC_CONTACT_NUMBER || '',
 };
 
 function getBaseHtml(title: string, bodyContent: string, vars: TemplateVars): string {

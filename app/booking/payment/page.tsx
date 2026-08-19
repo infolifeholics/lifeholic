@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
 import { Loader2, CreditCard, ShieldCheck, CheckCircle2, Ticket, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,7 @@ function PaymentPageContent() {
   const [discount, setDiscount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
+  const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
 
   // International simulated payment
   const [cardNumber, setCardNumber] = useState('');
@@ -84,6 +85,20 @@ function PaymentPageContent() {
             setExchangeRate(gData.usd_to_inr_rate);
           }
         }
+
+        // Fetch active coupons
+        const couponsSnap = await getDocs(collection(db, 'coupons'));
+        const fetchedCoupons = couponsSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((c: any) => {
+            const now = new Date();
+            const isExpired = c.expiry_date && now > new Date(c.expiry_date);
+            const limitReached = c.usage_limit && (c.usage_count || 0) >= c.usage_limit;
+            const isContextValid = !c.applicable_to || c.applicable_to === 'all' || c.applicable_to === 'sessions';
+            const isActive = c.active !== false;
+            return isActive && !isExpired && !limitReached && isContextValid;
+          });
+        setAvailableCoupons(fetchedCoupons);
       } catch (err) {
         console.error('Error fetching booking:', err);
         toast.error('Could not load booking details.');
@@ -116,6 +131,34 @@ function PaymentPageContent() {
       if (res.ok) {
         setDiscount(data.discount);
         setAppliedCoupon(data.code);
+        toast.success(`Coupon "${data.code}" applied! You saved ${formatPrice(data.discount, bookingData.currency)}`);
+      } else {
+        toast.error(data.error || 'Invalid or expired coupon code.');
+      }
+    } catch {
+      toast.error('Could not apply coupon.');
+    } finally {
+      setApplying(false);
+    }
+  };
+  const applyDirectCoupon = async (codeToApply: string) => {
+    setApplying(true);
+    try {
+      const res = await fetch('/api/coupons/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: codeToApply,
+          amount: bookingData.amount,
+          context: 'sessions',
+        }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setDiscount(data.discount);
+        setAppliedCoupon(data.code);
+        setCouponCode(data.code);
         toast.success(`Coupon "${data.code}" applied! You saved ${formatPrice(data.discount, bookingData.currency)}`);
       } else {
         toast.error(data.error || 'Invalid or expired coupon code.');
@@ -384,6 +427,7 @@ function PaymentPageContent() {
                   <span className="font-medium text-sm">{appliedCoupon} Applied</span>
                 </div>
                 <button
+                  type="button"
                   onClick={handleRemoveCoupon}
                   className="p-1 rounded-full hover:bg-gold/10 text-gold/70 hover:text-gold transition-colors"
                 >
@@ -391,23 +435,50 @@ function PaymentPageContent() {
                 </button>
               </div>
             ) : (
-              <div className="flex gap-2 mt-2">
-                <Input
-                  id="coupon"
-                  type="text"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  placeholder="WELCOME10, HEAL50"
-                  className="rounded-xl uppercase font-semibold"
-                />
-                <Button
-                  onClick={handleApplyCoupon}
-                  disabled={applying || !couponCode}
-                  className="rounded-xl px-5"
-                >
-                  {applying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                </Button>
-              </div>
+              <>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    id="coupon"
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    // placeholder="WELCOME10, HEAL50"
+                    className="rounded-xl uppercase font-semibold"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={applying || !couponCode}
+                    className="rounded-xl px-5"
+                  >
+                    {applying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                  </Button>
+                </div>
+                {availableCoupons.length > 0 && (
+                  <div className="mt-3.5 space-y-2">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Available Offers:</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {availableCoupons.map((c) => (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onClick={() => applyDirectCoupon(c.code)}
+                          className="flex flex-col items-start p-3 rounded-2xl border border-dashed border-gold/30 hover:border-gold bg-gold/5 hover:bg-gold/10 text-left transition-all duration-200 cursor-pointer w-full group"
+                        >
+                          <span className="font-mono font-bold text-xs text-gold uppercase flex items-center gap-1.5">
+                            <Ticket className="h-3.5 w-3.5 group-hover:scale-110 transition-transform duration-200" />
+                            {c.code}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground mt-1 font-medium leading-normal">
+                            {c.type === 'percent' ? `${c.value}% OFF` : `${formatPrice(c.value, currency)} OFF`}
+                            {c.min_amount > 0 && ` on orders above ${formatPrice(c.min_amount, currency)}`}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

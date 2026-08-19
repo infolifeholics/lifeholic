@@ -1,6 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export type CartItem = {
   id: string;
@@ -44,6 +46,48 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || items.length === 0) return;
+
+    let active = true;
+    const fetchLatestPrices = async () => {
+      try {
+        const updatedItems = await Promise.all(
+          items.map(async (item) => {
+            const docRef = doc(db, 'products', item.id);
+            const snap = await getDoc(docRef);
+            if (snap.exists()) {
+              const data = snap.data();
+              return {
+                ...item,
+                name: data.name || item.name,
+                image: data.image || item.image,
+                type: data.type || item.type,
+                price: data.price_inr || data.price || item.price,
+                price_inr: data.price_inr || item.price_inr,
+                price_usd: data.price_usd || item.price_usd,
+              };
+            }
+            return item;
+          })
+        );
+        if (active) {
+          const hasChanged = JSON.stringify(items) !== JSON.stringify(updatedItems);
+          if (hasChanged) {
+            setItems(updatedItems);
+          }
+        }
+      } catch (err) {
+        console.error('Error syncing cart prices with Firestore:', err);
+      }
+    };
+
+    fetchLatestPrices();
+    return () => {
+      active = false;
+    };
+  }, [hydrated]);
 
   const value = useMemo<CartContextValue>(
     () => ({

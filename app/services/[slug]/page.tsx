@@ -50,7 +50,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
       <section className="relative py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-10 lg:grid-cols-[1.5fr_1fr] lg:items-start">
-            
+
             {/* Left Column: Full Description & other details */}
             <div className="space-y-8 text-left">
               {service.description && (
@@ -138,9 +138,6 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
                 >
                   Book this session <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
-                <p className="mt-3 text-center text-xs text-white/70 font-semibold">
-                  Confident &amp; confidential · Cancel free up to 24h before
-                </p>
               </div>
             </aside>
           </div>

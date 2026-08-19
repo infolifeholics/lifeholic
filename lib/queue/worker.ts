@@ -46,7 +46,7 @@ export async function processNotificationJob(job: NotificationJob): Promise<void
       notificationToggles = data.toggles || {};
       vars.orgName = data.sender_name || vars.orgName || 'TheLifeHolics';
       vars.supportEmail = data.support_email || vars.supportEmail || 'support@thelifeholics.com';
-      vars.supportPhone = data.support_phone || vars.supportPhone || '+919999999999';
+      vars.supportPhone = data.support_phone || vars.supportPhone || process.env.NEXT_PUBLIC_CONTACT_PHONE || process.env.PUBLIC_CONTACT_NUMBER || '';
     }
   } catch (e) {
     console.warn('[Worker] Could not load notification settings, using defaults:', e);

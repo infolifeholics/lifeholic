@@ -35,7 +35,7 @@ export function CartView() {
     );
   }
 
-  const shipping = subtotal > 1500 || items.every((i) => i.type === 'digital') ? 0 : 149;
+  const shipping = 0;
   const total = subtotal + shipping;
 
   return (

@@ -15,9 +15,18 @@ type AuthModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialMode?: 'login' | 'signup';
 };
 
-export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
+const showAlert = (msg: string) => {
+  if (typeof window !== 'undefined' && (window as any).customAlert) {
+    (window as any).customAlert(msg);
+  } else {
+    alert(msg);
+  }
+};
+
+export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthModalProps) {
   const { signIn, signInWithGoogle } = useAuth();
   
   const [authMode, setAuthMode] = useState<'login' | 'otp' | 'forgot' | 'forgot_otp'>('login');
@@ -40,15 +49,15 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       const { error } = await signIn(email, password);
       if (error) {
         toast.error(error);
-        alert(`Login Error: ${error}`);
+        showAlert(`Login Error: ${error}`);
         return;
       }
       toast.success('Welcome back.');
-      alert('Success: Welcome back! Logging in.');
+      showAlert('Success: Welcome back! Logging in.');
       onSuccess();
     } catch (err: any) {
       toast.error('Sign in failed. Please try again.');
-      alert(`Login Error: ${err?.message || 'Sign in failed. Please try again.'}`);
+      showAlert(`Login Error: ${err?.message || 'Sign in failed. Please try again.'}`);
     } finally {
       setLoading(false);
     }
@@ -134,12 +143,12 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send OTP.');
       toast.success('OTP sent to your email. Please check your inbox.');
-      alert('Success: OTP sent to your email. Please check your inbox.');
+      showAlert('Success: OTP sent to your email. Please check your inbox.');
       setAuthMode('forgot_otp');
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Failed to send OTP.');
-      alert(`Error: ${err.message || 'Failed to send OTP.'}`);
+      showAlert(`Error: ${err.message || 'Failed to send OTP.'}`);
     } finally {
       setLoading(false);
     }
@@ -149,12 +158,12 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       toast.error('Passwords do not match.');
-      alert('Error: Passwords do not match.');
+      showAlert('Error: Passwords do not match.');
       return;
     }
     if (newPassword.length < 6) {
       toast.error('Password must be at least 6 characters long.');
-      alert('Error: Password must be at least 6 characters long.');
+      showAlert('Error: Password must be at least 6 characters long.');
       return;
     }
     setLoading(true);
@@ -167,7 +176,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to reset password.');
       toast.success('Password updated successfully! You can now log in.');
-      alert('Success: Password updated successfully! You can now log in.');
+      showAlert('Success: Password updated successfully! You can now log in.');
       setAuthMode('login');
       setResetOtp('');
       setNewPassword('');
@@ -175,7 +184,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Failed to reset password.');
-      alert(`Error: ${err.message || 'Failed to reset password.'}`);
+      showAlert(`Error: ${err.message || 'Failed to reset password.'}`);
     } finally {
       setLoading(false);
     }

@@ -98,7 +98,7 @@ export async function POST(req: Request) {
 
     // 3. Calculate shipping
     const hasPhysical = validatedItems.some((i) => i.type === 'physical');
-    const baseShippingInr = calculatedSubtotal > 1500 || !hasPhysical ? 0 : 149;
+    const baseShippingInr = 0;
     const finalShipping = currency === 'USD' && usdToInrRate ? Math.round(baseShippingInr / usdToInrRate) : baseShippingInr;
 
     const baseAmount = Math.max(0, calculatedSubtotal - calculatedDiscount + finalShipping);

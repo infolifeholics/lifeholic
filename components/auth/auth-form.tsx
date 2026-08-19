@@ -12,6 +12,14 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
+const showAlert = (msg: string) => {
+  if (typeof window !== 'undefined' && (window as any).customAlert) {
+    (window as any).customAlert(msg);
+  } else {
+    alert(msg);
+  }
+};
+
 export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const router = useRouter();
@@ -35,21 +43,21 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
         const { error } = await signIn(email, password);
         if (error) {
           toast.error(error);
-          alert(`Login Error: ${error}`);
+          showAlert(`Login Error: ${error}`);
           return;
         }
         toast.success('Welcome back.');
-        alert('Success: Welcome back! Logging in.');
+        showAlert('Success: Welcome back! Logging in.');
         router.push(redirect);
       } else if (mode === 'signup') {
         const { error } = await signUp(email, password, fullName);
         if (error) {
           toast.error(error);
-          alert(`Signup Error: ${error}`);
+          showAlert(`Signup Error: ${error}`);
           return;
         }
         toast.success('Account created. Welcome to TheLifeHolics.');
-        alert('Success: Account created successfully!');
+        showAlert('Success: Account created successfully!');
         router.push(redirect);
       } else if (mode === 'forgot') {
         const res = await fetch('/api/auth/forgot-password', {
@@ -60,17 +68,17 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to send OTP.');
         toast.success('OTP sent to your email. Please check your inbox.');
-        alert('Success: OTP sent to your email. Please check your inbox.');
+        showAlert('Success: OTP sent to your email. Please check your inbox.');
         setMode('forgot_otp');
       } else if (mode === 'forgot_otp') {
         if (newPassword !== confirmPassword) {
           toast.error('Passwords do not match.');
-          alert('Error: Passwords do not match.');
+          showAlert('Error: Passwords do not match.');
           return;
         }
         if (newPassword.length < 6) {
           toast.error('Password must be at least 6 characters long.');
-          alert('Error: Password must be at least 6 characters long.');
+          showAlert('Error: Password must be at least 6 characters long.');
           return;
         }
         const res = await fetch('/api/auth/reset-password-otp', {
@@ -81,7 +89,7 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to reset password.');
         toast.success('Password updated successfully! You can now log in.');
-        alert('Success: Password updated successfully! You can now log in.');
+        showAlert('Success: Password updated successfully! You can now log in.');
         setMode('login');
         setOtp('');
         setNewPassword('');
@@ -89,7 +97,7 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
       }
     } catch (err: any) {
       toast.error(err.message || 'An error occurred.');
-      alert(`Error: ${err.message || 'An error occurred.'}`);
+      showAlert(`Error: ${err.message || 'An error occurred.'}`);
     } finally {
       setLoading(false);
     }
