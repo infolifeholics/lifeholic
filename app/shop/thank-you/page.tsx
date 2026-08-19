@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, Download, Mail, Package } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { ArrowRight, Mail, Package } from 'lucide-react';
+import { adminDb } from '@/lib/firebase-admin';
 import { formatPrice } from '@/lib/format';
 import { ThankYouAnimation } from '@/components/shop/thank-you-animation';
 
@@ -18,17 +17,15 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
 
   if (number) {
     try {
-      const qOrder = query(
-        collection(db, 'orders'),
-        where('number', '==', number),
-        limit(1)
-      );
-      const snap = await getDocs(qOrder);
+      const snap = await adminDb.collection('orders')
+        .where('number', '==', number)
+        .limit(1)
+        .get();
       if (!snap.empty) {
         order = { id: snap.docs[0].id, ...snap.docs[0].data() };
       }
     } catch (err) {
-      console.warn('Could not fetch order from Firestore:', err);
+      console.warn('Could not fetch order from Firestore using adminDb:', err);
     }
   }
 
@@ -73,7 +70,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
           )}
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Link href="/account" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+            <Link href="/account?tab=orders" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
               <Package className="h-4 w-4" /> View my orders
             </Link>
             <Link href="/shop" className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary">
