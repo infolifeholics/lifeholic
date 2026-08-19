@@ -2147,7 +2147,7 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
                       type="date"
                       value={reschedDate}
                       onChange={(e) => setReschedDate(e.target.value)}
-                      className="rounded-xl mt-1 text-xs h-8"
+                      className="rounded-xl mt-1 text-xs h-8 bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold"
                     />
                   </div>
                   <div>
@@ -2156,7 +2156,7 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
                       type="time"
                       value={reschedTime}
                       onChange={(e) => setReschedTime(e.target.value)}
-                      className="rounded-xl mt-1 text-xs h-8"
+                      className="rounded-xl mt-1 text-xs h-8 bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold"
                     />
                   </div>
                 </div>

@@ -90,37 +90,9 @@ export async function pushNotificationJob(
     createdAt: new Date().toISOString(),
   };
 
-  const client = getQStashClient();
-  const isDev = process.env.NODE_ENV === 'development';
-
-  if (client && !isDev) {
-    // ── QStash path ────────────────────────────────────────────────────────
-    const workerUrl = process.env.QSTASH_WORKER_URL;
-    if (!workerUrl) {
-      console.warn('[Producer] QSTASH_WORKER_URL not set. Falling back to inline execution.');
-      await runInline(job);
-      return;
-    }
-
-    try {
-      await client.publishJSON({
-        url: workerUrl,
-        body: job,
-        retries: 5,
-        // QStash will retry with delays; our worker returns 5xx to trigger retry
-      });
-      console.log(`[Producer] Job ${jobId} (${type}) pushed to QStash.`);
-    } catch (err) {
-      console.error('[Producer] Failed to push to QStash. Falling back to inline:', err);
-      await runInline(job);
-    }
-  } else {
-    // ── Fallback: inline fire-and-forget (no QStash configured) ─────────────
-    console.log(`[Producer] QStash not configured. Running job ${jobId} inline.`);
-    runInline(job).catch((err) =>
-      console.error(`[Producer] Inline job ${jobId} failed:`, err)
-    );
-  }
+  // ── Execute inline directly (No QStash dependency) ─────────────────────
+  console.log(`[Producer] Running job ${jobId} inline.`);
+  await runInline(job);
 }
 
 /**

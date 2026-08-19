@@ -83,7 +83,8 @@ export async function sendEmailNotification(options: { to: string; subject: stri
 export async function triggerBookingNotification(
   bookingId: string,
   bookingData: any,
-  eventType: 'created' | 'confirmed' | 'meeting_updated' | 'cancelled' | 'rejected' | 'completed'
+  eventType: 'created' | 'confirmed' | 'meeting_updated' | 'cancelled' | 'rejected' | 'completed',
+  oldStartTime?: string
 ) {
   const {
     client_name,
@@ -100,6 +101,18 @@ export async function triggerBookingNotification(
   const formatterTime = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', timeStyle: 'short', hour12: true });
   const dateStr = formatterDate.format(dateObj);
   const timeStr = formatterTime.format(dateObj);
+
+  let oldDateStr = '';
+  let oldTimeStr = '';
+  if (oldStartTime) {
+    try {
+      const oldDateObj = new Date(oldStartTime);
+      oldDateStr = formatterDate.format(oldDateObj);
+      oldTimeStr = formatterTime.format(oldDateObj);
+    } catch (e) {
+      console.error('Error formatting old start time:', e);
+    }
+  }
 
   console.log(`[Notifications] Delegating ${eventType} notification to new Queue Service for Booking ID: ${bookingId}`);
 
@@ -123,6 +136,8 @@ export async function triggerBookingNotification(
       memberName: client_name,
       sessionDate: dateStr,
       sessionTime: timeStr,
+      oldSessionDate: oldDateStr || undefined,
+      oldSessionTime: oldTimeStr || undefined,
       bookingId: bookingId,
       bookingStatus: eventType === 'created' ? 'pending' : (eventType === 'meeting_updated' ? 'rescheduled' : eventType),
       actionDetails: `${service_title}${sessionSuffix}`,

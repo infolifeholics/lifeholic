@@ -5,7 +5,7 @@ import { triggerBookingNotification } from '@/lib/notifications';
 
 export async function POST(req: Request) {
   try {
-    const { bookingId, eventType } = await req.json();
+    const { bookingId, eventType, oldStartTime } = await req.json();
 
     if (!bookingId || !eventType) {
       return NextResponse.json({ error: 'Missing parameters.' }, { status: 400 });
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 
     const bookingData = bookingSnap.data();
 
-    await triggerBookingNotification(bookingId, bookingData, eventType);
+    await triggerBookingNotification(bookingId, bookingData, eventType, oldStartTime);
 
     return NextResponse.json({ ok: true });
   } catch (error: any) {

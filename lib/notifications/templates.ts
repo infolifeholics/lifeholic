@@ -2,6 +2,8 @@ export interface TemplateVars {
   memberName: string;
   sessionDate?: string;
   sessionTime?: string;
+  oldSessionDate?: string;
+  oldSessionTime?: string;
   bookingId?: string;
   bookingStatus?: string;
   orgName?: string;
@@ -234,10 +236,15 @@ export const EMAIL_TEMPLATES = {
       <p>The status of your session booking has been updated:</p>
       <div class="details-box">
         <div class="details-row"><span class="label">Booking ID:</span><span class="value">${vars.bookingId || 'N/A'}</span></div>
-        <div class="details-row"><span class="label">Date:</span><span class="value">${vars.sessionDate || 'N/A'}</span></div>
-        <div class="details-row"><span class="label">Time:</span><span class="value">${vars.sessionTime || 'N/A'} (IST)</span></div>
+        <div class="details-row"><span class="label">Service:</span><span class="value">${vars.actionDetails || 'N/A'}</span></div>
+        ${vars.oldSessionDate ? `
+        <div class="details-row"><span class="label">Old Date:</span><span class="value">${vars.oldSessionDate}</span></div>
+        <div class="details-row"><span class="label">Old Time:</span><span class="value">${vars.oldSessionTime} (IST)</span></div>
+        ` : ''}
+        <div class="details-row"><span class="label">New Date:</span><span class="value">${vars.sessionDate || 'N/A'}</span></div>
+        <div class="details-row"><span class="label">New Time:</span><span class="value">${vars.sessionTime || 'N/A'} (IST)</span></div>
         <div class="details-row"><span class="label">New Status:</span><span class="value" style="text-transform: capitalize; font-weight: bold; color: #22c55e;">${vars.bookingStatus || 'N/A'}</span></div>
-        ${(vars.bookingStatus === 'confirmed' || vars.bookingStatus === 'confirmed') && vars.meetLink ? `<div class="details-row"><span class="label">Meeting Link:</span><span class="value"><a href="${vars.meetLink}" style="color:#d4af37; text-decoration:underline;">${vars.meetLink}</a></span></div>` : ''}
+        ${(vars.bookingStatus === 'confirmed') && vars.meetLink ? `<div class="details-row"><span class="label">Meeting Link:</span><span class="value"><a href="${vars.meetLink}" style="color:#d4af37; text-decoration:underline;">${vars.meetLink}</a></span></div>` : ''}
       </div>
       <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/account" class="btn">View Booking Details</a>
     `;
@@ -440,7 +447,8 @@ export const WHATSAPP_TEMPLATES = {
     if (vars.bookingStatus === 'confirmed') {
       return `Your session with Lifeholics is confirmed!\n\nHi ${vars.memberName},\n\nYour ${vars.actionDetails || 'session'} has been successfully booked.\n\n📅 Date: ${vars.sessionDate}\n🕒 Time: ${vars.sessionTime}\n\n🔗 Meeting Link:\n${vars.meetLink || 'Will be provided before the session'}\n\nKindly Note:\n• Please join a few minutes before your scheduled time.\n• Sessions are non-refundable.\n• If you’re unable to attend, you may reschedule at least 48 hours in advance.\n• Requests within 48 hours may not be accommodated.\n\nWe look forward to supporting you on your healing journey.\n\nTeam Lifeholics`;
     }
-    return `Hello ${vars.memberName}, the status of your booking (ID: ${vars.bookingId}) has been updated to: *${vars.bookingStatus?.toUpperCase()}*. Details: ${process.env.NEXT_PUBLIC_SITE_URL}/account`;
+    const oldPart = vars.oldSessionDate ? `\n\nOld Date/Time: ${vars.oldSessionDate} at ${vars.oldSessionTime} IST\nNew Date/Time: ${vars.sessionDate} at ${vars.sessionTime} IST` : '';
+    return `Hello ${vars.memberName}, the status of your booking (ID: ${vars.bookingId}) for ${vars.actionDetails || 'session'} has been updated to: *${vars.bookingStatus?.toUpperCase()}*.${oldPart}\n\nDetails: ${process.env.NEXT_PUBLIC_SITE_URL}/account`;
   },
   certificate_generated: (vars: TemplateVars) => {
     return `Congratulations ${vars.memberName}! Your program completion certificate is ready. View/Download it here: ${vars.certUrl || (process.env.NEXT_PUBLIC_SITE_URL + '/account')}`;

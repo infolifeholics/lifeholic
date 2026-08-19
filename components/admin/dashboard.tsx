@@ -467,7 +467,11 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
       fetch('/api/bookings/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: selectedBooking.id, eventType: 'meeting_updated' }),
+        body: JSON.stringify({
+          bookingId: selectedBooking.id,
+          eventType: 'meeting_updated',
+          oldStartTime: selectedBooking.start_time
+        }),
       }).catch((err) => console.error('Failed to trigger reschedule notification:', err));
 
       toast.success('Session rescheduled');
@@ -501,6 +505,17 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
         status_timeline: updatedTimeline,
         updated_at: new Date().toISOString()
       }, { merge: true });
+
+      // Trigger server-side notification for reschedule
+      fetch('/api/bookings/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: selectedBooking.id,
+          eventType: 'meeting_updated',
+          oldStartTime: selectedBooking.start_time
+        }),
+      }).catch((err) => console.error('Failed to trigger reschedule notification:', err));
 
       toast.success('Session rescheduled');
       setSelectedBooking(null);

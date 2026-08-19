@@ -10,6 +10,17 @@ export interface EmailConfig {
 }
 
 export async function getEmailConfig(): Promise<EmailConfig> {
+  // 1. Check environment variables first (Prioritize direct SMTP config)
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
+    return {
+      smtp_host: process.env.SMTP_HOST,
+      smtp_port: Number(process.env.SMTP_PORT || 465),
+      smtp_user: process.env.SMTP_USER,
+      smtp_password: process.env.SMTP_PASSWORD,
+      smtp_from: process.env.SMTP_FROM || `"${process.env.NEXT_PUBLIC_ORG_NAME || 'TheLifeHolics'}" <${process.env.SMTP_USER}>`,
+    };
+  }
+
   try {
     const { doc, getDoc } = await import('firebase/firestore');
     const { db } = await import('@/lib/firebase');
@@ -47,7 +58,7 @@ export async function getEmailConfig(): Promise<EmailConfig> {
     console.error('[EmailConfig] Error reading settings from firestore:', e);
   }
 
-  // Fall back to environment variables
+  // Fall back to environment variables (if somehow partially configured in env)
   return {
     smtp_host: process.env.SMTP_HOST,
     smtp_port: Number(process.env.SMTP_PORT || 465),
