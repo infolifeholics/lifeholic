@@ -181,10 +181,12 @@ export async function POST(req: Request) {
       }
     }
 
-    // Trigger Notification in the background to return response instantly
-    triggerBookingNotification(booking_id, { ...b, ...updatedBooking }, 'confirmed').catch((err) => {
+    // Trigger Notification safely
+    try {
+      await triggerBookingNotification(booking_id, { ...b, ...updatedBooking }, 'confirmed');
+    } catch (err) {
       console.error('[Background Notification Trigger Error]:', err);
-    });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error: any) {

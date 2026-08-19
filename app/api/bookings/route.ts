@@ -534,8 +534,11 @@ export async function POST(req: Request) {
         start_time: insertedBookingData.start_time 
       }).catch((err) => console.error('[Background Audit Error]:', err));
 
-      triggerBookingNotification(newBookingId, insertedBookingData, 'created')
-        .catch((err) => console.error('[Background Notification Error]:', err));
+      try {
+        await triggerBookingNotification(newBookingId, insertedBookingData, 'created');
+      } catch (err) {
+        console.error('[Background Notification Error]:', err);
+      }
     }
 
     return NextResponse.json({ ok: true, id: newBookingId });

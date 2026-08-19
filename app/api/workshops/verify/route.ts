@@ -109,10 +109,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // Trigger Email & WhatsApp notifications
-    const { triggerWorkshopNotification } = await import('@/lib/notifications');
-    triggerWorkshopNotification(registration_id, { ...reg, payment_status: 'paid', status: 'confirmed' }, host, protocol)
-      .catch((err) => console.error('Failed to trigger workshop notifications:', err));
+    // Trigger Email & WhatsApp notifications safely
+    try {
+      const { triggerWorkshopNotification } = await import('@/lib/notifications');
+      await triggerWorkshopNotification(registration_id, { ...reg, payment_status: 'paid', status: 'confirmed' }, host, protocol);
+    } catch (err) {
+      console.error('Failed to trigger workshop notifications:', err);
+    }
 
     return NextResponse.json({ ok: true, ticket_qr: qrCodeUrl });
   } catch (error: any) {
