@@ -1,5 +1,4 @@
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin';
 import { EMAIL_TEMPLATES, TemplateVars } from './templates';
 import { pushNotificationJob } from '@/lib/queue/producer';
 import { NotificationType } from '@/lib/queue/types';
@@ -47,18 +46,17 @@ export async function notifyAdmins(
     let sessionTime = '';
 
     if (bookingId) {
-      const docRef = doc(db, 'bookings', bookingId);
-      const bookingSnap = await getDoc(docRef);
-      if (bookingSnap.exists()) {
-        const b = bookingSnap.data();
+      const bookingDoc = await adminDb.collection('bookings').doc(bookingId).get();
+      if (bookingDoc.exists) {
+        const b = bookingDoc.data() || {};
         clientEmail = b.client_email || '';
         clientPhone = b.client_phone || '';
         
         let defaultMeetLink = '';
         try {
-          const settingsSnap = await getDoc(doc(db, 'settings', 'global'));
-          if (settingsSnap.exists()) {
-            defaultMeetLink = settingsSnap.data().google_meet_link || '';
+          const settingsSnap = await adminDb.collection('settings').doc('global').get();
+          if (settingsSnap.exists) {
+            defaultMeetLink = (settingsSnap.data() || {}).google_meet_link || '';
           }
         } catch (e) {
           console.error('Error fetching global settings for meet link:', e);
@@ -75,8 +73,9 @@ export async function notifyAdmins(
       }
     }
 
-    const q = query(collection(db, 'profiles'), where('is_admin', '==', true));
-    const snap = await getDocs(q);
+    const adminQuery = await adminDb.collection('profiles')
+      .where('is_admin', '==', true)
+      .get();
 
     const vars: TemplateVars = {
       memberName: actorName,
@@ -92,7 +91,7 @@ export async function notifyAdmins(
 
     const ownerPhone = process.env.WASENDER_OWNER_PHONE || '917485001044';
 
-    const pushTasks = snap.docs
+    const pushTasks = adminQuery.docs
       .map((d) => d.data())
       .filter((data) => !!data.email)
       .map((data) =>

@@ -1,18 +1,6 @@
-import { Client } from '@upstash/qstash';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin';
 import { NotificationJob, NotificationChannel, NotificationType } from './types';
 import { TemplateVars } from '@/lib/notifications/templates';
-
-let _qstashClient: Client | null = null;
-
-function getQStashClient(): Client | null {
-  if (!process.env.QSTASH_TOKEN) return null;
-  if (!_qstashClient) {
-    _qstashClient = new Client({ token: process.env.QSTASH_TOKEN });
-  }
-  return _qstashClient;
-}
 
 /**
  * Generates a deterministic idempotency key for a notification.
@@ -41,13 +29,11 @@ function generateJobId(
  */
 async function isDuplicate(jobId: string): Promise<boolean> {
   try {
-    const q = query(
-      collection(db, 'notification_logs'),
-      where('jobId', '==', jobId),
-      where('deliveryStatus', '==', 'delivered'),
-      limit(1)
-    );
-    const snap = await getDocs(q);
+    const snap = await adminDb.collection('notification_logs')
+      .where('jobId', '==', jobId)
+      .where('deliveryStatus', '==', 'delivered')
+      .limit(1)
+      .get();
     return !snap.empty;
   } catch {
     // On error, allow the job through (fail open for notifications)
@@ -56,8 +42,7 @@ async function isDuplicate(jobId: string): Promise<boolean> {
 }
 
 /**
- * Pushes a notification job to Upstash QStash for background processing.
- * Falls back to inline fire-and-forget if QStash is not configured.
+ * Pushes a notification job directly to inline fire-and-forget processing.
  */
 export async function pushNotificationJob(
   type: NotificationType,
@@ -96,7 +81,7 @@ export async function pushNotificationJob(
 }
 
 /**
- * Fallback inline executor — used during local dev or when QStash is not configured.
+ * Fallback inline executor.
  * Imports and runs the worker processor directly.
  */
 async function runInline(job: NotificationJob): Promise<void> {

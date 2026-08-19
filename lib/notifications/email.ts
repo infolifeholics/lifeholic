@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { adminDb } from '@/lib/firebase-admin';
 
 export interface EmailConfig {
   smtp_host?: string;
@@ -22,13 +23,10 @@ export async function getEmailConfig(): Promise<EmailConfig> {
   }
 
   try {
-    const { doc, getDoc } = await import('firebase/firestore');
-    const { db } = await import('@/lib/firebase');
-    
-    // Attempt to load settings/notifications
-    const settingsSnap = await getDoc(doc(db, 'settings', 'notifications'));
-    if (settingsSnap.exists()) {
-      const data = settingsSnap.data();
+    // Attempt to load settings/notifications from adminDb
+    const settingsSnap = await adminDb.collection('settings').doc('notifications').get();
+    if (settingsSnap.exists) {
+      const data = settingsSnap.data() || {};
       if (data.smtp_host && data.smtp_user) {
         return {
           smtp_host: data.smtp_host,
@@ -40,10 +38,10 @@ export async function getEmailConfig(): Promise<EmailConfig> {
       }
     }
 
-    // Fall back to settings/global
-    const globalSnap = await getDoc(doc(db, 'settings', 'global'));
-    if (globalSnap.exists()) {
-      const data = globalSnap.data();
+    // Fall back to settings/global from adminDb
+    const globalSnap = await adminDb.collection('settings').doc('global').get();
+    if (globalSnap.exists) {
+      const data = globalSnap.data() || {};
       if (data.smtp_host && data.smtp_user) {
         return {
           smtp_host: data.smtp_host,

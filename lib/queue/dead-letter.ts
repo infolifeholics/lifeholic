@@ -1,5 +1,4 @@
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin';
 import { NotificationJob, DLQEntry } from './types';
 
 /**
@@ -21,7 +20,7 @@ export async function writeToDLQ(job: NotificationJob, error: string): Promise<v
       payload: job,
     };
 
-    await addDoc(collection(db, 'failed_notifications'), entry);
+    await adminDb.collection('failed_notifications').add(entry);
     console.log(`[DLQ] Job ${job.jobId} (${job.type}) written to dead letter queue after ${job.attempt} attempts.`);
   } catch (dlqError) {
     // Never throw from DLQ writer — avoid cascading failures

@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, setDoc, doc, getDoc } from 'firebase/firestore';
-import { triggerOrderNotification } from '@/lib/notifications';
+import { adminDb } from '@/lib/firebase-admin';
 
 function orderNumber() {
   const t = Date.now().toString(36).toUpperCase();
@@ -24,12 +22,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Your bag is empty.' }, { status: 400 });
     }
 
-    // Fetch global settings to get dynamic exchange rate
+    // Fetch global settings to get dynamic exchange rate using adminDb
     let usdToInrRate = null;
     try {
-      const globalSnap = await getDoc(doc(db, 'settings', 'global'));
-      if (globalSnap.exists()) {
-        const gData = globalSnap.data();
+      const globalSnap = await adminDb.collection('settings').doc('global').get();
+      if (globalSnap.exists) {
+        const gData = globalSnap.data() || {};
         if (typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
           usdToInrRate = gData.usd_to_inr_rate;
         }
@@ -42,16 +40,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'International payments are currently unavailable. USD to INR exchange rate is not configured by the admin.' }, { status: 400 });
     }
 
-    // 1. Validate prices of all products on the server side
+    // 1. Validate prices of all products on the server side using adminDb
     let calculatedSubtotal = 0;
     const validatedItems = [];
 
     for (const item of items) {
-      const productDoc = await getDoc(doc(db, 'products', item.id));
-      if (!productDoc.exists()) {
+      const productSnap = await adminDb.collection('products').doc(item.id).get();
+      if (!productSnap.exists) {
         return NextResponse.json({ error: `Product not found.` }, { status: 404 });
       }
-      const product = productDoc.data();
+      const product = productSnap.data() || {};
       const price = currency === 'USD' && usdToInrRate ? (product.price_usd || Math.round(product.price_inr / usdToInrRate)) : (product.price_inr || 0);
       calculatedSubtotal += price * item.quantity;
       
@@ -66,14 +64,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // 2. Validate and apply coupon code discount
+    // 2. Validate and apply coupon code discount using adminDb
     let calculatedDiscount = 0;
     if (coupon_code) {
       try {
-        const couponRef = doc(db, 'coupons', coupon_code.toUpperCase());
-        const couponSnap = await getDoc(couponRef);
-        if (couponSnap.exists()) {
-          const coupon = couponSnap.data();
+        const couponSnap = await adminDb.collection('coupons').doc(coupon_code.toUpperCase()).get();
+        if (couponSnap.exists) {
+          const coupon = couponSnap.data() || {};
           const now = new Date();
           const isExpired = coupon.expiry_date && now > new Date(coupon.expiry_date);
           const limitReached = coupon.usage_limit && (coupon.usage_count || 0) >= coupon.usage_limit;
@@ -179,7 +176,7 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
     };
 
-    const docRef = await addDoc(collection(db, 'orders'), orderData);
+    const docRef = await adminDb.collection('orders').add(orderData);
 
     return NextResponse.json({ ok: true, id: docRef.id, number, pgOrderId, total: finalTotal, currency: chargeCurrency });
   } catch (error: any) {

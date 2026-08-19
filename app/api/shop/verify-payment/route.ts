@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import { triggerOrderNotification } from '@/lib/notifications';
 
 export async function POST(req: Request) {
@@ -27,11 +26,11 @@ export async function POST(req: Request) {
     }
 
     // Retrieve order
-    const orderRef = doc(db, 'orders', order_id);
-    let orderSnap = await getDoc(orderRef);
+    const orderDocRef = adminDb.collection('orders').doc(order_id);
+    let orderSnap = await orderDocRef.get();
     let o: any;
 
-    if (!orderSnap.exists()) {
+    if (!orderSnap.exists) {
       console.warn(`[VerifyPayment] Order ${order_id} not found in Firestore. Attempting self-healing recovery...`);
       // Retrieve order metadata securely from Razorpay API to reconstruct
       const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
@@ -54,9 +53,9 @@ export async function POST(req: Request) {
               if (notes.items) {
                 const simplifiedItems = JSON.parse(notes.items);
                 for (const sItem of simplifiedItems) {
-                  const prodDoc = await getDoc(doc(db, 'products', sItem.id));
-                  if (prodDoc.exists()) {
-                    const p = prodDoc.data();
+                  const prodSnap = await adminDb.collection('products').doc(sItem.id).get();
+                  if (prodSnap.exists) {
+                    const p = prodSnap.data() || {};
                     itemsParsed.push({
                       id: sItem.id,
                       slug: p.slug || '',
@@ -98,8 +97,8 @@ export async function POST(req: Request) {
               created_at: new Date().toISOString(),
             };
 
-            await setDoc(orderRef, orderData);
-            orderSnap = await getDoc(orderRef);
+            await orderDocRef.set(orderData);
+            orderSnap = await orderDocRef.get();
           } else {
             console.error('Failed to retrieve Razorpay order during self-healing recovery:', await rzpOrderResponse.text());
           }
@@ -109,14 +108,14 @@ export async function POST(req: Request) {
       }
     }
 
-    if (!orderSnap.exists()) {
+    if (!orderSnap.exists) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
     o = orderSnap.data();
 
     // Create payment entry in payments collection
-    const paymentRef = doc(db, 'payments', razorpay_payment_id);
-    await setDoc(paymentRef, {
+    const paymentDocRef = adminDb.collection('payments').doc(razorpay_payment_id);
+    await paymentDocRef.set({
       order_id,
       payment_id: razorpay_payment_id,
       razorpay_order_id,
@@ -135,7 +134,7 @@ export async function POST(req: Request) {
       updated_at: new Date().toISOString()
     };
 
-    await setDoc(orderRef, updatedOrder, { merge: true });
+    await orderDocRef.set(updatedOrder, { merge: true });
 
     const mergedOrder = { ...o, ...updatedOrder };
 
@@ -149,12 +148,13 @@ export async function POST(req: Request) {
     // Increment coupon usage if a code was used
     if (o.coupon_code) {
       try {
-        const q = query(collection(db, 'coupons'), where('code', '==', o.coupon_code.toUpperCase()));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const couponDoc = snap.docs[0];
-          const newUses = (couponDoc.data().uses || 0) + 1;
-          await setDoc(couponDoc.ref, { uses: newUses }, { merge: true });
+        const couponQuery = await adminDb.collection('coupons')
+          .where('code', '==', o.coupon_code.toUpperCase())
+          .get();
+        if (!couponQuery.empty) {
+          const couponDoc = couponQuery.docs[0];
+          const newUses = ((couponDoc.data() || {}).uses || 0) + 1;
+          await couponDoc.ref.update({ uses: newUses });
         }
       } catch (err) {
         console.error('Error incrementing coupon uses:', err);
