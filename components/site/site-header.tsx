@@ -315,6 +315,11 @@ export function SiteHeader() {
               )}
               <Link
                 href={user ? '/account' : '/auth/login'}
+                onClick={() => {
+                  if (window.location.pathname === '/account') {
+                    window.dispatchEvent(new CustomEvent('reset-account-dashboard'));
+                  }
+                }}
                 className="hidden rounded-full p-2.5 text-black/85 transition-all hover:bg-black/10 hover:text-black sm:inline-flex"
                 aria-label="Account"
               >
@@ -367,7 +372,15 @@ export function SiteHeader() {
                     <Link href="/shop/wishlist" className="inline-flex items-center gap-2 hover:text-gold transition-colors">
                       <Heart className="h-4.5 w-4.5" /> Wishlist
                     </Link>
-                    <Link href={user ? '/account' : '/auth/login'} className="inline-flex items-center gap-2 hover:text-gold transition-colors">
+                    <Link
+                      href={user ? '/account' : '/auth/login'}
+                      onClick={() => {
+                        if (window.location.pathname === '/account') {
+                          window.dispatchEvent(new CustomEvent('reset-account-dashboard'));
+                        }
+                      }}
+                      className="inline-flex items-center gap-2 hover:text-gold transition-colors"
+                    >
                       <User className="h-4.5 w-4.5" /> {user ? 'Account' : 'Sign in'}
                     </Link>
                   </div>

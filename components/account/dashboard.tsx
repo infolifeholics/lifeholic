@@ -130,7 +130,23 @@ export function AccountDashboard() {
     } else {
       setActiveTab('menu');
     }
+    setSelectedBooking(null);
+    setIsEditingProfile(false);
   }, [searchParams]);
+
+  useEffect(() => {
+    const handleReset = () => {
+      setSelectedBooking(null);
+      setIsEditingProfile(false);
+      setActiveTab('menu');
+      router.push('/account');
+    };
+
+    window.addEventListener('reset-account-dashboard', handleReset);
+    return () => {
+      window.removeEventListener('reset-account-dashboard', handleReset);
+    };
+  }, [router]);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -508,7 +524,7 @@ export function AccountDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs rounded-full border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                className="h-8 text-xs rounded-full border-amber-500/40 text-amber-400 hover:bg-amber-500/10 bg-transparent"
                 onClick={async () => {
                   const toastId = toast.loading('Sending verification email...');
                   const { error } = await sendVerification();
@@ -1463,7 +1479,7 @@ export function AccountDashboard() {
 
                           {isWsCompleted && w.certificate_url && (
                             <a href={w.certificate_url} target="_blank" rel="noopener noreferrer">
-                              <Button size="sm" variant="outline" className="rounded-full text-xs border-gold/50 text-gold hover:bg-gold/10">
+                              <Button size="sm" variant="outline" className="rounded-full text-xs border-gold/50 text-gold hover:bg-gold/10 bg-transparent">
                                 Certificate
                               </Button>
                             </a>
@@ -1496,7 +1512,7 @@ export function AccountDashboard() {
                                   toast.error('Failed to submit review.');
                                 }
                               }}
-                              className="rounded-full text-xs"
+                              className="rounded-full text-xs border-zinc-700 text-white hover:bg-zinc-800 bg-transparent"
                             >
                               Feedback
                             </Button>
@@ -1941,7 +1957,7 @@ export function AccountDashboard() {
               </div>
 
               <div className="pt-3 border-t border-border/40 flex justify-end gap-2">
-                <Button size="sm" variant="outline" onClick={() => setSelectedBooking(null)} className="rounded-full text-xs">
+                <Button size="sm" variant="outline" onClick={() => setSelectedBooking(null)} className="rounded-full text-xs border-zinc-700 text-white hover:bg-zinc-800 bg-transparent">
                   Close Details
                 </Button>
               </div>
@@ -2145,7 +2161,7 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end pt-1">
-                  <Button size="sm" variant="outline" onClick={() => setRequesting(false)} className="rounded-full text-xs h-7 px-3">
+                  <Button size="sm" variant="outline" onClick={() => setRequesting(false)} className="rounded-full text-xs h-7 px-3 border-zinc-700 text-white hover:bg-zinc-800 bg-transparent">
                     Cancel
                   </Button>
                   <Button size="sm" onClick={handleRequestReschedule} disabled={submittingRequest} className="rounded-full text-xs h-7 px-3 bg-gold hover:bg-gold-hover text-gold-foreground">
@@ -2156,7 +2172,7 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
             ) : (
               <div className="flex gap-2">
                 {b.status === 'confirmed' && (
-                  <Button size="sm" variant="outline" onClick={() => setRequesting(true)} className="rounded-full text-xs h-8">
+                  <Button size="sm" variant="outline" onClick={() => setRequesting(true)} className="rounded-full text-xs h-8 border-gold/40 text-gold hover:bg-gold/10 bg-transparent">
                     Request Reschedule
                   </Button>
                 )}
@@ -2168,7 +2184,7 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
                     e.stopPropagation();
                     setShowCancelConfirm(true);
                   }}
-                  className="rounded-full text-xs h-8 border-rose-500/50 text-rose-400 hover:bg-rose-500/10"
+                  className="rounded-full text-xs h-8 border-rose-500/50 text-rose-400 hover:bg-rose-500/10 bg-transparent"
                 >
                   {cancelling ? 'Cancelling...' : 'Cancel Session'}
                 </Button>

@@ -83,6 +83,11 @@ export function MobileNav() {
             <Link
               key={tab.name}
               href={tab.href}
+              onClick={() => {
+                if (window.location.pathname === '/account') {
+                  window.dispatchEvent(new CustomEvent('reset-account-dashboard'));
+                }
+              }}
               className="relative flex flex-col items-center justify-center flex-1 h-full text-white/50 hover:text-white transition-colors duration-250 py-1 group"
             >
               <div className="relative p-1">
