@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, collection } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import { triggerBookingNotification } from '@/lib/notifications';
 
 export async function POST(req: Request) {
@@ -27,16 +26,16 @@ export async function POST(req: Request) {
     }
 
     // Retrieve booking
-    const bookingRef = doc(db, 'bookings', booking_id);
-    const bookingSnap = await getDoc(bookingRef);
-    if (!bookingSnap.exists()) {
+    const bookingRef = adminDb.collection('bookings').doc(booking_id);
+    const bookingSnap = await bookingRef.get();
+    if (!bookingSnap.exists) {
       return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
     }
-    const b = bookingSnap.data();
+    const b = bookingSnap.data() || {};
 
     // Create payment entry in payments collection
-    const paymentRef = doc(db, 'payments', razorpay_payment_id);
-    await setDoc(paymentRef, {
+    const paymentRef = adminDb.collection('payments').doc(razorpay_payment_id);
+    await paymentRef.set({
       booking_id,
       payment_id: razorpay_payment_id,
       order_id: razorpay_order_id,
@@ -84,7 +83,7 @@ export async function POST(req: Request) {
       updated_at: new Date().toISOString()
     };
 
-    await setDoc(bookingRef, updatedBooking, { merge: true });
+    await bookingRef.set(updatedBooking, { merge: true });
 
     // Handle package initialization for somatic plans OR multi-session services
     const isSomatic = b.is_somatic_plan === true;
@@ -105,8 +104,8 @@ export async function POST(req: Request) {
     
     if (isSomatic && b.user_id) {
       try {
-        const somaticDocRef = doc(db, 'settings', 'somatic_plans');
-        const somaticSnap = await getDoc(somaticDocRef);
+        const somaticDocRef = adminDb.collection('settings').doc('somatic_plans');
+        const somaticSnap = await somaticDocRef.get();
         let key = 'premium';
         const planNameLower = (b.somatic_plan_name || '').toLowerCase();
         if (planNameLower.includes('essential') || planNameLower.includes('clarity')) {
@@ -114,9 +113,11 @@ export async function POST(req: Request) {
         } else if (planNameLower.includes('elite') || planNameLower.includes('ancestral')) {
           key = 'elite';
         }
-        if (somaticSnap.exists()) {
+        if (somaticSnap.exists) {
           const sData = somaticSnap.data();
-          totalSessions = sData[`${key}_sessions`] ?? (key === 'essential' ? 1 : key === 'premium' ? 4 : 8);
+          if (sData) {
+            totalSessions = sData[`${key}_sessions`] ?? (key === 'essential' ? 1 : key === 'premium' ? 4 : 8);
+          }
         } else {
           totalSessions = key === 'essential' ? 1 : key === 'premium' ? 4 : 8;
         }
@@ -126,12 +127,14 @@ export async function POST(req: Request) {
       }
     } else if (isService && b.user_id) {
       try {
-        const serviceDocRef = doc(db, 'services', b.service_id);
-        const serviceSnap = await getDoc(serviceDocRef);
-        if (serviceSnap.exists()) {
+        const serviceDocRef = adminDb.collection('services').doc(b.service_id);
+        const serviceSnap = await serviceDocRef.get();
+        if (serviceSnap.exists) {
           const sData = serviceSnap.data();
-          totalSessions = sData.included_sessions || 1;
-          packageName = sData.title || packageName;
+          if (sData) {
+            totalSessions = sData.included_sessions || 1;
+            packageName = sData.title || packageName;
+          }
         }
       } catch (err) {
         console.error('Error fetching service details:', err);
@@ -147,13 +150,13 @@ export async function POST(req: Request) {
         let packageDocRef;
         if (isSomatic) {
           // Use user_id as doc ID for somatic plans to retain backward compatibility
-          packageDocRef = doc(db, 'somatic_packages', b.user_id);
+          packageDocRef = adminDb.collection('somatic_packages').doc(b.user_id);
         } else {
           // Create new unique document for services
-          packageDocRef = doc(collection(db, 'somatic_packages'));
+          packageDocRef = adminDb.collection('somatic_packages').doc();
         }
 
-        await setDoc(packageDocRef, {
+        await packageDocRef.set({
           user_id: b.user_id,
           client_name: b.client_name,
           client_email: b.client_email,
@@ -173,7 +176,7 @@ export async function POST(req: Request) {
         }, { merge: true });
         
         // Mark current session as session 1
-        await setDoc(bookingRef, {
+        await bookingRef.set({
           session_number: 1
         }, { merge: true });
       } catch (err) {

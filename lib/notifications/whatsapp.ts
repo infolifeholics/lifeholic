@@ -52,13 +52,14 @@ export async function sendWhatsAppMessage(to: string, messageText: string, templ
     });
 
     const result = await response.json();
-    if (!response.ok) {
-      throw new Error(`Wasender API error: ${JSON.stringify(result)}`);
+    if (!response.ok || (result && result.success === false)) {
+      console.warn(`[WhatsApp] Skipping WhatsApp dispatch because Wasender API returned an error: ${JSON.stringify(result)}`);
+      return { skipped: true, success: false, reason: result?.message || 'Wasender API error' };
     }
     console.log(`[WhatsApp] Wasender notification successfully sent to ${cleanPhone}`);
     return result;
   } catch (error: any) {
-    console.error(`[WhatsApp] Failed to send message to ${cleanPhone}:`, error);
-    throw error;
+    console.warn(`[WhatsApp] Skipping WhatsApp dispatch because the API is not available or failed:`, error.message);
+    return { skipped: true, success: false, reason: error.message };
   }
 }

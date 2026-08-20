@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, getDoc, runTransaction } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import { triggerBookingNotification } from '@/lib/notifications';
 import { getIstWeekday, istDateTimeToUtc, writeAuditLog } from '@/lib/booking-utils';
 
@@ -103,8 +102,8 @@ export async function POST(req: Request) {
       };
     } else {
       // Verify the service exists
-      const serviceDoc = await getDoc(doc(db, 'services', serviceId));
-      if (!serviceDoc.exists()) {
+      const serviceDoc = await adminDb.collection('services').doc(serviceId).get();
+      if (!serviceDoc.exists) {
         return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
       }
       service = serviceDoc.data();
@@ -121,8 +120,7 @@ export async function POST(req: Request) {
     }
 
     // Fetch all active healers
-    const healersRef = collection(db, 'healers');
-    const healersSnap = await getDocs(query(healersRef, where('active', '==', true)));
+    const healersSnap = await adminDb.collection('healers').where('active', '==', true).get();
     const healers = healersSnap.docs.map((d) => d.data());
     
     // Filter by service support
@@ -151,21 +149,17 @@ export async function POST(req: Request) {
           if (slotTimeStr >= h.break_time.start && slotTimeStr < h.break_time.end) continue;
         }
 
-        const qHealerClash = query(
-          collection(db, 'bookings'),
-          where('healer_id', '==', h.id),
-          where('start_time', '==', start.toISOString()),
-          where('status', 'in', ['pending', 'confirmed'])
-        );
-        const healerClashSnap = await getDocs(qHealerClash);
+        const healerClashSnap = await adminDb.collection('bookings')
+          .where('healer_id', '==', h.id)
+          .where('start_time', '==', start.toISOString())
+          .where('status', 'in', ['pending', 'confirmed'])
+          .get();
         if (!healerClashSnap.empty) continue;
 
-        const qDailyBookings = query(
-          collection(db, 'bookings'),
-          where('healer_id', '==', h.id),
-          where('status', 'in', ['pending', 'confirmed'])
-        );
-        const dailySnap = await getDocs(qDailyBookings);
+        const dailySnap = await adminDb.collection('bookings')
+          .where('healer_id', '==', h.id)
+          .where('status', 'in', ['pending', 'confirmed'])
+          .get();
         const dailyCount = dailySnap.docs.filter((d) => {
           const bDate = new Date(d.data().start_time);
           return bDate.toDateString() === start.toDateString();
@@ -187,12 +181,10 @@ export async function POST(req: Request) {
     }
 
     // Final server-side availability check
-    const paidClashQuery = query(
-      collection(db, 'bookings'),
-      where('start_time', '<', end.toISOString()),
-      where('status', 'in', ['pending', 'confirmed'])
-    );
-    const paidClashSnap = await getDocs(paidClashQuery);
+    const paidClashSnap = await adminDb.collection('bookings')
+      .where('start_time', '<', end.toISOString())
+      .where('status', 'in', ['pending', 'confirmed'])
+      .get();
     const hasPaidClash = paidClashSnap.docs.some(doc => {
       const b = doc.data();
       return start.toISOString() < b.end_time;
@@ -202,11 +194,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'This slot is already booked. Please select another time.' }, { status: 409 });
     }
 
-    const freeClashQuery = query(
-      collection(db, 'free_call_bookings'),
-      where('start_time', '<', end.toISOString())
-    );
-    const freeClashSnap = await getDocs(freeClashQuery);
+    const freeClashSnap = await adminDb.collection('free_call_bookings')
+      .where('start_time', '<', end.toISOString())
+      .get();
     const hasFreeClash = freeClashSnap.docs.some(doc => {
       const b = doc.data();
       return b.status !== 'cancelled' && start.toISOString() < b.end_time;
@@ -232,14 +222,11 @@ export async function POST(req: Request) {
 
     // 2. Prevent same user booking same slot twice
     if (user_id) {
-      const userClashSnap = await getDocs(
-        query(
-          collection(db, 'bookings'),
-          where('user_id', '==', user_id),
-          where('start_time', '==', start.toISOString()),
-          where('status', 'in', ['pending', 'confirmed'])
-        )
-      );
+      const userClashSnap = await adminDb.collection('bookings')
+        .where('user_id', '==', user_id)
+        .where('start_time', '==', start.toISOString())
+        .where('status', 'in', ['pending', 'confirmed'])
+        .get();
       if (!userClashSnap.empty) {
         return NextResponse.json({ error: 'You have already booked this session slot.' }, { status: 400 });
       }
@@ -247,116 +234,113 @@ export async function POST(req: Request) {
       // Fetch active Somatic Package or Service Package if user is logged in
       try {
         // 1. Try legacy/somatic direct doc ID fetch
-        const legacyDoc = await getDoc(doc(db, 'somatic_packages', user_id));
-          if (legacyDoc.exists()) {
-            const data = legacyDoc.data();
-            if (data.status === 'active' && (isSomatic || data.package_type === 'somatic_plan' || data.is_somatic_plan)) {
+        const legacyDoc = await adminDb.collection('somatic_packages').doc(user_id).get();
+        if (legacyDoc.exists) {
+          const data = legacyDoc.data();
+          if (data && data.status === 'active' && (isSomatic || data.package_type === 'somatic_plan' || data.is_somatic_plan)) {
+            activePkg = data;
+            activePkgId = legacyDoc.id;
+          }
+        }
+
+        // 2. Query all active packages for this user
+        if (!activePkg) {
+          const pkgSnap = await adminDb.collection('somatic_packages')
+            .where('user_id', '==', user_id)
+            .where('status', '==', 'active')
+            .get();
+          for (const d of pkgSnap.docs) {
+            const data = d.data();
+            if (isSomatic && (data.package_type === 'somatic_plan' || data.is_somatic_plan)) {
               activePkg = data;
-              activePkgId = legacyDoc.id;
+              activePkgId = d.id;
+              break;
+            } else if (!isSomatic && data.service_id === serviceId) {
+              activePkg = data;
+              activePkgId = d.id;
+              break;
             }
           }
-
-          // 2. Query all active packages for this user
-          if (!activePkg) {
-            const qPkg = query(
-              collection(db, 'somatic_packages'),
-              where('user_id', '==', user_id),
-              where('status', '==', 'active')
-            );
-            const pkgSnap = await getDocs(qPkg);
-            for (const d of pkgSnap.docs) {
-              const data = d.data();
-              if (isSomatic && (data.package_type === 'somatic_plan' || data.is_somatic_plan)) {
-                activePkg = data;
-                activePkgId = d.id;
-                break;
-              } else if (!isSomatic && data.service_id === serviceId) {
-                activePkg = data;
-                activePkgId = d.id;
-                break;
-              }
-            }
-          }
-        } catch (err) {
-          console.error('Error querying somatic_packages:', err);
         }
+      } catch (err) {
+        console.error('Error querying somatic_packages:', err);
+      }
+    }
+
+    if (activePkg) {
+      const nowTime = Date.now();
+      const expiryTime = new Date(activePkg.expiry_date).getTime();
+
+      // 1. Check owner
+      if (activePkg.user_id !== user_id) {
+        return NextResponse.json({ error: 'Unauthorized package access.' }, { status: 403 });
+      }
+      // 2. Check expiration
+      if (nowTime > expiryTime || activePkg.status === 'expired') {
+        return NextResponse.json({ error: 'Your program package has expired.' }, { status: 400 });
+      }
+      // 3. Check remaining sessions
+      if (activePkg.remaining_sessions <= 0) {
+        return NextResponse.json({ error: `All ${activePkg.total_sessions} sessions for this package have already been completed or booked.` }, { status: 400 });
       }
 
-      if (activePkg) {
-        const nowTime = Date.now();
-        const expiryTime = new Date(activePkg.expiry_date).getTime();
-
-        // 1. Check owner
-        if (activePkg.user_id !== user_id) {
-          return NextResponse.json({ error: 'Unauthorized package access.' }, { status: 403 });
-        }
-        // 2. Check expiration
-        if (nowTime > expiryTime || activePkg.status === 'expired') {
-          return NextResponse.json({ error: 'Your program package has expired.' }, { status: 400 });
-        }
-        // 3. Check remaining sessions
-        if (activePkg.remaining_sessions <= 0) {
-          return NextResponse.json({ error: `All ${activePkg.total_sessions} sessions for this package have already been completed or booked.` }, { status: 400 });
-        }
-
-        // Get last session status check
-        if (activePkg.booking_ids && activePkg.booking_ids.length > 0) {
-          const lastBookingId = activePkg.booking_ids[activePkg.booking_ids.length - 1];
-          const lastBookingSnap = await getDoc(doc(db, 'bookings', lastBookingId));
-          if (lastBookingSnap.exists()) {
-            const lastB = lastBookingSnap.data();
-            if (lastB.status !== 'completed' && lastB.status !== 'cancelled' && lastB.status !== 'rejected') {
-              return NextResponse.json({ error: 'Your current session must be marked as Completed before booking the next slot.' }, { status: 400 });
-            }
+      // Get last session status check
+      if (activePkg.booking_ids && activePkg.booking_ids.length > 0) {
+        const lastBookingId = activePkg.booking_ids[activePkg.booking_ids.length - 1];
+        const lastBookingSnap = await adminDb.collection('bookings').doc(lastBookingId).get();
+        if (lastBookingSnap.exists) {
+          const lastB = lastBookingSnap.data();
+          if (lastB && lastB.status !== 'completed' && lastB.status !== 'cancelled' && lastB.status !== 'rejected') {
+            return NextResponse.json({ error: 'Your current session must be marked as Completed before booking the next slot.' }, { status: 400 });
           }
         }
       }
+    }
 
     // 3. Retrieve references for slot configuration and holidays to verify inside transaction
-    const slotsRef = collection(db, 'session_slots');
-    const qSlots = query(slotsRef, where('day_of_week', '==', weekday), where('start_time', '==', timeStr));
-    const slotsSnap = await getDocs(qSlots);
+    const slotsSnap = await adminDb.collection('session_slots')
+      .where('day_of_week', '==', weekday)
+      .where('start_time', '==', timeStr)
+      .get();
     if (slotsSnap.empty) {
       return NextResponse.json({ error: 'This session slot is not configured.' }, { status: 400 });
     }
-    const slotDocRef = doc(db, 'session_slots', slotsSnap.docs[0].id);
+    const slotDocRef = adminDb.collection('session_slots').doc(slotsSnap.docs[0].id);
 
-    const holidaysRef = collection(db, 'holidays');
-    const qHolidays = query(holidaysRef, where('date', '==', dateStr));
-    const holidaysSnap = await getDocs(qHolidays);
-    const holidayDocRefs = holidaysSnap.docs.map(d => doc(db, 'holidays', d.id));
+    const holidaysSnap = await adminDb.collection('holidays').where('date', '==', dateStr).get();
+    const holidayDocRefs = holidaysSnap.docs.map(d => adminDb.collection('holidays').doc(d.id));
 
     // 4. Strict transactional check using lock documents to completely prevent double booking
-    const lockDocRef = doc(db, 'session_locks', `${dateStr}_${timeStr.replace(':', '-')}`);
+    const lockDocRef = adminDb.collection('session_locks').doc(`${dateStr}_${timeStr.replace(':', '-')}`);
     let newBookingId = '';
     let insertedBookingData: any = null;
 
     try {
-      await runTransaction(db, async (transaction) => {
+      await adminDb.runTransaction(async (transaction) => {
         // Read and verify Slot configuration inside the transaction
         const slotDoc = await transaction.get(slotDocRef);
-        if (!slotDoc.exists() || !slotDoc.data()?.active) {
+        if (!slotDoc.exists || !slotDoc.data()?.active) {
           throw new Error('SLOT_INACTIVE');
         }
 
         // Read and verify Holiday documents inside the transaction
         for (const ref of holidayDocRefs) {
           const hDoc = await transaction.get(ref);
-          if (hDoc.exists()) {
+          if (hDoc.exists) {
             const hData = hDoc.data();
-            if (!hData.start_time || hData.start_time === timeStr) {
+            if (hData && (!hData.start_time || hData.start_time === timeStr)) {
               throw new Error('HOLIDAY_BLOCK');
             }
           }
         }
 
         const lockDoc = await transaction.get(lockDocRef);
-        if (lockDoc.exists()) {
+        if (lockDoc.exists) {
           const lockData = lockDoc.data();
           if (lockData && lockData.booking_id) {
-            const linkedBookingRef = doc(db, 'bookings', lockData.booking_id);
+            const linkedBookingRef = adminDb.collection('bookings').doc(lockData.booking_id);
             const linkedBooking = await transaction.get(linkedBookingRef);
-            if (linkedBooking.exists()) {
+            if (linkedBooking.exists) {
               const bStatus = linkedBooking.data()?.status;
               if (bStatus !== 'cancelled' && bStatus !== 'rejected') {
                 throw new Error('SLOT_TAKEN');
@@ -370,17 +354,19 @@ export async function POST(req: Request) {
         const initialPaymentStatus = isSubsequentBooking ? 'paid' : (body.payment_status || 'unpaid');
 
         // Fetch global settings inside the transaction to follow correct order (reads before writes)
-        const globalSettingsRef = doc(db, 'settings', 'global');
+        const globalSettingsRef = adminDb.collection('settings').doc('global');
         const globalSettingsSnap = await transaction.get(globalSettingsRef);
         let meetingLink = null;
         let usdToInrRate = null;
-        if (globalSettingsSnap.exists()) {
+        if (globalSettingsSnap.exists) {
           const gSettings = globalSettingsSnap.data();
-          if (gSettings.meeting_provider === 'gmeet' && gSettings.google_meet_link) {
-            meetingLink = gSettings.google_meet_link;
-          }
-          if (typeof gSettings.usd_to_inr_rate === 'number' && gSettings.usd_to_inr_rate > 0) {
-            usdToInrRate = gSettings.usd_to_inr_rate;
+          if (gSettings) {
+            if (gSettings.meeting_provider === 'gmeet' && gSettings.google_meet_link) {
+              meetingLink = gSettings.google_meet_link;
+            }
+            if (typeof gSettings.usd_to_inr_rate === 'number' && gSettings.usd_to_inr_rate > 0) {
+              usdToInrRate = gSettings.usd_to_inr_rate;
+            }
           }
         }
 
@@ -402,11 +388,13 @@ export async function POST(req: Request) {
           if (isSomatic) {
             let basePriceInr = 11000;
             const planKey = somaticPlanName?.toLowerCase().includes('essential') ? 'essential' : somaticPlanName?.toLowerCase().includes('elite') ? 'elite' : 'premium';
-            const somaticSettingsRef = doc(db, 'settings', 'somatic_plans');
+            const somaticSettingsRef = adminDb.collection('settings').doc('somatic_plans');
             const somaticSettingsSnap = await transaction.get(somaticSettingsRef);
-            if (somaticSettingsSnap.exists()) {
+            if (somaticSettingsSnap.exists) {
               const sData = somaticSettingsSnap.data();
-              basePriceInr = sData[`${planKey}_price_inr`] ?? (planKey === 'essential' ? 4444 : planKey === 'premium' ? 11000 : 21000);
+              if (sData) {
+                basePriceInr = sData[`${planKey}_price_inr`] ?? (planKey === 'essential' ? 4444 : planKey === 'premium' ? 11000 : 21000);
+              }
             } else {
               basePriceInr = planKey === 'essential' ? 4444 : planKey === 'premium' ? 11000 : 21000;
             }
@@ -423,13 +411,15 @@ export async function POST(req: Request) {
         let sessionNumber = null;
         let packageSnapForUpdate: any = null;
         if (activePkgId && user_id) {
-          const packageRef = doc(db, 'somatic_packages', activePkgId);
+          const packageRef = adminDb.collection('somatic_packages').doc(activePkgId);
           const packageSnap = await transaction.get(packageRef);
-          if (packageSnap.exists()) {
+          if (packageSnap.exists) {
             packageSnapForUpdate = packageSnap;
             const pkgData = packageSnap.data();
-            const currentBookingCount = (pkgData.booking_ids || []).length;
-            sessionNumber = currentBookingCount + 1;
+            if (pkgData) {
+              const currentBookingCount = (pkgData.booking_ids || []).length;
+              sessionNumber = currentBookingCount + 1;
+            }
           }
         } else if (isSomatic) {
           sessionNumber = 1;
@@ -484,7 +474,7 @@ export async function POST(req: Request) {
           created_at: new Date().toISOString(),
         };
 
-        const newBookingRef = doc(collection(db, 'bookings'));
+        const newBookingRef = adminDb.collection('bookings').doc();
         newBookingId = newBookingRef.id;
 
         transaction.set(newBookingRef, insert);
@@ -496,18 +486,20 @@ export async function POST(req: Request) {
         });
 
         // Write update to somatic package booking list inside the same transaction
-        if (activePkgId && user_id && packageSnapForUpdate && packageSnapForUpdate.exists()) {
-          const packageRef = doc(db, 'somatic_packages', activePkgId);
+        if (activePkgId && user_id && packageSnapForUpdate && packageSnapForUpdate.exists) {
+          const packageRef = adminDb.collection('somatic_packages').doc(activePkgId);
           const pkgData = packageSnapForUpdate.data();
-          const currentBookingIds = pkgData.booking_ids || [];
-          const totalSess = pkgData.total_sessions || 4;
-          const nextBookingIds = [...currentBookingIds, newBookingId];
-          const nextRemaining = Math.max(0, totalSess - nextBookingIds.length);
-          transaction.update(packageRef, {
-            booking_ids: nextBookingIds,
-            remaining_sessions: nextRemaining,
-            updated_at: new Date().toISOString()
-          });
+          if (pkgData) {
+            const currentBookingIds = pkgData.booking_ids || [];
+            const totalSess = pkgData.total_sessions || 4;
+            const nextBookingIds = [...currentBookingIds, newBookingId];
+            const nextRemaining = Math.max(0, totalSess - nextBookingIds.length);
+            transaction.update(packageRef, {
+              booking_ids: nextBookingIds,
+              remaining_sessions: nextRemaining,
+              updated_at: new Date().toISOString()
+            });
+          }
         }
 
         insertedBookingData = insert;
@@ -534,16 +526,14 @@ export async function POST(req: Request) {
         start_time: insertedBookingData.start_time 
       }).catch((err) => console.error('[Background Audit Error]:', err));
 
-      try {
-        await triggerBookingNotification(newBookingId, insertedBookingData, 'created');
-      } catch (err) {
-        console.error('[Background Notification Error]:', err);
-      }
+      triggerBookingNotification(newBookingId, insertedBookingData, 'created')
+        .catch((err) => console.error('[Background Notification Error]:', err));
     }
-
+ 
     return NextResponse.json({ ok: true, id: newBookingId });
   } catch (error: any) {
     console.error('Booking error:', error);
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });
   }
 }
+

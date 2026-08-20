@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, updateDoc, runTransaction } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import { z } from 'zod';
 
 const verifySchema = z.object({
@@ -19,11 +18,9 @@ export async function POST(req: Request) {
     const { registration_id, razorpay_payment_id, razorpay_signature } = parsed.data;
 
     // 1. Locate the registration document
-    const regQuery = query(
-      collection(db, 'workshopRegistrations'),
-      where('id', '==', registration_id)
-    );
-    const querySnap = await getDocs(regQuery);
+    const querySnap = await adminDb.collection('workshopRegistrations')
+      .where('id', '==', registration_id)
+      .get();
     if (querySnap.empty) {
       return NextResponse.json({ error: 'Registration not found.' }, { status: 404 });
     }
@@ -50,21 +47,21 @@ export async function POST(req: Request) {
     }
 
     // 2. Perform dynamic Firestore transaction to update payment state & seats count
-    const wsRef = doc(db, 'workshops', reg.workshop_id);
+    const wsRef = adminDb.collection('workshops').doc(reg.workshop_id);
     
     const host = req.headers.get('host') || 'localhost:3000';
     const protocol = req.headers.get('x-forwarded-proto') || 'http';
     const ticketUrl = `${protocol}://${host}/workshops/${registration_id}/ticket?name=${encodeURIComponent(reg.client_name || '')}&email=${encodeURIComponent(reg.client_email || '')}&phone=${encodeURIComponent(reg.client_phone || '')}&workshop=${encodeURIComponent(reg.workshop_title || '')}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticketUrl)}`;
 
-    await runTransaction(db, async (transaction) => {
+    await adminDb.runTransaction(async (transaction) => {
       const wsDoc = await transaction.get(wsRef);
-      if (!wsDoc.exists()) {
+      if (!wsDoc.exists) {
         throw new Error('Workshop not found.');
       }
       
-      const seatsBooked = wsDoc.data().seats_booked || 0;
-      const seatsTotal = wsDoc.data().seats_total || 0;
+      const seatsBooked = wsDoc.data()?.seats_booked || 0;
+      const seatsTotal = wsDoc.data()?.seats_total || 0;
       
       // Update seat bookings
       transaction.update(wsRef, {
@@ -73,11 +70,11 @@ export async function POST(req: Request) {
 
       // Update coupon usage count if a coupon was used
       if (reg.coupon_code) {
-        const couponRef = doc(db, 'coupons', reg.coupon_code.toUpperCase());
+        const couponRef = adminDb.collection('coupons').doc(reg.coupon_code.toUpperCase());
         const couponDoc = await transaction.get(couponRef);
-        if (couponDoc.exists()) {
-          const currentCount = couponDoc.data().usage_count || 0;
-          const usageLimit = couponDoc.data().usage_limit;
+        if (couponDoc.exists) {
+          const currentCount = couponDoc.data()?.usage_count || 0;
+          const usageLimit = couponDoc.data()?.usage_limit;
           if (usageLimit && currentCount >= usageLimit) {
             throw new Error('Sorry, you are late! Coupon usage limit reached.');
           }
@@ -97,9 +94,8 @@ export async function POST(req: Request) {
     });
 
     // 3. Dispatch Notification
-    const notifRef = collection(db, 'notifications');
     if (reg.user_id && reg.user_id !== 'anonymous') {
-      await addDoc(notifRef, {
+      await adminDb.collection('notifications').add({
         user_id: reg.user_id,
         type: 'workshop',
         title: 'Workshop Confirmed!',
@@ -124,5 +120,3 @@ export async function POST(req: Request) {
   }
 }
 
-// Helper to support collection import
-import { addDoc } from 'firebase/firestore';

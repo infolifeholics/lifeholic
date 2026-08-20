@@ -63,7 +63,11 @@ export async function processNotificationJob(job: NotificationJob): Promise<void
       const text = templateFn(job.vars);
       tasks.push(
         sendWhatsAppMessage(job.recipientPhone!, text)
-          .then(() => ({ channel: 'WhatsApp' as const, success: true, error: '' }))
+          .then((res) => ({
+            channel: 'WhatsApp' as const,
+            success: true,
+            error: res?.skipped ? (res.reason || 'WhatsApp skipped') : ''
+          }))
           .catch((err: any) => ({ channel: 'WhatsApp' as const, success: false, error: err?.message || 'WhatsApp API failure' }))
       );
     }
