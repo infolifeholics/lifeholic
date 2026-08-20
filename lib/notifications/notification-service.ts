@@ -73,9 +73,7 @@ export async function notifyAdmins(
       }
     }
 
-    const adminQuery = await adminDb.collection('profiles')
-      .where('is_admin', '==', true)
-      .get();
+    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'support@thelifeholics.com';
 
     const vars: TemplateVars = {
       memberName: actorName,
@@ -91,24 +89,15 @@ export async function notifyAdmins(
 
     const ownerPhone = process.env.WASENDER_OWNER_PHONE || '917485001044';
 
-    const pushTasks = adminQuery.docs
-      .map((d) => d.data())
-      .filter((data) => !!data.email)
-      .map((data) =>
-        pushNotificationJob(
-          'admin_alert',
-          data.email,
-          ownerPhone, // Static route owner WhatsApp alerts to WASENDER_OWNER_PHONE
-          vars,
-          bookingId,
-          undefined,
-          'both'
-        ).catch((err) =>
-          console.error(`[NotificationService] Failed to queue admin alert for ${data.email}:`, err)
-        )
-      );
-
-    await Promise.allSettled(pushTasks);
+    await pushNotificationJob(
+      'admin_alert',
+      adminEmail,
+      ownerPhone,
+      vars,
+      bookingId,
+      undefined,
+      'both'
+    );
   } catch (err) {
     console.error('[NotificationService] Failed to notify admins:', err);
   }

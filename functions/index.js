@@ -61,14 +61,14 @@ async function sendWhatsAppNotification(to, bodyText, templateData = null) {
   while (attempt < maxRetries) {
     attempt++;
     try {
-      const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+      const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
       const response = await fetch(url, {
         method: "POST",
         headers,
         body: JSON.stringify(payload),
       });
       const result = await response.json();
-      
+
       // Log delivery status in whatsappLogs collection
       await db.collection("whatsappLogs").add({
         to: cleanPhone,
@@ -115,7 +115,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
     return;
   }
 
-  const adminEmail = process.env.ADMIN_EMAIL || "admin@thelifeholics.com";
+  const adminEmail = process.env.ADMIN_EMAIL || "support@thelifeholics.com";
   const adminWhatsApp = process.env.ADMIN_WHATSAPP_NUMBER || "";
 
   const {
@@ -341,7 +341,7 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
  */
 exports.sendSessionReminders = onSchedule("every 15 minutes", async (event) => {
   logger.info("Executing scheduled session reminder check...");
-  
+
   // 1. Fetch global settings
   let reminderHours = 24;
   let defaultMeetLink = "";
@@ -367,7 +367,7 @@ exports.sendSessionReminders = onSchedule("every 15 minutes", async (event) => {
 
     for (const docSnap of bookingsSnap.docs) {
       const booking = docSnap.data();
-      
+
       // Skip if already sent or cancelled/completed
       if (booking.reminder_sent) continue;
 
