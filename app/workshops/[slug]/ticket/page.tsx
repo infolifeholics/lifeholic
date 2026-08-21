@@ -19,10 +19,11 @@ export default function TicketPage() {
   useEffect(() => {
     const fetchTicket = async () => {
       try {
-        const q = query(collection(db, 'workshopRegistrations'), where('id', '==', slug));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const data = snap.docs[0].data();
+        // Try fetching by Firestore Document ID first (e.g. ElgCMfLQjtcNVHfrTyD2)
+        const docRef = doc(db, 'workshopRegistrations', slug);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
           setReg(data);
 
           // Fetch associated workshop details directly by document reference
@@ -30,6 +31,21 @@ export default function TicketPage() {
           const wsSnap = await getDoc(wsRef);
           if (wsSnap.exists()) {
             setWs(wsSnap.data());
+          }
+        } else {
+          // Fallback to querying custom id field (e.g. wreg_0RLLE)
+          const q = query(collection(db, 'workshopRegistrations'), where('id', '==', slug));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            const data = snap.docs[0].data();
+            setReg(data);
+
+            // Fetch associated workshop details directly by document reference
+            const wsRef = doc(db, 'workshops', data.workshop_id);
+            const wsSnap = await getDoc(wsRef);
+            if (wsSnap.exists()) {
+              setWs(wsSnap.data());
+            }
           }
         }
       } catch (err) {

@@ -204,7 +204,7 @@ export default function WorkshopDetailsPage() {
         getDocs(regQuery).then((snap) => {
           if (!snap.empty) {
             setIsRegistered(true);
-            setRegistrationId(snap.docs[0].id);
+            setRegistrationId(snap.docs[0].data().id);
           } else {
             setIsRegistered(false);
             setRegistrationId(null);
