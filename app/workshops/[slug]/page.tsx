@@ -160,7 +160,7 @@ export default function WorkshopDetailsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: couponCode,
-          amount: ws?.price_inr || 0,
+          amount: ws?.offer_expiry && new Date().toISOString() <= ws.offer_expiry && ws.early_bird_price_inr ? ws.early_bird_price_inr : (ws?.price_inr || 0),
           context: 'workshops',
         }),
       });
@@ -235,6 +235,21 @@ export default function WorkshopDetailsPage() {
   const todayStr = new Date().toLocaleDateString('en-CA');
   const isCompleted = ws.status === 'completed' || ws.status === 'cancelled' || (ws.date && (ws.end_date || ws.date) < todayStr);
   const isUpcoming = !isCompleted;
+
+  const nowStr = new Date().toISOString();
+  const isEarlyBirdActive = !!(ws.offer_expiry && nowStr <= ws.offer_expiry);
+
+  const originalPrice = currency === 'USD'
+    ? (ws.price_usd || Math.round((ws.price_inr || 0) / (exchangeRate || 80)))
+    : (ws.price_inr || 0);
+
+  const earlyBirdPrice = isEarlyBirdActive
+    ? (currency === 'USD'
+        ? (ws.early_bird_price_usd || Math.round((ws.early_bird_price_inr || 0) / (exchangeRate || 80)))
+        : (ws.early_bird_price_inr || 0))
+    : null;
+
+  const displayBasePrice = earlyBirdPrice !== null ? earlyBirdPrice : originalPrice;
 
   const handleRegisterNowClick = () => {
     if (!user) {
@@ -373,8 +388,17 @@ export default function WorkshopDetailsPage() {
             </div>
             {!isCompleted && (
               <div className="bg-card/90 backdrop-blur px-4 py-3 rounded-2xl border border-border/40 text-xs shadow-soft shrink-0">
-                <p className="text-muted-foreground">Exchange</p>
-                <p className="text-lg font-bold text-foreground">{formatPrice(ws.price_inr, 'INR')}</p>
+                <p className="text-muted-foreground">{isEarlyBirdActive ? '⏳ Early Bird Price' : 'Exchange'}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <p className="text-lg font-bold text-foreground">
+                    {formatPrice(displayBasePrice || 0, currency)}
+                  </p>
+                  {isEarlyBirdActive && (
+                    <span className="text-[10px] text-muted-foreground line-through">
+                      {formatPrice(currency === 'USD' ? (ws.price_usd || Math.round(ws.price_inr / (exchangeRate || 80))) : ws.price_inr, currency)}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -687,6 +711,28 @@ export default function WorkshopDetailsPage() {
                         <Input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} className="mt-1 h-9 rounded-xl" required />
                       </div>
 
+                      {/* Currency Selector */}
+                      <div className="flex justify-between items-center text-xs pt-1">
+                        <span className="text-muted-foreground font-medium">Select Currency</span>
+                        <div className="flex space-x-1 p-0.5 bg-secondary/30 rounded-xl border border-border/20">
+                          <button
+                            type="button"
+                            onClick={() => setCurrency('INR')}
+                            className={`px-3 py-1 rounded-lg font-semibold transition-all text-[11px] ${currency === 'INR' ? 'bg-gold text-gold-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                          >
+                            INR (₹)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCurrency('USD')}
+                            disabled={!exchangeRate}
+                            className={`px-3 py-1 rounded-lg font-semibold transition-all text-[11px] ${currency === 'USD' ? 'bg-gold text-gold-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground disabled:opacity-50'}`}
+                          >
+                            USD ($)
+                          </button>
+                        </div>
+                      </div>
+
                       {/* Coupon input code */}
                       <div className="pt-2 border-t border-border/40">
                         <Label className="text-xs">Promo Coupon</Label>
@@ -724,32 +770,42 @@ export default function WorkshopDetailsPage() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Original Ticket Price:</span>
                           <span className="font-semibold text-foreground">
-                            {currency === 'USD' 
-                              ? formatPrice(ws.price_usd || Math.round(ws.price_inr / (exchangeRate || 1)), 'USD') 
-                              : formatPrice(ws.price_inr, 'INR')}
+                            {formatPrice(originalPrice, currency)}
                           </span>
                         </div>
+                        {isEarlyBirdActive && (
+                          <div className="flex justify-between text-amber-500 font-medium">
+                            <span>Early Bird Discount:</span>
+                            <span>
+                              -{formatPrice(originalPrice - (earlyBirdPrice || 0), currency)}
+                            </span>
+                          </div>
+                        )}
                         {discount > 0 && (
                           <div className="flex justify-between text-emerald-500 font-semibold">
                             <span>Promo Discount:</span>
                             <span>
-                              {currency === 'USD' 
-                                ? `-${formatPrice(discount / (exchangeRate || 1), 'USD')}` 
-                                : `-${formatPrice(discount, 'INR')}`}
+                              -{formatPrice(
+                                currency === 'USD' 
+                                  ? discount / (exchangeRate || 80) 
+                                  : discount, 
+                                currency
+                              )}
                             </span>
                           </div>
                         )}
                         <div className="flex justify-between border-t border-border/20 pt-1.5 font-bold text-xs">
                           <span>Total Payable:</span>
                           <span className="text-gold">
-                            {currency === 'USD' 
-                              ? formatPrice((ws.price_usd || Math.round(ws.price_inr / (exchangeRate || 1))) - (discount / (exchangeRate || 1)), 'USD') 
-                              : formatPrice(ws.price_inr - discount, 'INR')}
+                            {formatPrice(
+                              displayBasePrice - (currency === 'USD' ? discount / (exchangeRate || 80) : discount), 
+                              currency
+                            )}
                           </span>
                         </div>
                         {currency === 'USD' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
                           <div className="text-[10px] text-amber-500 text-right mt-1 font-medium">
-                            Note: Charged in INR equivalent: {formatPrice(Math.round(((ws.price_usd || Math.round(ws.price_inr / (exchangeRate || 1))) - (discount / (exchangeRate || 1))) * (exchangeRate || 1)), 'INR')}
+                            Note: Charged in INR equivalent: {formatPrice(Math.round((displayBasePrice - (currency === 'USD' ? discount / (exchangeRate || 80) : discount)) * (exchangeRate || 80)), 'INR')}
                           </div>
                         )}
                       </div>

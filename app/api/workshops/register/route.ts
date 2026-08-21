@@ -17,8 +17,22 @@ export async function POST(req: Request) {
       user_id,
     } = body;
 
+    // Fetch global settings early to get dynamic exchange rate
+    let usdToInrRate = 80; // default/fallback
+    try {
+      const globalSnap = await getDoc(doc(db, 'settings', 'global'));
+      if (globalSnap.exists()) {
+        const gData = globalSnap.data();
+        if (typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
+          usdToInrRate = gData.usd_to_inr_rate;
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching exchange rate in workshop registration:', err);
+    }
+
     const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
-    const currency = clientCountry === 'IN' ? 'INR' : 'USD';
+    const currency = body.currency || (clientCountry === 'IN' ? 'INR' : 'USD');
 
     if (!workshop_id || !client_name || !client_email || !client_phone) {
       return NextResponse.json({ error: 'Missing mandatory fields.' }, { status: 400 });
@@ -49,10 +63,18 @@ export async function POST(req: Request) {
     }
 
     // 4. Calculate dynamic pricing checking Early Bird
-    let finalPrice = currency === 'USD' ? (ws.price_usd || 0) : (ws.price_inr || 0);
+    let basePriceUsd = ws.price_usd;
+    if ((!basePriceUsd || basePriceUsd === 0) && ws.price_inr) {
+      basePriceUsd = Math.round(ws.price_inr / usdToInrRate);
+    }
+
+    let finalPrice = currency === 'USD' ? (basePriceUsd || 0) : (ws.price_inr || 0);
 
     if (ws.offer_expiry && nowStr <= ws.offer_expiry) {
-      const earlyBird = currency === 'USD' ? ws.early_bird_price_usd : ws.early_bird_price_inr;
+      let earlyBird = currency === 'USD' ? ws.early_bird_price_usd : ws.early_bird_price_inr;
+      if (currency === 'USD' && (!earlyBird || earlyBird === 0) && ws.early_bird_price_inr) {
+        earlyBird = Math.round(ws.early_bird_price_inr / usdToInrRate);
+      }
       if (earlyBird !== undefined && earlyBird > 0) {
         finalPrice = earlyBird;
       }
@@ -88,23 +110,13 @@ export async function POST(req: Request) {
           discount = coupon.max_discount;
         }
       } else {
-        discount = coupon.value || 0;
-      }
-      finalPrice = Math.max(0, finalPrice - discount);
-    }
-
-    // Fetch global settings to get dynamic exchange rate
-    let usdToInrRate = null;
-    try {
-      const globalSnap = await getDoc(doc(db, 'settings', 'global'));
-      if (globalSnap.exists()) {
-        const gData = globalSnap.data();
-        if (typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
-          usdToInrRate = gData.usd_to_inr_rate;
+        if (currency === 'USD') {
+          discount = (coupon.value || 0) / usdToInrRate;
+        } else {
+          discount = coupon.value || 0;
         }
       }
-    } catch (err) {
-      console.error('Error fetching exchange rate in workshop registration:', err);
+      finalPrice = Math.max(0, finalPrice - discount);
     }
 
     if (currency === 'USD' && (!usdToInrRate || isNaN(usdToInrRate))) {
