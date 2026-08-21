@@ -505,7 +505,7 @@ function PaymentPageContent() {
 
             <div className="flex items-center justify-between border-t border-border/60 pt-4 text-base font-medium">
               <span className="text-foreground font-display text-lg">Total Amount</span>
-              <span className="text-foreground font-display text-2xl font-bold">{formatPrice(total, currency)}</span>
+              <span className="text-foreground font-normal">{formatPrice(total, currency)}</span>
             </div>
             {currency === 'USD' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
               <div className="text-[10px] text-amber-500 text-right mt-1 font-medium">
@@ -586,12 +586,8 @@ function PaymentPageContent() {
             </button>
           </div>
 
-          <div className="rounded-3xl border border-border/60 bg-muted/30 p-5 text-xs text-muted-foreground space-y-2">
-            <p className="font-semibold text-foreground">Refund Policy</p>
-            <p className="leading-relaxed">
-              If you cancel or reschedule more than 24 hours prior to the session start time, a full refund can be requested by emailing {process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'support@thelifeholics.com'}.
-            </p>
-          </div>
+
+
         </div>
       </div>
     </div>

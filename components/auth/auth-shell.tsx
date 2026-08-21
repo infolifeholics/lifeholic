@@ -3,9 +3,9 @@ import { Logo } from '@/components/site/logo';
 
 export function AuthShell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-20">
+    <div className="flex min-h-screen items-center justify-center px-4 py-20 auth-theme-wrapper">
       <div className="w-full max-w-md">
-        <div className="mb-8 flex justify-center"><Logo /></div>
+        <div className="mb-8 flex justify-center"><Logo className="[&_img]:brightness-0 [&_img]:invert" /></div>
         <div className="rounded-[2rem] border border-border/60 bg-card/70 p-8 shadow-float sm:p-10">
           <h1 className="font-display text-3xl font-medium tracking-tight text-foreground">{title}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>

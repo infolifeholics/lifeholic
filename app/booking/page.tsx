@@ -26,7 +26,7 @@ export default async function BookingPage() {
   }));
 
   return (
-    <div className="pt-32 sm:pt-40">
+    <div className="pt-32 sm:pt-40 booking-theme">
       <section className="py-8">
         <SectionHeading
           eyebrow="Begin here"

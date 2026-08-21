@@ -168,8 +168,8 @@ export const EMAIL_TEMPLATES = {
   booking_confirmation: (vars: TemplateVars) => {
     const content = `
       <h2>Your Session Booking with Lifeholics is Confirmed!</h2>
-      <p>Hello ${vars.memberName},</p>
-      <p>Your session booking request has been successfully received and confirmed. Here are the details:</p>
+      <p>Hello ${vars.memberName}, received with gratitude 🙏</p>
+      <p>Your session booking request has been successfully confirmed. Here are the details:</p>
       <div class="details-box">
         <div class="details-row"><span class="label">Booking ID:</span><span class="value">${vars.bookingId || 'N/A'}</span></div>
         <div class="details-row"><span class="label">Session:</span><span class="value">${vars.actionDetails || 'Session'}</span></div>
@@ -359,7 +359,7 @@ export const EMAIL_TEMPLATES = {
     const currency = vars.orderCurrency || 'INR';
     const content = `
       <h2 style="color: #c5a880; margin-bottom: 20px;">Lifeholics Order Confirmation</h2>
-      <p>Hello ${vars.memberName || 'Customer'}, thank you for your order!</p>
+      <p>Hello ${vars.memberName || 'Customer'}, thank you for your order! Your trust is received with deep gratitude 🙏</p> 
       <p>We are processing your order <strong>${vars.orderNumber || 'N/A'}</strong>. Here are the details:</p>
       <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
       <h3 style="color: #333; margin-bottom: 10px;">Order Items</h3>
@@ -476,7 +476,7 @@ export const WHATSAPP_TEMPLATES = {
   },
   order_confirmation: (vars: TemplateVars) => {
     const items = vars.orderItems || [];
-    const formattedItems = items.map((item: any) => 
+    const formattedItems = items.map((item: any) =>
       `- ${item.name || item.title || 'Product'} (x${item.quantity || 1})`
     ).join('\n');
     const total = vars.orderTotal || 0;
@@ -486,7 +486,7 @@ export const WHATSAPP_TEMPLATES = {
   },
   admin_order_alert: (vars: TemplateVars) => {
     const items = vars.orderItems || [];
-    const formattedItems = items.map((item: any) => 
+    const formattedItems = items.map((item: any) =>
       `- ${item.name || item.title || 'Product'} (x${item.quantity || 1})`
     ).join('\n');
     const total = vars.orderTotal || 0;

@@ -73,7 +73,7 @@ export async function notifyAdmins(
       }
     }
 
-    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'support@thelifeholics.com';
+    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || 'support@thelifeholics.com';
 
     const vars: TemplateVars = {
       memberName: actorName,

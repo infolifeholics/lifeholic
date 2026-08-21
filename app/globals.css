@@ -470,3 +470,121 @@
 div.admin-theme-wrapper {
   background-color: rgba(10, 10, 10, 0.55) !important;
 }
+
+/* Booking & Auth Theme: Premium Black Cards & White Text */
+.booking-theme,
+.auth-theme-wrapper {
+  --foreground: 0 0% 100%; /* white text */
+  --card: 0 0% 0%; /* black card */
+  --card-foreground: 0 0% 100%;
+  --muted: 0 0% 20%;
+  --muted-foreground: 0 0% 70%;
+  --border: 0 0% 20%;
+  --input: 0 0% 10%;
+  --secondary: 0 0% 15%;
+  --secondary-foreground: 0 0% 100%;
+  --primary: 41 50% 72%; /* Premium Gold */
+  --primary-foreground: 0 0% 0%; /* Black text on gold */
+}
+
+.booking-theme .text-foreground,
+.auth-theme-wrapper .text-foreground {
+  color: #ffffff !important;
+}
+
+.booking-theme .text-muted-foreground,
+.auth-theme-wrapper .text-muted-foreground {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Style cards with black backdrop blur */
+.booking-theme .bg-card\/60,
+.booking-theme .bg-card\/70,
+.auth-theme-wrapper .bg-card\/60,
+.auth-theme-wrapper .bg-card\/70 {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.booking-theme .bg-secondary\/40,
+.auth-theme-wrapper .bg-secondary\/40 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Style date/time buttons and SelectTrigger */
+.booking-theme .bg-card,
+.auth-theme-wrapper .bg-card {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.booking-theme .bg-card:hover,
+.auth-theme-wrapper .bg-card:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: #d4af37 !important;
+}
+
+/* Calendar/action buttons */
+.booking-theme button:disabled,
+.auth-theme-wrapper button:disabled {
+  color: rgba(255, 255, 255, 0.2) !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+/* Inputs & textareas inside theme wrapper */
+.booking-theme input,
+.booking-theme textarea,
+.booking-theme select,
+.auth-theme-wrapper input,
+.auth-theme-wrapper textarea,
+.auth-theme-wrapper select {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.booking-theme input::placeholder,
+.booking-theme textarea::placeholder,
+.auth-theme-wrapper input::placeholder,
+.auth-theme-wrapper textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.booking-theme input:focus,
+.booking-theme textarea:focus,
+.auth-theme-wrapper input:focus,
+.auth-theme-wrapper textarea:focus {
+  border-color: #d4af37 !important;
+}
+
+/* Selected state overrides */
+.booking-theme .bg-primary,
+.auth-theme-wrapper .bg-primary {
+  background-color: #d4af37 !important; /* gold or primary selection */
+  color: #000000 !important;
+}
+
+.booking-theme .text-primary-foreground,
+.auth-theme-wrapper .text-primary-foreground {
+  color: #000000 !important;
+}
+
+.booking-theme .border-primary,
+.auth-theme-wrapper .border-primary {
+  border-color: #d4af37 !important;
+}
+
+/* Select trigger styling */
+.booking-theme button[role="combobox"],
+.auth-theme-wrapper button[role="combobox"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}

@@ -643,49 +643,49 @@ export function BookingFlow({ services }: { services: Service[] }) {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.4 }}
               >
-                <h2 className="font-display text-2xl font-medium text-foreground">Your details</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <h2 className="font-display text-2xl font-medium text-white border-b border-amber-500 pb-2 mb-2 inline-block">Your details</h2>
+                <p className="mt-2 text-sm text-neutral-300">
                   So I can send your confirmation and the session link.
                 </p>
                 <div className="mt-6 space-y-4">
                   <div>
-                    <Label htmlFor="name">Full name</Label>
+                    <Label htmlFor="name" className="text-white">Full name</Label>
                     <Input
                       id="name"
                       value={details.name}
                       onChange={(e) => setDetails({ ...details, name: e.target.value })}
-                      className="mt-1.5"
+                      className="mt-1.5 bg-black border-neutral-800 text-white placeholder:text-neutral-500"
                       placeholder="Your name"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" className="text-white">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={details.email}
                       onChange={(e) => setDetails({ ...details, email: e.target.value })}
-                      className="mt-1.5"
+                      className="mt-1.5 bg-black border-neutral-800 text-white placeholder:text-neutral-500"
                       placeholder="you@email.com"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="phone">Phone <span className="text-muted-foreground">(optional)</span></Label>
+                    <Label htmlFor="phone" className="text-white">Phone <span className="text-neutral-400">(optional)</span></Label>
                     <Input
                       id="phone"
                       value={details.phone}
                       onChange={(e) => setDetails({ ...details, phone: e.target.value })}
-                      className="mt-1.5"
+                      className="mt-1.5 bg-black border-neutral-800 text-white placeholder:text-neutral-500"
                       placeholder="+91 ..."
                     />
                   </div>
                   <div>
-                    <Label htmlFor="notes">Anything you&apos;d like me to know? <span className="text-muted-foreground">(optional)</span></Label>
+                    <Label htmlFor="notes" className="text-white">Anything you&apos;d like me to know? <span className="text-neutral-400">(optional)</span></Label>
                     <Textarea
                       id="notes"
                       value={details.notes}
                       onChange={(e) => setDetails({ ...details, notes: e.target.value })}
-                      className="mt-1.5"
+                      className="mt-1.5 bg-black border-neutral-800 text-white placeholder:text-neutral-500"
                       rows={4}
                       placeholder="Share as much or as little as you like."
                     />
@@ -804,7 +804,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
                 </div>
                 <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-4">
                   <span className="text-sm text-muted-foreground">Total</span>
-                  <span className="font-display text-2xl font-medium text-foreground">
+                  <span className="text-sm text-primary">
                     {formatPrice(price, currency)}
                   </span>
                 </div>
@@ -814,13 +814,13 @@ export function BookingFlow({ services }: { services: Service[] }) {
               </>
             )}
           </div>
-          <div className="mt-4 rounded-3xl border border-border/60 bg-secondary/40 p-5 text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">A note on payment</p>
+          <div className="mt-4 rounded-3xl border border-neutral-800 bg-black p-5 text-sm text-neutral-300">
+            <p className="font-medium text-white border-b border-amber-500 pb-2 mb-2 inline-block">A note on payment</p>
             <p className="mt-2 leading-relaxed">
-              Your slot is reserved the moment you confirm. A payment link follows by email —
-              Razorpay for India, Stripe for international clients.
+              Your slot is reserved the moment you confirm. A payment link follows by email — Razorpay for India, Stripe for international clients.
             </p>
           </div>
+
         </aside>
       </div>
     </div>

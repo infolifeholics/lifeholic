@@ -200,7 +200,7 @@ export async function triggerOrderNotification(orderId: string, orderData: any) 
     user_id,
   } = orderData;
 
-  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'support@thelifeholics.com';
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || 'support@thelifeholics.com';
   console.log(`[Notifications] Triggering order notification for Order Number: ${orderNumber}`);
 
   // Add Dashboard Notification
@@ -304,7 +304,7 @@ export async function triggerWorkshopNotification(
     });
 
     // 2. Send Admin/Owner Email
-    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'support@thelifeholics.com';
+    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || 'support@thelifeholics.com';
     await sendEmailNotification({
       to: adminEmail,
       subject: `[ADMIN] ${emailSubject}`,
