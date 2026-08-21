@@ -73,12 +73,35 @@ export async function GET(req: Request) {
       }))
     ];
 
+    // Fetch service duration
+    let duration = 30;
+    if (serviceId) {
+      if (serviceId.startsWith('somatic_')) {
+        const planNameLower = serviceId.substring('somatic_'.length).toLowerCase();
+        if (planNameLower.includes('essential')) {
+          duration = 30;
+        } else if (planNameLower.includes('elite')) {
+          duration = 90;
+        } else {
+          duration = 60;
+        }
+      } else {
+        const serviceDoc = await adminDb.collection('services').doc(serviceId).get();
+        if (serviceDoc.exists) {
+          const serviceData = serviceDoc.data();
+          if (serviceData && typeof serviceData.duration_minutes === 'number') {
+            duration = serviceData.duration_minutes;
+          }
+        }
+      }
+    }
+
     // 4. Map and filter slots
     const now = Date.now();
     const resultSlots = configuredSlots
       .map(slot => {
         const startUTC = istDateTimeToUtc(dateStr, slot.start_time);
-        const endUTC = istDateTimeToUtc(dateStr, slot.end_time);
+        const endUTC = new Date(startUTC.getTime() + duration * 60_000);
         const sTime = startUTC.getTime();
         const eTime = endUTC.getTime();
         const isBooked = bookedRanges.some(r => sTime < r.end && eTime > r.start);
