@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Loader2, Ticket, Printer, Download, Mail, Calendar, Clock, MapPin, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -25,10 +25,11 @@ export default function TicketPage() {
           const data = snap.docs[0].data();
           setReg(data);
 
-          // Fetch associated workshop details
-          const wsSnap = await getDocs(query(collection(db, 'workshops'), where('id', '==', data.workshop_id)));
-          if (!wsSnap.empty) {
-            setWs(wsSnap.docs[0].data());
+          // Fetch associated workshop details directly by document reference
+          const wsRef = doc(db, 'workshops', data.workshop_id);
+          const wsSnap = await getDoc(wsRef);
+          if (wsSnap.exists()) {
+            setWs(wsSnap.data());
           }
         }
       } catch (err) {
@@ -95,9 +96,11 @@ export default function TicketPage() {
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Booking ID: {reg.id}</p>
               <h2 className="font-display text-xl md:text-2xl font-semibold text-foreground mt-1">{reg.workshop_title}</h2>
             </div>
-            {reg.qr_code && (
-              <img src={reg.qr_code} alt="Ticket QR Pass" className="h-24 w-24 border border-border rounded-xl bg-white shrink-0 p-1" />
-            )}
+            <img 
+              src={reg.qr_code || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(reg.id)}`} 
+              alt="Ticket QR Pass" 
+              className="h-24 w-24 border border-border rounded-xl bg-white shrink-0 p-1" 
+            />
           </div>
 
           <div className="py-6 space-y-4 border-b border-border/40">
