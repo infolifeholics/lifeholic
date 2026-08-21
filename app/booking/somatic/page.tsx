@@ -220,7 +220,7 @@ function SomaticBookingFlowContent() {
           client_timezone: tz,
           start_time: selectedSlot.start,
           end_time: new Date(
-            new Date(selectedSlot.start).getTime() + 
+            new Date(selectedSlot.start).getTime() +
             (planName.toLowerCase().includes('essential') ? 30 : planName.toLowerCase().includes('elite') ? 90 : 60) * 60_000
           ).toISOString(),
           mode,
@@ -274,15 +274,15 @@ function SomaticBookingFlowContent() {
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Left Side: Steps & Form Panel */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* Steps Indicator */}
           <div className="flex items-center justify-between border-b border-border/40 pb-4">
             {['Schedule Session', 'Your Details', 'Review & Pay'].map((name, i) => (
               <div key={i} className="flex items-center gap-2">
                 <span className={cn(
                   "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold border transition-all",
-                  step === i ? "bg-gold border-gold text-gold-foreground" : 
-                  step > i ? "bg-gold/10 border-gold text-gold" : "border-border/60 text-muted-foreground"
+                  step === i ? "bg-gold border-gold text-gold-foreground" :
+                    step > i ? "bg-gold/10 border-gold text-gold" : "border-border/60 text-muted-foreground"
                 )}>
                   {step > i ? <Check className="h-4 w-4" /> : i + 1}
                 </span>
@@ -578,7 +578,7 @@ function SomaticBookingFlowContent() {
         <div className="space-y-6">
           <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft space-y-6 backdrop-blur-md sticky top-32">
             <h3 className="font-display text-lg font-semibold text-gold border-b border-border/40 pb-3">Selected Plan</h3>
-            
+
             <div className="space-y-4">
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-widest block font-bold">Category</span>
@@ -605,23 +605,23 @@ function SomaticBookingFlowContent() {
 
             <div className="border-t border-border/40 pt-4 flex items-center justify-between font-display">
               <span className="text-sm font-medium text-foreground">Total Price:</span>
-              <span className="text-2xl font-semibold text-gold">{formatPrice(price, currencyForTimezone(tz))}</span>
+              <span className="text-sm font-sans text-black">{formatPrice(price, currencyForTimezone(tz))}</span>
             </div>
           </div>
         </div>
 
       </div>
 
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
         onSuccess={() => {
           setShowAuthModal(false);
           // Wait briefly for auth context state synchronization and submit
           setTimeout(() => {
             submit();
           }, 600);
-        }} 
+        }}
       />
     </div>
   );
