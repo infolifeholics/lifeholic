@@ -206,7 +206,7 @@ export function AdminCMS() {
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src="https://images.pexels.com/photos/3280130/pexels-photo-3280130.jpeg?auto=compress&cs=tinysrgb&w=1200"
+                    src="https://res.cloudinary.com/jue23qpn/image/upload/v1786025367/thelifeholics/awrke3peqgig991aiual.png"
                     alt="Default fallback background"
                     className="w-full h-full object-cover opacity-60"
                   />

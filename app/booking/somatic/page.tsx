@@ -22,6 +22,7 @@ type Slot = {
   start: string;
   end: string;
   modes: ('online' | 'offline')[];
+  booked?: boolean;
 };
 
 function SomaticBookingFlowContent() {
@@ -374,19 +375,26 @@ function SomaticBookingFlowContent() {
                     <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
                       {slots.map((slot, i) => {
                         const isSelected = selectedSlot?.start === slot.start;
+                        const isBooked = slot.booked;
                         const label = formatInTz(slot.start, tz, { timeStyle: 'short' });
                         return (
                           <button
                             key={i}
+                            disabled={isBooked}
                             onClick={() => {
+                              if (isBooked) return;
                               setSelectedSlot(slot);
                               setTimeout(() => {
                                 continueBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                               }, 100);
                             }}
                             className={cn(
-                              "border border-border/60 hover:border-gold p-3 rounded-2xl text-xs font-medium transition-all",
-                              isSelected ? "bg-gold text-gold-foreground border-gold shadow-sm" : "bg-background/40 hover:bg-muted text-muted-foreground hover:text-foreground"
+                              "border p-3 rounded-2xl text-xs font-medium transition-all",
+                              isBooked
+                                ? "border-rose-500/20 bg-rose-500/5 text-muted-foreground/30 line-through cursor-not-allowed"
+                                : isSelected
+                                  ? "bg-gold text-gold-foreground border-gold shadow-sm"
+                                  : "bg-background/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60 hover:border-gold"
                             )}
                           >
                             {label}

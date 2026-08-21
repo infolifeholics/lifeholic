@@ -7,11 +7,11 @@ import { toast } from 'sonner';
 import { Loader2, UploadCloud, Video, X, Image as ImageIcon, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const DEFAULT_VIDEO = 'https://cdn.prod.website-files.com/691c3d8b8165d353a2345b2d%2F691d841c9c6b35b63efb82bc_hero-bg-video_mp4.mp4';
+const DEFAULT_VIDEO = 'https://res.cloudinary.com/jue23qpn/video/upload/v1786041572/thelifeholics/iu4kulkcbxvmcyovhaad.mp4';
 const DEFAULT_AUDIO = '/liecio-calming-rain-257596.mp3';
 const DEFAULT_FOUNDER_IMAGE = '/images/founder/photo.jpg';
 const DEFAULT_FOUNDER_IMAGE_2 = 'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=800';
-const DEFAULT_BG_IMAGE = 'https://images.pexels.com/photos/3280130/pexels-photo-3280130.jpeg?auto=compress&cs=tinysrgb&w=1200';
+const DEFAULT_BG_IMAGE = 'https://res.cloudinary.com/jue23qpn/image/upload/v1786025367/thelifeholics/awrke3peqgig991aiual.png';
 
 export function AdminLandingPage() {
   const [videoUrl, setVideoUrl] = useState('');
