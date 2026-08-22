@@ -134,12 +134,6 @@ export async function POST(req: Request) {
     let chargePrice = finalPrice;
     let chargeCurrency = currency;
 
-    const supportUSD = process.env.RAZORPAY_SUPPORT_USD === 'true';
-    if (chargeCurrency !== 'INR' && (chargeCurrency !== 'USD' || !supportUSD)) {
-      chargePrice = Math.round(chargePrice / (targetRate || 1));
-      chargeCurrency = 'INR';
-    }
-
     const regId = 'wreg_' + Math.random().toString(36).substring(7).toUpperCase();
 
     const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';

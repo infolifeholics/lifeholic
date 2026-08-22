@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { auth, googleProvider, db } from '@/lib/firebase';
 import { collection, doc, getDoc, setDoc, getDocs, limit, orderBy, onSnapshot } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { COUNTRIES, detectCountryFromLocation } from '@/lib/countries';
+import { COUNTRIES, detectCountryFromLocation, getTimezoneForCountryName } from '@/lib/countries';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -231,7 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               full_name: fullName,
               phone: null,
               whatsapp: null,
-              timezone: 'Asia/Kolkata',
+              timezone: getTimezoneForCountryName(country),
               is_admin: false,
               bio: '',
               address: '',

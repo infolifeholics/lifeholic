@@ -125,12 +125,6 @@ export async function POST(req: Request) {
     let finalTotal = baseAmount;
     let chargeCurrency = currency;
 
-    const supportUSD = process.env.RAZORPAY_SUPPORT_USD === 'true';
-    if (chargeCurrency !== 'INR' && (chargeCurrency !== 'USD' || !supportUSD)) {
-      finalTotal = Math.round(finalTotal / (targetRate || 1));
-      chargeCurrency = 'INR';
-    }
-
     const number = orderNumber();
     
     // 4. Create Razorpay Order server-side

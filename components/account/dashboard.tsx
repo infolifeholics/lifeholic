@@ -43,7 +43,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { COUNTRIES, detectCountryFromLocation } from '@/lib/countries';
+import { COUNTRIES, detectCountryFromLocation, getTimezoneForCountryName } from '@/lib/countries';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useWishlist } from '@/components/providers/wishlist-provider';
 import { useCart } from '@/components/providers/cart-provider';
@@ -177,6 +177,7 @@ export function AccountDashboard() {
     try {
       const detected = await detectCountryFromLocation();
       setCountry(detected.name);
+      setTimezone(getTimezoneForCountryName(detected.name));
       toast.success(`Location detected: ${detected.flag} ${detected.name}`);
     } catch (err: any) {
       toast.error(err.message || 'Could not determine location. Please select manually.');
@@ -1712,7 +1713,11 @@ export function AccountDashboard() {
                       <select
                         id="p-country"
                         value={country}
-                        onChange={(e) => setCountry(e.target.value)}
+                        onChange={(e) => {
+                          const newCountry = e.target.value;
+                          setCountry(newCountry);
+                          setTimezone(getTimezoneForCountryName(newCountry));
+                        }}
                         className="mt-1.5 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gold"
                         required
                       >

@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import { COMMON_TIMEZONES, currencyForTimezone, detectTimezone, formatInTz, formatPrice } from '@/lib/format';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AuthModal } from '@/components/auth/auth-modal';
+import { convertInrToCurrency } from '@/lib/currency';
+import { useCurrency } from '@/components/providers/currency-provider';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 
@@ -23,7 +25,6 @@ type Service = {
   title: string;
   duration_minutes: number;
   price_inr: number;
-  price_usd: number;
   mode: 'online' | 'offline' | 'both';
 };
 
@@ -51,6 +52,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
   const router = useRouter();
   const search = useSearchParams();
   const { user } = useAuth();
+  const { currentCurrency, exchangeRate, isLoading, rates } = useCurrency();
 
   const [step, setStep] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -148,8 +150,10 @@ export function BookingFlow({ services }: { services: Service[] }) {
     [servicesList, serviceSlug]
   );
 
-  const currency = useMemo(() => currencyForTimezone(tz), [tz]);
-  const price = currency === 'INR' ? service?.price_inr ?? 0 : service?.price_usd ?? 0;
+  const currency = currentCurrency;
+  const price = currency === 'INR'
+    ? service?.price_inr ?? 0
+    : convertInrToCurrency(service?.price_inr ?? 0, exchangeRate || 0, currency);
 
   // Pre-fill details from auth
   useEffect(() => {
@@ -430,7 +434,7 @@ export function BookingFlow({ services }: { services: Service[] }) {
                         <p className="text-xs text-muted-foreground">{s.duration_minutes} min</p>
                       </div>
                       <span className="text-sm font-medium text-foreground">
-                        {formatPrice(currency === 'INR' ? s.price_inr : s.price_usd, currency)}
+                        {formatPrice(currency === 'INR' ? s.price_inr : convertInrToCurrency(s.price_inr, exchangeRate || 0, currency), currency)}
                       </span>
                     </button>
                   ))}

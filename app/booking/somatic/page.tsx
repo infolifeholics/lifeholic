@@ -538,7 +538,7 @@ function SomaticBookingFlowContent() {
               )}
 
               {/* Navigation buttons */}
-              {currencyForTimezone(tz) !== 'INR' && rateError && (
+              {currentCurrency !== 'INR' && Object.keys(rates).length === 0 && (
                 <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex gap-3 text-xs text-destructive mb-3">
                   <ShieldAlert className="h-5 w-5 shrink-0" />
                   <div>
@@ -551,7 +551,7 @@ function SomaticBookingFlowContent() {
               <div className="flex justify-between pt-4 border-t border-border/20">
                 <Button variant="ghost" onClick={() => setStep(1)} className="rounded-full">Back</Button>
                 <Button
-                  disabled={submitting || (currencyForTimezone(tz) !== 'INR' && rateError)}
+                  disabled={submitting || (currentCurrency !== 'INR' && Object.keys(rates).length === 0)}
                   onClick={handleBook}
                   className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground px-8 font-semibold shadow-soft"
                 >

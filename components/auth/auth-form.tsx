@@ -11,7 +11,7 @@ import { auth } from '@/lib/firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { COUNTRIES, detectCountryFromLocation } from '@/lib/countries';
+import { COUNTRIES, detectCountryFromLocation, getTimezoneForCountryName } from '@/lib/countries';
 
 const showAlert = (msg: string) => {
   if (typeof window !== 'undefined' && (window as any).customAlert) {
@@ -43,6 +43,7 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
     try {
       const detected = await detectCountryFromLocation();
       setCountry(detected.name);
+      // timezone is passed via signUp; no separate state needed here
       toast.success(`Location detected: ${detected.flag} ${detected.name}`);
     } catch (err: any) {
       toast.error(err.message || 'Could not determine location. Please select manually.');
@@ -162,7 +163,7 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
               <select
                 id="country"
                 value={country}
-                onChange={(e) => setCountry(e.target.value)}
+                onChange={(e) => setCountry(e.target.value)}  // timezone auto-set during signUp call
                 className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
                 required
               >

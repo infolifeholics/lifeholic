@@ -9,9 +9,12 @@ import { getServiceRoute } from '@/lib/routes';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import type { Service } from '@/lib/types';
+import { useCurrency } from '@/components/providers/currency-provider';
+import { convertInrToCurrency } from '@/lib/currency';
 
 export function ServicesList({ initialServices }: { initialServices: Service[] }) {
   const [services, setServices] = useState<Service[]>(initialServices);
+  const { currentCurrency, exchangeRate } = useCurrency();
 
   useEffect(() => {
     const q = query(collection(db, 'services'));
@@ -66,7 +69,14 @@ export function ServicesList({ initialServices }: { initialServices: Service[] }
 
                 <div className="mt-auto flex items-center justify-between border-t border-border/50 pt-3">
                   <span className="text-xs text-muted-foreground">
-                    from <span className="font-medium text-foreground">{formatPrice(s.price_inr, 'INR')}</span>
+                    from <span className="font-medium text-foreground">
+                      {formatPrice(
+                        currentCurrency === 'INR'
+                          ? s.price_inr
+                          : convertInrToCurrency(s.price_inr, exchangeRate || 0, currentCurrency),
+                        currentCurrency
+                      )}
+                    </span>
                   </span>
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground transition-transform group-hover:translate-x-0.5">
                     Explore <ArrowUpRight className="h-3.5 w-3.5" />

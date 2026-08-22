@@ -137,13 +137,6 @@ export async function POST(req: Request) {
 
     let chargeCurrency = currency;
 
-    const supportUSD = process.env.RAZORPAY_SUPPORT_USD === 'true';
-    if (chargeCurrency !== 'INR' && (chargeCurrency !== 'USD' || !supportUSD)) {
-      // Convert the international final amount back to INR (using dynamic rate) to create an INR order.
-      finalAmount = Math.round(finalAmount / (targetRate || 1));
-      chargeCurrency = 'INR';
-    }
-
     if (finalAmount <= 0) {
       return NextResponse.json({ error: 'Order amount must be greater than zero.' }, { status: 400 });
     }

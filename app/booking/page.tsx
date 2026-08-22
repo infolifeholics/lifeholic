@@ -20,7 +20,6 @@ export default async function BookingPage() {
     title: s.title,
     duration_minutes: s.duration_minutes,
     price_inr: s.price_inr,
-    price_usd: s.price_usd,
     mode: s.mode,
     image: s.image,
   }));
