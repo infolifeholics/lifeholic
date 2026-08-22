@@ -37,12 +37,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'International payments are currently unavailable. USD to INR exchange rate is not configured by the admin.' }, { status: 400 });
     }
 
-    // 2. Fetch the correct service/somatic plan price from the database
-    let basePrice = 0;
+    // 2. Fetch the correct service/somatic plan price from the database in INR
+    let basePriceInr = 0;
     const isSomatic = b.is_somatic_plan === true;
 
     if (isSomatic) {
-      let basePriceInr = 11000; // default for premium
+      basePriceInr = 11000; // default for premium
       const planName = b.somatic_plan_name || '';
       const planKey = planName.toLowerCase().includes('essential') ? 'essential' : planName.toLowerCase().includes('elite') ? 'elite' : 'premium';
       try {
@@ -58,7 +58,6 @@ export async function POST(req: Request) {
       } catch (err) {
         basePriceInr = planKey === 'essential' ? 4444 : planKey === 'premium' ? 11000 : 21000;
       }
-      basePrice = currency === 'USD' && usdToInrRate ? Math.round(basePriceInr / usdToInrRate) : basePriceInr;
     } else {
       const serviceSnap = await adminDb.collection('services').doc(b.service_id).get();
       if (!serviceSnap.exists) {
@@ -66,12 +65,12 @@ export async function POST(req: Request) {
       }
       const sData = serviceSnap.data();
       if (sData) {
-        basePrice = currency === 'USD' ? (sData.price_usd || 0) : (sData.price_inr || 0);
+        basePriceInr = sData.price_inr || 0;
       }
     }
 
     // 3. Apply coupon discount if applicable
-    let discount = 0;
+    let couponData = null;
     if (coupon_code) {
       try {
         const couponRef = adminDb.collection('coupons').doc(coupon_code.toUpperCase());
@@ -82,16 +81,8 @@ export async function POST(req: Request) {
             const isExpired = coupon.expiry_date && new Date() > new Date(coupon.expiry_date);
             const limitReached = coupon.usage_limit && (coupon.uses || 0) >= coupon.usage_limit;
             const isContextValid = coupon.context === 'bookings' || coupon.context === 'all';
-
             if (!isExpired && !limitReached && isContextValid) {
-              if (coupon.type === 'percent') {
-                discount = (basePrice * coupon.value) / 100;
-                if (coupon.max_discount && discount > coupon.max_discount) {
-                  discount = coupon.max_discount;
-                }
-              } else {
-                discount = coupon.value;
-              }
+              couponData = coupon;
             }
           }
         }
@@ -100,10 +91,52 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Calculate total and GST (18% for INR only)
-    const subtotal = Math.max(0, basePrice - discount);
-    const gst = currency === 'INR' ? Math.round(subtotal * 0.18) : 0;
-    let finalAmount = subtotal + gst;
+    // Fetch GST settings (default to 18%)
+    let gstPercentage = 18;
+    try {
+      const globalSnap = await adminDb.collection('settings').doc('global').get();
+      if (globalSnap.exists) {
+        const gData = globalSnap.data();
+        if (gData && typeof gData.gst_percentage === 'number') {
+          gstPercentage = gData.gst_percentage;
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching GST percentage:', err);
+    }
+
+    // Calculate discount in INR first
+    let discountInr = 0;
+    if (couponData) {
+      if (couponData.type === 'percent') {
+        discountInr = (basePriceInr * couponData.value) / 100;
+        if (couponData.max_discount && discountInr > couponData.max_discount) {
+          discountInr = couponData.max_discount;
+        }
+      } else {
+        if (currency === 'USD' && usdToInrRate) {
+          discountInr = couponData.value * usdToInrRate;
+        } else {
+          discountInr = couponData.value;
+        }
+      }
+    }
+
+    const subtotalInr = Math.max(0, basePriceInr - discountInr);
+    const gstInr = Math.round((subtotalInr * gstPercentage) / 100);
+    const totalInr = subtotalInr + gstInr;
+
+    // Convert values to target currency
+    let finalAmount = totalInr;
+    let basePrice = basePriceInr;
+    let discount = discountInr;
+
+    if (currency === 'USD' && usdToInrRate) {
+      finalAmount = Math.round((totalInr / usdToInrRate) * 100) / 100;
+      basePrice = Math.round((basePriceInr / usdToInrRate) * 100) / 100;
+      discount = Math.round((discountInr / usdToInrRate) * 100) / 100;
+    }
+
     let chargeCurrency = currency;
 
     const supportUSD = process.env.RAZORPAY_SUPPORT_USD === 'true';

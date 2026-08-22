@@ -86,13 +86,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </h1>
             <p className="mt-3 text-pretty text-lg text-white/80">{product.tagline}</p>
 
-            <div className="mt-6 flex items-center gap-3">
-              <span className="font-display text-3xl font-medium text-gold">{formatPrice(product.price_inr, 'INR')}</span>
-              {onSale && (
-                <span className="text-lg text-white/50 line-through">{formatPrice(product.compare_at_inr as number, 'INR')}</span>
-              )}
-              <span className="text-sm text-white/70">≈ {formatPrice(product.price_usd, 'USD')}</span>
-            </div>
+            {/* Pricing is handled dynamically by the AddToCart client component */}
 
             <p className="mt-6 text-pretty text-base leading-relaxed text-white/90 font-medium">{product.description}</p>
 
@@ -129,7 +123,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     slug: product.slug,
                     name: product.name,
                     price_inr: product.price_inr,
-                    price_usd: product.price_usd,
+                    compare_at_inr: product.compare_at_inr,
                     image: product.image,
                     type: product.type,
                     stock: product.stock,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Minus, Plus, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/components/providers/cart-provider';
@@ -10,31 +10,59 @@ import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { showAppleCartNotification } from '@/components/shop/cart-notification';
+import { convertInrToUsd, getUserCurrency } from '@/lib/currency';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export function AddToCart({
   product,
-  currency = 'INR',
 }: {
   product: {
     id: string;
     slug: string;
     name: string;
     price_inr: number;
-    price_usd: number;
+    compare_at_inr?: number | null;
     image: string;
     type: 'digital' | 'physical';
     stock: number | null;
   };
-  currency?: 'INR' | 'USD';
 }) {
   const { items, add, setQuantity, remove } = useCart();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
   const [qty, setQty] = useState(1);
   const [adding, setAdding] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const price = currency === 'INR' ? product.price_inr : product.price_usd;
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [detectedCurrency, setDetectedCurrency] = useState<'INR' | 'USD'>('INR');
+
+  useEffect(() => {
+    const currency = getUserCurrency(profile);
+    setDetectedCurrency(currency);
+  }, [profile]);
+
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'global')).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (typeof data.usd_to_inr_rate === 'number' && data.usd_to_inr_rate > 0) {
+          setExchangeRate(data.usd_to_inr_rate);
+        }
+      }
+    }).catch((err) => console.error(err));
+  }, []);
+
+  const displayPrice = detectedCurrency === 'USD'
+    ? convertInrToUsd(product.price_inr, exchangeRate || 1)
+    : product.price_inr;
+
+  const displayComparePrice = product.compare_at_inr
+    ? (detectedCurrency === 'USD' ? convertInrToUsd(product.compare_at_inr, exchangeRate || 1) : product.compare_at_inr)
+    : null;
+
+  const onSale = displayComparePrice && displayComparePrice > displayPrice;
   const outOfStock = product.stock !== null && product.stock <= 0;
   const cartItem = items.find((item) => item.id === product.id);
 
@@ -55,9 +83,8 @@ export function AddToCart({
           id: product.id,
           slug: product.slug,
           name: product.name,
-          price,
+          price: product.price_inr, // Save INR price in local cart
           price_inr: product.price_inr,
-          price_usd: product.price_usd,
           image: product.image,
           type: product.type,
         },
@@ -73,87 +100,103 @@ export function AddToCart({
   // If already in cart, show quantity edit controls + Go to Cart button
   if (cartItem) {
     return (
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center w-full">
-        <div className="inline-flex items-center rounded-full border border-border bg-card">
-          <button
-            onClick={() => {
-              if (cartItem.quantity <= 1) {
-                remove(product.id);
-                toast.success('Item removed from cart.');
-              } else {
-                setQuantity(product.id, cartItem.quantity - 1);
-              }
-            }}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-l-full text-foreground hover:bg-secondary"
-            aria-label="Decrease quantity"
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-          <span className="w-10 text-center text-sm font-semibold text-neutral-900">{cartItem.quantity}</span>
-          <button
-            onClick={() => {
-              setQuantity(product.id, cartItem.quantity + 1);
-            }}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-r-full text-foreground hover:bg-secondary"
-            aria-label="Increase quantity"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrice, detectedCurrency)}</span>
+          {onSale && (
+            <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, detectedCurrency)}</span>
+          )}
         </div>
-        <Button
-          onClick={() => router.push('/shop/cart')}
-          size="lg"
-          className="flex-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20 font-semibold"
-        >
-          Go to Cart
-        </Button>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center w-full">
+          <div className="inline-flex items-center rounded-full border border-border bg-card">
+            <button
+              onClick={() => {
+                if (cartItem.quantity <= 1) {
+                  remove(product.id);
+                  toast.success('Item removed from cart.');
+                } else {
+                  setQuantity(product.id, cartItem.quantity - 1);
+                }
+              }}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-l-full text-foreground hover:bg-secondary"
+              aria-label="Decrease quantity"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="w-10 text-center text-sm font-semibold text-neutral-900">{cartItem.quantity}</span>
+            <button
+              onClick={() => {
+                setQuantity(product.id, cartItem.quantity + 1);
+              }}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-r-full text-foreground hover:bg-secondary"
+              aria-label="Increase quantity"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+          <Button
+            onClick={() => router.push('/shop/cart')}
+            size="lg"
+            className="flex-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20 font-semibold"
+          >
+            Go to Cart
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-      {product.type === 'physical' && (
-        <div className="inline-flex items-center rounded-full border border-border bg-card">
-          <button
-            onClick={() => setQty((q) => Math.max(1, q - 1))}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-l-full text-foreground hover:bg-secondary"
-            aria-label="Decrease quantity"
-            disabled={adding || success}
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-          <span className="w-10 text-center text-sm font-medium text-neutral-900">{qty}</span>
-          <button
-            onClick={() => setQty((q) => q + 1)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-r-full text-foreground hover:bg-secondary"
-            aria-label="Increase quantity"
-            disabled={adding || success}
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-      <Button
-        onClick={handleAdd}
-        disabled={outOfStock || adding}
-        size="lg"
-        className={cn(
-          'flex-1 rounded-full transition-all duration-300',
-          success && 'bg-emerald-600 hover:bg-emerald-700 text-white scale-[1.02] shadow-emerald-500/20',
-          outOfStock && 'cursor-not-allowed opacity-60'
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrice, detectedCurrency)}</span>
+        {onSale && (
+          <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, detectedCurrency)}</span>
         )}
-      >
-        {adding ? (
-          <span className="flex items-center gap-1.5"><Loader2 className="h-4 w-4 animate-spin" /> Adding...</span>
-        ) : success ? (
-          <span className="flex items-center gap-1.5 justify-center"><Check className="h-5 w-5 animate-scaleUp" /> Added successfully!</span>
-        ) : outOfStock ? (
-          'Sold out'
-        ) : (
-          `Add to bag (${qty}) · ${formatPrice(price * qty, currency)}`
+      </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        {product.type === 'physical' && (
+          <div className="inline-flex items-center rounded-full border border-border bg-card">
+            <button
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-l-full text-foreground hover:bg-secondary"
+              aria-label="Decrease quantity"
+              disabled={adding || success}
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="w-10 text-center text-sm font-medium text-neutral-900">{qty}</span>
+            <button
+              onClick={() => setQty((q) => q + 1)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-r-full text-foreground hover:bg-secondary"
+              aria-label="Increase quantity"
+              disabled={adding || success}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
         )}
-      </Button>
+        <Button
+          onClick={handleAdd}
+          disabled={outOfStock || adding}
+          size="lg"
+          className={cn(
+            'flex-1 rounded-full transition-all duration-300',
+            success && 'bg-emerald-600 hover:bg-emerald-700 text-white scale-[1.02] shadow-emerald-500/20',
+            outOfStock && 'cursor-not-allowed opacity-60'
+          )}
+        >
+          {adding ? (
+            <span className="flex items-center gap-1.5"><Loader2 className="h-4 w-4 animate-spin" /> Adding...</span>
+          ) : success ? (
+            <span className="flex items-center gap-1.5 justify-center"><Check className="h-5 w-5 animate-scaleUp" /> Added successfully!</span>
+          ) : outOfStock ? (
+            'Sold out'
+          ) : (
+            `Add to bag (${qty}) · ${formatPrice(displayPrice * qty, detectedCurrency)}`
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

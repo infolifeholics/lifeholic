@@ -43,6 +43,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { COUNTRIES, detectCountryFromLocation } from '@/lib/countries';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useWishlist } from '@/components/providers/wishlist-provider';
 import { useCart } from '@/components/providers/cart-provider';
@@ -169,6 +170,20 @@ export function AccountDashboard() {
   const [city, setCity] = useState(profile?.city || '');
   const [country, setCountry] = useState(profile?.country || '');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+
+  const handleDetectCountry = async () => {
+    setDetecting(true);
+    try {
+      const detected = await detectCountryFromLocation();
+      setCountry(detected.name);
+      toast.success(`Location detected: ${detected.flag} ${detected.name}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Could not determine location. Please select manually.');
+    } finally {
+      setDetecting(false);
+    }
+  };
 
   // Notifications filtering
   const [notifCategory, setNotifCategory] = useState('all');
@@ -1683,8 +1698,30 @@ export function AccountDashboard() {
                       <Input id="p-city" value={city} onChange={(e) => setCity(e.target.value)} className="mt-1.5 rounded-xl text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold" placeholder="City" />
                     </div>
                     <div>
-                      <Label htmlFor="p-country" className="text-xs font-semibold text-white/60">Country</Label>
-                      <Input id="p-country" value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1.5 rounded-xl text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold" placeholder="Country" />
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="p-country" className="text-xs font-semibold text-white/60">Country</Label>
+                        <button
+                          type="button"
+                          onClick={handleDetectCountry}
+                          disabled={detecting}
+                          className="text-[10px] text-gold hover:underline flex items-center gap-0.5"
+                        >
+                          {detecting ? 'Detecting...' : '📍 Geolocate'}
+                        </button>
+                      </div>
+                      <select
+                        id="p-country"
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                        className="mt-1.5 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gold"
+                        required
+                      >
+                        {COUNTRIES.map((c) => (
+                          <option key={c.name} value={c.name} className="bg-zinc-950 text-white">
+                            {c.flag} {c.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 

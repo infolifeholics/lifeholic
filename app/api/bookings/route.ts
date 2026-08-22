@@ -358,6 +358,7 @@ export async function POST(req: Request) {
         const globalSettingsSnap = await transaction.get(globalSettingsRef);
         let meetingLink = null;
         let usdToInrRate = null;
+        let gstPercentage = 18;
         if (globalSettingsSnap.exists) {
           const gSettings = globalSettingsSnap.data();
           if (gSettings) {
@@ -367,17 +368,35 @@ export async function POST(req: Request) {
             if (typeof gSettings.usd_to_inr_rate === 'number' && gSettings.usd_to_inr_rate > 0) {
               usdToInrRate = gSettings.usd_to_inr_rate;
             }
+            if (typeof gSettings.gst_percentage === 'number') {
+              gstPercentage = gSettings.gst_percentage;
+            }
           }
         }
 
-        const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
+        // Fetch user profile inside transaction if user_id is provided
+        let profile = null;
+        if (user_id) {
+          const profileRef = adminDb.collection('profiles').doc(user_id);
+          const profileSnap = await transaction.get(profileRef);
+          if (profileSnap.exists) {
+            profile = profileSnap.data();
+          }
+        }
 
-        // Calculate and validate finalCurrency and finalAmount on the server side
-        const isIndiaCountry = clientCountry === 'IN';
-        const isIndiaTz = (client_timezone?.toLowerCase().includes('kolkata') ||
-                           client_timezone?.toLowerCase().includes('calcutta') ||
-                           client_timezone?.toLowerCase().includes('india'));
-        const finalCurrency = (isIndiaCountry || isIndiaTz) ? 'INR' : 'USD';
+        const clientCountry = profile?.country || req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
+
+        let finalCurrency = 'INR';
+        if (profile && profile.country) {
+          const countryStr = profile.country.trim().toLowerCase();
+          finalCurrency = (countryStr === 'india' || countryStr === 'in') ? 'INR' : 'USD';
+        } else {
+          const isIndiaCountry = clientCountry === 'IN' || clientCountry.toLowerCase() === 'india';
+          const isIndiaTz = (client_timezone?.toLowerCase().includes('kolkata') ||
+                             client_timezone?.toLowerCase().includes('calcutta') ||
+                             client_timezone?.toLowerCase().includes('india'));
+          finalCurrency = (isIndiaCountry || isIndiaTz) ? 'INR' : 'USD';
+        }
         
         if (finalCurrency === 'USD' && (!usdToInrRate || isNaN(usdToInrRate))) {
           throw new Error('International payments are currently unavailable. USD to INR exchange rate is not configured by the admin.');
@@ -385,8 +404,9 @@ export async function POST(req: Request) {
 
         let calculatedBaseAmount = 0;
         if (!isSubsequentBooking) {
+          let basePriceInr = 0;
           if (isSomatic) {
-            let basePriceInr = 11000;
+            basePriceInr = 11000;
             const planKey = somaticPlanName?.toLowerCase().includes('essential') ? 'essential' : somaticPlanName?.toLowerCase().includes('elite') ? 'elite' : 'premium';
             const somaticSettingsRef = adminDb.collection('settings').doc('somatic_plans');
             const somaticSettingsSnap = await transaction.get(somaticSettingsRef);
@@ -398,10 +418,16 @@ export async function POST(req: Request) {
             } else {
               basePriceInr = planKey === 'essential' ? 4444 : planKey === 'premium' ? 11000 : 21000;
             }
-            calculatedBaseAmount = finalCurrency === 'USD' && usdToInrRate ? Math.round(basePriceInr / usdToInrRate) : basePriceInr;
           } else {
-            calculatedBaseAmount = finalCurrency === 'USD' ? (service.price_usd || 0) : (service.price_inr || 0);
+            basePriceInr = service.price_inr || 0;
           }
+
+          const gstInr = Math.round((basePriceInr * gstPercentage) / 100);
+          const totalInr = basePriceInr + gstInr;
+
+          calculatedBaseAmount = finalCurrency === 'USD' && usdToInrRate
+            ? Math.round((totalInr / usdToInrRate) * 100) / 100
+            : totalInr;
         }
 
         const finalAmount = calculatedBaseAmount;

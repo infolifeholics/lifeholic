@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import type { Service } from '@/lib/types';
 import { Reveal } from '@/components/site/reveal';
-import { formatPrice } from '@/lib/format';
+import { ServicePriceBlock } from '@/components/services/service-price-block';
 
 export function ServiceBookingCta({ service }: { service: Service }) {
   return (
@@ -16,7 +16,7 @@ export function ServiceBookingCta({ service }: { service: Service }) {
                   Ready to begin?
                 </h2>
                 <p className="mt-3 max-w-md text-pretty text-muted-foreground">
-                  One session is enough to feel the difference presence makes. from {formatPrice(service.price_inr, 'INR')} · {service.duration_minutes} minutes.
+                  One session is enough to feel the difference presence makes. <ServicePriceBlock priceInr={service.price_inr} variant="cta" /> · {service.duration_minutes} minutes.
                 </p>
               </div>
               <Link

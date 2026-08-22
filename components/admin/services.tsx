@@ -260,17 +260,6 @@ export function AdminServices() {
               />
             </div>
             <div>
-              <Label htmlFor="s-price-usd">Price (USD) *</Label>
-              <Input
-                id="s-price-usd"
-                type="number"
-                value={editingService.price_usd || ''}
-                onChange={(e) => setEditingService({ ...editingService, price_usd: Number(e.target.value) })}
-                required
-                className="mt-1.5"
-              />
-            </div>
-            <div>
               <Label htmlFor="s-mode">Delivery Mode</Label>
               <select
                 id="s-mode"

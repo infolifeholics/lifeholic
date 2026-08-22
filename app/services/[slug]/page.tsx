@@ -7,7 +7,7 @@ import { ServiceFaq } from '@/components/services/faq';
 import { ServiceHero } from '@/components/services/hero';
 import { ServiceBookingCta } from '@/components/services/booking-cta';
 import { getServiceRoute } from '@/lib/routes';
-import { formatPrice } from '@/lib/format';
+import { ServicePriceBlock } from '@/components/services/service-price-block';
 import { DiscoveryCallModal } from '@/components/services/free-consultation-modal';
 
 export async function generateStaticParams() {
@@ -124,13 +124,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
                       <Video className="h-3 w-3 text-gold" /> Online
                     </span>
                   </div>
-                  <div className="flex items-end justify-between border-t border-white/10 pt-4">
-                    <dt className="text-white/80 font-semibold">Starting from</dt>
-                    <dd className="text-right">
-                      <p className="font-display text-2xl font-bold text-gold">{formatPrice(service.price_inr, 'INR')}</p>
-                      <p className="text-xs text-white/70 font-semibold">≈ {formatPrice(service.price_usd, 'USD')}</p>
-                    </dd>
-                  </div>
+                  <ServicePriceBlock priceInr={service.price_inr} variant="details" />
                 </dl>
                 <Link
                   href={`/booking?service=${service.slug}`}

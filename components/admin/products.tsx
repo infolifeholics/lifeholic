@@ -237,8 +237,8 @@ export function AdminProducts() {
       return false;
     }
 
-    if (price_inr === undefined || price_inr <= 0 || price_usd === undefined || price_usd <= 0) {
-      toast.error('Prices must be positive numbers.');
+    if (price_inr === undefined || price_inr <= 0) {
+      toast.error('Price must be a positive number.');
       return false;
     }
 
@@ -542,29 +542,6 @@ export function AdminProducts() {
                     onChange={(e) => setEditingProduct({ ...editingProduct, compare_at_inr: parseFloat(e.target.value) || null })}
                     className="mt-1.5 rounded-xl"
                     placeholder="1499"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="price-usd">Price (USD) *</Label>
-                  <Input
-                    id="price-usd"
-                    type="number"
-                    value={editingProduct.price_usd || ''}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, price_usd: parseFloat(e.target.value) || 0 })}
-                    className="mt-1.5 rounded-xl"
-                    placeholder="17"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="compare-usd">Discount Compare Price (USD)</Label>
-                  <Input
-                    id="compare-usd"
-                    type="number"
-                    value={editingProduct.compare_at_usd || ''}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, compare_at_usd: parseFloat(e.target.value) || null })}
-                    className="mt-1.5 rounded-xl"
-                    placeholder="29"
                   />
                 </div>
               </div>

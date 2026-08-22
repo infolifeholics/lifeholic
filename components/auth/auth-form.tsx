@@ -11,6 +11,7 @@ import { auth } from '@/lib/firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { COUNTRIES, detectCountryFromLocation } from '@/lib/countries';
 
 const showAlert = (msg: string) => {
   if (typeof window !== 'undefined' && (window as any).customAlert) {
@@ -30,10 +31,25 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [country, setCountry] = useState('India');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+
+  const handleDetectCountry = async () => {
+    setDetecting(true);
+    try {
+      const detected = await detectCountryFromLocation();
+      setCountry(detected.name);
+      toast.success(`Location detected: ${detected.flag} ${detected.name}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Could not determine location. Please select manually.');
+    } finally {
+      setDetecting(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +66,7 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
         showAlert('Success: Welcome back! Logging in.');
         router.push(redirect);
       } else if (mode === 'signup') {
-        const { error } = await signUp(email, password, fullName);
+        const { error } = await signUp(email, password, fullName, country);
         if (error) {
           toast.error(error);
           showAlert(`Signup Error: ${error}`);
@@ -126,10 +142,38 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
     <div className="space-y-6">
       <form onSubmit={submit} className="space-y-4">
         {mode === 'signup' && (
-          <div>
-            <Label htmlFor="name">Full name</Label>
-            <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5" required />
-          </div>
+          <>
+            <div>
+              <Label htmlFor="name">Full name</Label>
+              <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5" required />
+            </div>
+            <div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="country">Region / Country</Label>
+                <button
+                  type="button"
+                  onClick={handleDetectCountry}
+                  disabled={detecting}
+                  className="text-xs text-gold hover:underline flex items-center gap-1"
+                >
+                  {detecting ? 'Detecting...' : '📍 Use Current Location'}
+                </button>
+              </div>
+              <select
+                id="country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+                required
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.flag} {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
         )}
         {mode !== 'forgot_otp' && (
           <div>

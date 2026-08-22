@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ProductWishlistButton } from '@/components/shop/product-wishlist-button';
 import { formatPrice } from '@/lib/format';
+import { convertInrToUsd, getUserCurrency } from '@/lib/currency';
+import { doc, getDoc } from 'firebase/firestore';
 import { getProductRoute } from '@/lib/routes';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/components/providers/cart-provider';
@@ -20,7 +22,7 @@ import { showAppleCartNotification } from '@/components/shop/cart-notification';
 
 export function ShopGrid({ products: initialProducts }: { products: Product[] }) {
   const { items, add, setQuantity, remove } = useCart();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
 
   const [products, setProducts] = useState<Product[]>(initialProducts);
@@ -28,6 +30,24 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
   const [category, setCategory] = useState<string>('All');
   const [type, setType] = useState<'All' | 'digital' | 'physical'>('All');
   const [sort, setSort] = useState<'featured' | 'price-asc' | 'price-desc'>('featured');
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [detectedCurrency, setDetectedCurrency] = useState<'INR' | 'USD'>('INR');
+
+  useEffect(() => {
+    const currency = getUserCurrency(profile);
+    setDetectedCurrency(currency);
+  }, [profile]);
+
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'global')).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (typeof data.usd_to_inr_rate === 'number' && data.usd_to_inr_rate > 0) {
+          setExchangeRate(data.usd_to_inr_rate);
+        }
+      }
+    }).catch((err) => console.error(err));
+  }, []);
 
   useEffect(() => {
     const q = firestoreQuery(collection(db, 'products'), where('is_active', '==', true));
@@ -160,7 +180,13 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
       ) : (
         <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((p) => {
-            const onSale = p.compare_at_inr && p.compare_at_inr > p.price_inr;
+            const displayPrice = detectedCurrency === 'USD'
+              ? convertInrToUsd(p.price_inr, exchangeRate || 1)
+              : p.price_inr;
+            const displayComparePrice = p.compare_at_inr
+              ? (detectedCurrency === 'USD' ? convertInrToUsd(p.compare_at_inr, exchangeRate || 1) : p.compare_at_inr)
+              : null;
+            const onSale = displayComparePrice && displayComparePrice > displayPrice;
             return (
               <Link key={p.id} href={getProductRoute(p.slug)} className="group block h-full">
                 <article className="group relative h-full overflow-hidden rounded-3xl border border-border/60 bg-card/60 shadow-soft transition-all duration-500 ease-soft hover:-translate-y-1.5 hover:shadow-float">
@@ -190,10 +216,10 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                     <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{p.tagline}</p>
                     <div className="mt-4 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-medium text-foreground">{formatPrice(p.price_inr, 'INR')}</span>
+                        <span className="font-medium text-foreground">{formatPrice(displayPrice, detectedCurrency)}</span>
                         {onSale && (
                           <span className="text-xs text-muted-foreground line-through">
-                            {formatPrice(p.compare_at_inr as number, 'INR')}
+                            {formatPrice(displayComparePrice as number, detectedCurrency)}
                           </span>
                         )}
                       </div>

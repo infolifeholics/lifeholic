@@ -29,6 +29,8 @@ type AdminSettings = {
   reminder_hours_before?: number;
   google_meet_link?: string;
   usd_to_inr_rate?: number;
+  shipping_charge?: number;
+  gst_percentage?: number;
 };
 
 type CertificateSettings = {
@@ -241,6 +243,8 @@ export function AdminSettingsPanel() {
     reminder_hours_before: 24,
     google_meet_link: '',
     usd_to_inr_rate: 85,
+    shipping_charge: 0,
+    gst_percentage: 18,
   });
 
   const [certSettings, setCertSettings] = useState<CertificateSettings>(DEFAULT_CERTIFICATE_SETTINGS);
@@ -432,7 +436,7 @@ export function AdminSettingsPanel() {
               <h4 className="font-semibold text-sm text-foreground flex items-center gap-1.5">
                 <Globe className="h-4 w-4 text-gold" /> Business Information
               </h4>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <Label>Business Brand Name</Label>
                   <Input
@@ -452,6 +456,36 @@ export function AdminSettingsPanel() {
                     onChange={(e) => {
                       const val = parseFloat(e.target.value);
                       setGlobalSettings({ ...globalSettings, usd_to_inr_rate: isNaN(val) ? 85 : val });
+                    }}
+                    className="mt-1.5 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label>Product Shipping Charge (₹)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Enter shipping charge in INR"
+                    value={globalSettings.shipping_charge !== undefined && globalSettings.shipping_charge !== null ? globalSettings.shipping_charge : ''}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setGlobalSettings({ ...globalSettings, shipping_charge: isNaN(val) ? undefined : val });
+                    }}
+                    className="mt-1.5 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label>GST Percentage (%)</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="Enter GST percentage"
+                    value={globalSettings.gst_percentage !== undefined && globalSettings.gst_percentage !== null ? globalSettings.gst_percentage : 18}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setGlobalSettings({ ...globalSettings, gst_percentage: isNaN(val) ? 18 : val });
                     }}
                     className="mt-1.5 rounded-xl"
                   />

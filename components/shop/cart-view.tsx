@@ -8,10 +8,50 @@ import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/format';
 
 import { toast } from 'sonner';
+import { convertInrToUsd, getUserCurrency } from '@/lib/currency';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 
 export function CartView() {
-  const { items, setQuantity, remove, subtotal, clear, count } = useCart();
-  const { user } = useAuth();
+  const { items, setQuantity, remove, clear, count } = useCart();
+  const { user, profile } = useAuth();
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [shippingChargeSetting, setShippingChargeSetting] = useState<number | null>(null);
+  const [detectedCurrency, setDetectedCurrency] = useState<'INR' | 'USD'>('INR');
+
+  useEffect(() => {
+    const currency = getUserCurrency(profile);
+    setDetectedCurrency(currency);
+  }, [profile]);
+
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'global')).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (typeof data.usd_to_inr_rate === 'number' && data.usd_to_inr_rate > 0) {
+          setExchangeRate(data.usd_to_inr_rate);
+        }
+        if (typeof data.shipping_charge === 'number') {
+          setShippingChargeSetting(data.shipping_charge);
+        }
+      }
+    }).catch((err) => console.error(err));
+  }, []);
+
+  const convertedSubtotal = items.reduce((acc, item) => {
+    const itemPrice = detectedCurrency === 'USD'
+      ? convertInrToUsd(item.price_inr || item.price, exchangeRate || 1)
+      : (item.price_inr || item.price);
+    return acc + itemPrice * item.quantity;
+  }, 0);
+
+  const baseShippingInr = shippingChargeSetting || 0;
+  const convertedShipping = baseShippingInr > 0
+    ? (detectedCurrency === 'USD' ? convertInrToUsd(baseShippingInr, exchangeRate || 1) : baseShippingInr)
+    : 0;
+
+  const total = convertedSubtotal + convertedShipping;
 
   if (count === 0) {
     return (
@@ -34,9 +74,6 @@ export function CartView() {
       </div>
     );
   }
-
-  const shipping = 0;
-  const total = subtotal + shipping;
 
   return (
     <div>
@@ -101,7 +138,14 @@ export function CartView() {
                   ) : (
                     <span className="text-xs text-muted-foreground">Digital · {i.quantity} ×</span>
                   )}
-                  <span className="font-medium text-foreground">{formatPrice(i.price * i.quantity, 'INR')}</span>
+                  <span className="font-medium text-foreground">
+                    {formatPrice(
+                      (detectedCurrency === 'USD'
+                        ? convertInrToUsd(i.price_inr || i.price, exchangeRate || 1)
+                        : (i.price_inr || i.price)) * i.quantity,
+                      detectedCurrency
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
@@ -119,9 +163,11 @@ export function CartView() {
         <aside className="h-fit rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft lg:sticky lg:top-28">
           <h2 className="font-display text-xl font-medium text-foreground">Order summary</h2>
           <dl className="mt-5 space-y-3 text-sm">
-            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(subtotal, 'INR')}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{shipping === 0 ? 'Free' : formatPrice(shipping, 'INR')}</dd></div>
-            <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, 'INR')}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, detectedCurrency)}</dd></div>
+            {baseShippingInr > 0 && (
+              <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(convertedShipping, detectedCurrency)}</dd></div>
+            )}
+            <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, detectedCurrency)}</dd></div>
           </dl>
           <Button asChild className="mt-6 w-full rounded-full" size="lg">
             <Link href={user ? "/shop/checkout" : "/auth/login?redirect=/shop/checkout"}>

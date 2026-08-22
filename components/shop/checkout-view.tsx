@@ -11,13 +11,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
+import { convertInrToUsd, getUserCurrency } from '@/lib/currency';
 import Script from 'next/script';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 export function CheckoutView() {
   const { items, subtotal, clear } = useCart();
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -38,30 +39,7 @@ export function CheckoutView() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [detectedCurrency, setDetectedCurrency] = useState<'INR' | 'USD'>('INR');
-
-  useEffect(() => {
-    // Detect currency dynamically based on client timezone
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
-      const isIndia = tz.toLowerCase().includes('kolkata') || tz.toLowerCase().includes('india');
-      setDetectedCurrency(isIndia ? 'INR' : 'USD');
-      setForm((prev) => ({
-        ...prev,
-        country: isIndia ? 'India' : 'United States',
-      }));
-    } catch {
-      setDetectedCurrency('INR');
-      setForm((prev) => ({ ...prev, country: 'India' }));
-    }
-  }, []);
-
-  // Update currency dynamically if user manually changes country input
-  useEffect(() => {
-    if (form.country) {
-      const isIndia = form.country.trim().toLowerCase() === 'india';
-      setDetectedCurrency(isIndia ? 'INR' : 'USD');
-    }
-  }, [form.country]);
+  const [shippingChargeSetting, setShippingChargeSetting] = useState<number | null>(null);
 
   // Sync profile details if they load dynamically later
   useEffect(() => {
@@ -74,6 +52,42 @@ export function CheckoutView() {
     }
   }, [user]);
 
+  // Initialize or update country & currency based on profile or guest geo/tz
+  useEffect(() => {
+    if (profile) {
+      const isIndia = profile.country ? profile.country.trim().toLowerCase() === 'india' : true;
+      setDetectedCurrency(isIndia ? 'INR' : 'USD');
+      setForm((prev) => ({
+        ...prev,
+        country: profile.country || 'India',
+      }));
+    } else {
+      // Guest detection using timezone
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const isIndia = tz.toLowerCase().includes('kolkata') || tz.toLowerCase().includes('calcutta');
+        setDetectedCurrency(isIndia ? 'INR' : 'USD');
+        setForm((prev) => ({
+          ...prev,
+          country: isIndia ? 'India' : 'United States',
+        }));
+      } catch {
+        setDetectedCurrency('INR');
+        setForm((prev) => ({ ...prev, country: 'India' }));
+      }
+    }
+  }, [profile]);
+
+  // Update currency dynamically if guest manually changes country input
+  useEffect(() => {
+    if (form.country) {
+      const isIndia = form.country.trim().toLowerCase() === 'india';
+      if (!user) {
+        setDetectedCurrency(isIndia ? 'INR' : 'USD');
+      }
+    }
+  }, [form.country, user]);
+
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [rateError, setRateError] = useState(false);
   useEffect(() => {
@@ -82,13 +96,13 @@ export function CheckoutView() {
         const data = snap.data();
         if (typeof data.usd_to_inr_rate === 'number' && data.usd_to_inr_rate > 0) {
           setExchangeRate(data.usd_to_inr_rate);
-          return;
+        }
+        if (typeof data.shipping_charge === 'number') {
+          setShippingChargeSetting(data.shipping_charge);
         }
       }
-      setRateError(true);
     }).catch(err => {
       console.error(err);
-      setRateError(true);
     });
   }, []);
 
@@ -97,7 +111,7 @@ export function CheckoutView() {
 
   const convertedSubtotal = items.reduce((acc, item) => {
     const price = detectedCurrency === 'USD' 
-      ? (item.price_usd || Math.round((item.price_inr || item.price) / (exchangeRate || 1))) 
+      ? convertInrToUsd(item.price_inr || item.price, exchangeRate || 1) 
       : (item.price_inr || item.price);
     return acc + price * item.quantity;
   }, 0);
@@ -105,8 +119,10 @@ export function CheckoutView() {
   const discount = applied?.discount || 0;
   const convertedDiscount = discount / currencyRate;
 
-  const baseShippingInr = 0;
-  const convertedShipping = detectedCurrency === 'USD' ? Math.round(baseShippingInr / (exchangeRate || 1)) : baseShippingInr;
+  const baseShippingInr = shippingChargeSetting || 0;
+  const convertedShipping = baseShippingInr > 0
+    ? (detectedCurrency === 'USD' ? convertInrToUsd(baseShippingInr, exchangeRate || 1) : baseShippingInr)
+    : 0;
 
   const total = Math.max(0, convertedSubtotal - convertedDiscount + convertedShipping);
 
@@ -168,7 +184,7 @@ export function CheckoutView() {
             id: i.id,
             slug: i.slug,
             name: i.name,
-            price: detectedCurrency === 'USD' ? (i.price_usd || Math.round((i.price_inr || i.price) / (exchangeRate || 1))) : (i.price_inr || i.price),
+            price: detectedCurrency === 'USD' ? convertInrToUsd(i.price_inr || i.price, exchangeRate || 1) : (i.price_inr || i.price),
             quantity: i.quantity,
             image: i.image,
             type: i.type,
@@ -437,7 +453,9 @@ export function CheckoutView() {
           <dl className="mt-5 space-y-3 border-t border-border/50 pt-5 text-sm">
             <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, detectedCurrency)}</dd></div>
             {discount > 0 && <div className="flex justify-between"><dt className="text-success">Discount</dt><dd className="font-medium text-success">−{formatPrice(convertedDiscount, detectedCurrency)}</dd></div>}
-            <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{convertedShipping === 0 ? 'Free' : formatPrice(convertedShipping, detectedCurrency)}</dd></div>
+            {baseShippingInr > 0 && (
+              <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(convertedShipping, detectedCurrency)}</dd></div>
+            )}
             <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, detectedCurrency)}</dd></div>
             {detectedCurrency === 'USD' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
               <div className="mt-2 inline-flex self-end rounded-full px-3 py-1 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(10,8,6,0.85)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>

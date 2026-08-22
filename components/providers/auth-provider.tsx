@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { auth, googleProvider, db } from '@/lib/firebase';
 import { collection, doc, getDoc, setDoc, getDocs, limit, orderBy } from 'firebase/firestore';
+import { toast } from 'sonner';
+import { COUNTRIES, detectCountryFromLocation } from '@/lib/countries';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -45,7 +47,7 @@ type AuthContextValue = {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string, country: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -191,7 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { error: error.message ?? 'Sign in failed' };
         }
       },
-      signUp: async (email, password, fullName) => {
+      signUp: async (email, password, fullName, country) => {
         try {
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           if (userCredential.user) {
@@ -219,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               bio: '',
               address: '',
               avatar_url: '',
+              country: country,
             };
             await setDoc(docRef, newProfile);
             setProfile(newProfile);
@@ -279,7 +282,103 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [compatUser, firebaseUser, session, profile, loading]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const [showRegionModal, setShowRegionModal] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState('India');
+  const [regionSaving, setRegionSaving] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+
+  const handleDetectCountry = async () => {
+    setDetecting(true);
+    try {
+      const detected = await detectCountryFromLocation();
+      setSelectedRegion(detected.name);
+      toast.success(`Location detected: ${detected.flag} ${detected.name}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Could not determine location. Please select manually.');
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!loading && compatUser && profile && (!profile.country || profile.country === 'Other Country')) {
+      setShowRegionModal(true);
+      if (profile.country && profile.country !== 'Other Country') {
+        setSelectedRegion(profile.country);
+      }
+    } else {
+      setShowRegionModal(false);
+    }
+  }, [loading, compatUser, profile]);
+
+  const handleSaveRegion = async () => {
+    if (!compatUser) return;
+    setRegionSaving(true);
+    try {
+      await setDoc(doc(db, 'profiles', compatUser.uid), { country: selectedRegion }, { merge: true });
+      await loadProfile(compatUser.uid);
+      setShowRegionModal(false);
+    } catch (err) {
+      console.error('Failed to save region:', err);
+    } finally {
+      setRegionSaving(false);
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {showRegionModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 text-white rounded-3xl p-6 shadow-2xl space-y-6 text-center">
+            <div className="space-y-2">
+              <h3 className="font-display text-2xl font-semibold tracking-tight text-white animate-pulse">Select Your Country</h3>
+              <p className="text-sm text-zinc-400">
+                To continue, please select your country/region. This determines your payment currency and product shipping charges.
+              </p>
+            </div>
+            
+            <div className="space-y-4 text-left">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="modal-country" className="text-xs font-semibold text-zinc-400">Country / Region</label>
+                  <button
+                    type="button"
+                    onClick={handleDetectCountry}
+                    disabled={detecting}
+                    className="text-xs text-gold hover:underline flex items-center gap-1"
+                  >
+                    {detecting ? 'Detecting...' : '📍 Use Current Location'}
+                  </button>
+                </div>
+                <select
+                  id="modal-country"
+                  value={selectedRegion}
+                  onChange={(e) => setSelectedRegion(e.target.value)}
+                  className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gold"
+                  required
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c.name} value={c.name} className="bg-zinc-950 text-white">
+                      {c.flag} {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveRegion}
+              disabled={regionSaving}
+              className="w-full py-3 px-6 rounded-full bg-gold hover:bg-yellow-500 text-zinc-950 font-bold transition-colors disabled:opacity-50"
+            >
+              {regionSaving ? 'Saving...' : 'Confirm & Submit'}
+            </button>
+          </div>
+        </div>
+      )}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

@@ -12,9 +12,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { email, full_name, phone, address, items, coupon_code, user_id } = body || {};
 
-    const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
-    const currency = clientCountry === 'IN' ? 'INR' : 'USD';
-
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Valid email is required.' }, { status: 400 });
     }
@@ -22,8 +19,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Your bag is empty.' }, { status: 400 });
     }
 
-    // Fetch global settings to get dynamic exchange rate using adminDb
-    let usdToInrRate = null;
+    // Fetch user profile from Firestore to determine currency
+    let currency = 'INR';
+    if (user_id) {
+      const profileSnap = await adminDb.collection('profiles').doc(user_id).get();
+      if (profileSnap.exists) {
+        const profile = profileSnap.data() || {};
+        if (profile.country) {
+          const countryStr = profile.country.trim().toLowerCase();
+          currency = (countryStr === 'india' || countryStr === 'in') ? 'INR' : 'USD';
+        } else {
+          const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
+          currency = clientCountry === 'IN' ? 'INR' : 'USD';
+        }
+      } else {
+        const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
+        currency = clientCountry === 'IN' ? 'INR' : 'USD';
+      }
+    } else {
+      const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
+      currency = clientCountry === 'IN' ? 'INR' : 'USD';
+    }
+
+    // Fetch global settings to get dynamic exchange rate & shipping charge using adminDb
+    let usdToInrRate = 85;
+    let shippingChargeSetting = 0;
     try {
       const globalSnap = await adminDb.collection('settings').doc('global').get();
       if (globalSnap.exists) {
@@ -31,10 +51,18 @@ export async function POST(req: Request) {
         if (typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
           usdToInrRate = gData.usd_to_inr_rate;
         }
+        if (typeof gData.shipping_charge === 'number') {
+          shippingChargeSetting = gData.shipping_charge;
+        }
       }
     } catch (err) {
-      console.error('Error fetching exchange rate in shop checkout:', err);
+      console.error('Error fetching global settings in shop checkout:', err);
     }
+
+    const convertInrToUsd = (priceInr: number, rate: number) => {
+      if (!rate || rate <= 0) return Math.round(priceInr / 85 * 100) / 100;
+      return Math.round((priceInr / rate) * 100) / 100;
+    };
 
     if (currency === 'USD' && (!usdToInrRate || isNaN(usdToInrRate))) {
       return NextResponse.json({ error: 'International payments are currently unavailable. USD to INR exchange rate is not configured by the admin.' }, { status: 400 });
@@ -50,7 +78,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `Product not found.` }, { status: 404 });
       }
       const product = productSnap.data() || {};
-      const price = currency === 'USD' && usdToInrRate ? (product.price_usd || Math.round(product.price_inr / usdToInrRate)) : (product.price_inr || 0);
+      const price = currency === 'USD' ? convertInrToUsd(product.price_inr || 0, usdToInrRate) : (product.price_inr || 0);
       calculatedSubtotal += price * item.quantity;
       
       validatedItems.push({
@@ -94,9 +122,10 @@ export async function POST(req: Request) {
     }
 
     // 3. Calculate shipping
-    const hasPhysical = validatedItems.some((i) => i.type === 'physical');
-    const baseShippingInr = 0;
-    const finalShipping = currency === 'USD' && usdToInrRate ? Math.round(baseShippingInr / usdToInrRate) : baseShippingInr;
+    const baseShippingInr = shippingChargeSetting || 0;
+    const finalShipping = baseShippingInr > 0
+      ? (currency === 'USD' ? convertInrToUsd(baseShippingInr, usdToInrRate) : baseShippingInr)
+      : 0;
 
     const baseAmount = Math.max(0, calculatedSubtotal - calculatedDiscount + finalShipping);
     let finalTotal = baseAmount;
