@@ -8,42 +8,19 @@ import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/format';
 
 import { toast } from 'sonner';
-import { convertInrToCurrency, getUserCurrency } from '@/lib/currency';
+import { convertInrToCurrency } from '@/lib/currency';
+import { useCurrency } from '@/components/providers/currency-provider';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
 export function CartView() {
   const { items, setQuantity, remove, clear, count } = useCart();
-  const { user, profile } = useAuth();
-  const [rates, setRates] = useState<Record<string, number>>({});
-  const [ratesError, setRatesError] = useState(false);
+  const { user } = useAuth();
+  const { currentCurrency, exchangeRate, isLoading, rates } = useCurrency();
   const [shippingChargeSetting, setShippingChargeSetting] = useState<number | null>(null);
-  const [detectedCurrency, setDetectedCurrency] = useState<string>('INR');
 
   useEffect(() => {
-    const currency = getUserCurrency(profile);
-    setDetectedCurrency(currency);
-  }, [profile]);
-
-  useEffect(() => {
-    fetch('/api/exchange-rates')
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then((data) => {
-        if (data && data.rates) {
-          setRates(data.rates);
-        } else {
-          setRatesError(true);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load exchange rates in CartView:', err);
-        setRatesError(true);
-      });
-
     getDoc(doc(db, 'settings', 'global')).then((snap) => {
       if (snap.exists()) {
         const data = snap.data();
@@ -54,21 +31,19 @@ export function CartView() {
     }).catch((err) => console.error(err));
   }, []);
 
-  const isInternational = detectedCurrency !== 'INR';
-  const rate = isInternational ? rates[detectedCurrency] : 1;
-  const isLoadingRates = isInternational && Object.keys(rates).length === 0 && !ratesError;
-  const hasError = isInternational && ratesError && Object.keys(rates).length === 0;
+  const isInternational = currentCurrency !== 'INR';
+  const hasError = isInternational && Object.keys(rates).length === 0;
 
   const convertedSubtotal = items.reduce((acc, item) => {
     const itemPrice = isInternational
-      ? convertInrToCurrency(item.price_inr || item.price, rate || 0)
+      ? convertInrToCurrency(item.price_inr || item.price, exchangeRate || 0, currentCurrency)
       : (item.price_inr || item.price);
     return acc + itemPrice * item.quantity;
   }, 0);
 
   const baseShippingInr = shippingChargeSetting || 0;
   const convertedShipping = baseShippingInr > 0
-    ? (isInternational ? convertInrToCurrency(baseShippingInr, rate || 0) : baseShippingInr)
+    ? (isInternational ? convertInrToCurrency(baseShippingInr, exchangeRate || 0, currentCurrency) : baseShippingInr)
     : 0;
 
   const total = convertedSubtotal + convertedShipping;
@@ -161,9 +136,9 @@ export function CartView() {
                   <span className="font-medium text-foreground">
                     {formatPrice(
                       (isInternational
-                        ? convertInrToCurrency(i.price_inr || i.price, rate || 0)
+                        ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency)
                         : (i.price_inr || i.price)) * i.quantity,
-                      detectedCurrency
+                      currentCurrency
                     )}
                   </span>
                 </div>
@@ -187,21 +162,21 @@ export function CartView() {
               Pricing is temporarily unavailable for your region. Please try again later.
             </div>
           )}
-          {isLoadingRates ? (
+          {isLoading ? (
             <div className="mt-4 text-xs text-white/50 animate-pulse p-3">
               Loading regional prices...
             </div>
           ) : (
             <dl className="mt-5 space-y-3 text-sm">
-              <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, detectedCurrency)}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, currentCurrency)}</dd></div>
               {baseShippingInr > 0 && (
-                <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(convertedShipping, detectedCurrency)}</dd></div>
+                <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(convertedShipping, currentCurrency)}</dd></div>
               )}
-              <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, detectedCurrency)}</dd></div>
+              <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, currentCurrency)}</dd></div>
             </dl>
           )}
-          <Button asChild={!isLoadingRates && !hasError} disabled={isLoadingRates || hasError} className="mt-6 w-full rounded-full" size="lg">
-            {isLoadingRates ? (
+          <Button asChild={!isLoading && !hasError} disabled={isLoading || hasError} className="mt-6 w-full rounded-full" size="lg">
+            {isLoading ? (
               <span className="flex items-center justify-center gap-1.5"><Loader2 className="h-4 w-4 animate-spin" /> Loading rates...</span>
             ) : hasError ? (
               <span className="text-rose-400">Pricing Unavailable</span>

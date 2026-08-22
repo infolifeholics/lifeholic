@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useCurrency } from '@/components/providers/currency-provider';
+import { COUNTRIES } from '@/lib/countries';
 
 const COLS = [
   {
@@ -43,6 +45,7 @@ const COLS = [
 export function SiteFooter() {
   const pathname = usePathname();
   const [email, setEmail] = useState('');
+  const { currentCountry, setOverrideCountry, locationSource } = useCurrency();
   if (pathname.startsWith('/admin') || pathname.startsWith('/auth')) return null;
 
   const subscribe = async (e: React.FormEvent) => {
@@ -146,10 +149,29 @@ export function SiteFooter() {
 
         <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-sm text-white/70 sm:flex-row">
           <p>© {new Date().getFullYear()} TheLifeHolics. Crafted with intention.</p>
-          <p className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 rounded-full bg-success animate-breathe" />
-            Working hours 10:00 AM to 05:30 PM · IST &amp; global timezones
-          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-white/60 text-xs">Region:</span>
+              <select
+                value={currentCountry}
+                onChange={(e) => setOverrideCountry(e.target.value)}
+                className="rounded-full bg-white/5 border border-white/10 text-white text-xs px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-gold cursor-pointer"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code} className="bg-zinc-950 text-white font-sans">
+                    {c.flag} {c.name}
+                  </option>
+                ))}
+              </select>
+              {locationSource === 'manual' && (
+                <span className="text-[10px] text-gold font-bold animate-pulse">(Temporary Override)</span>
+              )}
+            </div>
+            <p className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full bg-success animate-breathe" />
+              Working hours 10:00 AM to 05:30 PM · IST &amp; global timezones
+            </p>
+          </div>
         </div>
       </div>
     </footer>

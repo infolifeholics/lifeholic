@@ -10,6 +10,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { currencyForTimezone, detectTimezone, formatPrice } from '@/lib/format';
 import { convertInrToCurrency } from '@/lib/currency';
+import { useCurrency } from '@/components/providers/currency-provider';
 
 type SurveyData = {
   category: string;
@@ -298,10 +299,7 @@ export default function SomaticPlansPage() {
     });
   };
   const billingCycle = 'total';
-  const [tz, setTz] = useState(detectTimezone());
-  const currency = currencyForTimezone(tz);
-  const [rates, setRates] = useState<Record<string, number>>({});
-  const [rateError, setRateError] = useState(false);
+  const { currentCountry, currentCurrency, exchangeRate, isLoading: currencyLoading, rates } = useCurrency();
   const [planServices, setPlanServices] = useState<{
     essential: any;
     premium: any;
@@ -318,23 +316,6 @@ export default function SomaticPlansPage() {
     } catch (e) {
       console.error('Error loading survey:', e);
     }
-
-    fetch('/api/exchange-rates')
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then((data) => {
-        if (data && data.rates) {
-          setRates(data.rates);
-        } else {
-          setRateError(true);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load exchange rates in somatic plans page:', err);
-        setRateError(true);
-      });
 
     const docRef = doc(db, 'settings', 'somatic_plans');
     const unsub = onSnapshot(docRef, (snap) => {
@@ -404,13 +385,12 @@ export default function SomaticPlansPage() {
     return () => unsub();
   }, []);
 
-  const isInternational = currency !== 'INR';
-  const rate = isInternational ? rates[currency] : 1;
+  const isInternational = currentCurrency !== 'INR';
 
   const handleSelectPlan = (planKey: 'essential' | 'premium' | 'elite', defaultPriceInr: number) => {
     const s = planServices ? planServices[planKey] : null;
     const finalPriceInr = s?.price_inr || defaultPriceInr;
-    const finalPrice = isInternational ? convertInrToCurrency(finalPriceInr, rate || 0) : finalPriceInr;
+    const finalPrice = isInternational ? convertInrToCurrency(finalPriceInr, exchangeRate || 0, currentCurrency) : finalPriceInr;
     const finalTitle = s?.title || (planKey === 'essential' ? 'Personal Healing & Clarity Session' : planKey === 'elite' ? 'Ancestral Healing Session' : '4-Week Deep Transformation Program');
     const finalId = s?.id || `somatic_${planKey}`;
 
@@ -455,9 +435,9 @@ export default function SomaticPlansPage() {
   };
 
   const prices = {
-    essential: isInternational ? convertInrToCurrency(rawPrices.essential, rate || 0) : rawPrices.essential,
-    premium: isInternational ? convertInrToCurrency(rawPrices.premium, rate || 0) : rawPrices.premium,
-    elite: isInternational ? convertInrToCurrency(rawPrices.elite, rate || 0) : rawPrices.elite,
+    essential: isInternational ? convertInrToCurrency(rawPrices.essential, exchangeRate || 0, currentCurrency) : rawPrices.essential,
+    premium: isInternational ? convertInrToCurrency(rawPrices.premium, exchangeRate || 0, currentCurrency) : rawPrices.premium,
+    elite: isInternational ? convertInrToCurrency(rawPrices.elite, exchangeRate || 0, currentCurrency) : rawPrices.elite,
   };
 
   const formatPlanPrice = (priceVal: number) => {
@@ -547,7 +527,7 @@ export default function SomaticPlansPage() {
             Back to search
           </Link>
 
-          {currency === 'USD' && rateError && (
+          {currentCurrency !== 'INR' && Object.keys(rates).length === 0 && (
             <div className="rounded-3xl border border-destructive/30 bg-destructive/5 p-6 mb-8 text-sm text-destructive leading-relaxed font-medium">
               International bookings are currently unavailable because the exchange rate has not been configured by the admin. Please contact the administrator.
             </div>
@@ -618,7 +598,7 @@ export default function SomaticPlansPage() {
 
                     <div className="mt-6">
                       <span className="font-display text-4xl font-semibold text-gold">
-                        {formatPrice(priceVal, currency)}
+                        {formatPrice(priceVal, currentCurrency)}
                       </span>
                       <span className="text-xs text-muted-foreground ml-1">/ {planKey === 'essential' ? 'session' : 'program'}</span>
                       {(() => {
@@ -651,7 +631,7 @@ export default function SomaticPlansPage() {
                     {planKey === 'premium' ? (
                       <Button
                         onClick={() => handleSelectPlan('premium', 11000)}
-                        disabled={currency === 'USD' && rateError}
+                        disabled={currentCurrency !== 'INR' && Object.keys(rates).length === 0}
                         className="
                           group
                           relative
@@ -681,7 +661,7 @@ export default function SomaticPlansPage() {
                     ) : planKey === 'elite' ? (
                       <Button
                         onClick={() => handleSelectPlan('elite', 21000)}
-                        disabled={currency === 'USD' && rateError}
+                        disabled={currentCurrency !== 'INR' && Object.keys(rates).length === 0}
                         className="
                           group
                           relative
@@ -713,7 +693,7 @@ export default function SomaticPlansPage() {
                     ) : (
                       <Button
                         onClick={() => handleSelectPlan('essential', 4444)}
-                        disabled={currency === 'USD' && rateError}
+                        disabled={currentCurrency !== 'INR' && Object.keys(rates).length === 0}
                         className="
                           group
                           relative

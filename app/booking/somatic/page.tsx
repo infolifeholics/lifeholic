@@ -17,7 +17,7 @@ import { COMMON_TIMEZONES, currencyForTimezone, detectTimezone, formatInTz, form
 import { useAuth } from '@/components/providers/auth-provider';
 import { AuthModal } from '@/components/auth/auth-modal';
 import { convertInrToCurrency } from '@/lib/currency';
-
+import { useCurrency } from '@/components/providers/currency-provider';
 
 type Slot = {
   start: string;
@@ -30,13 +30,13 @@ function SomaticBookingFlowContent() {
   const router = useRouter();
   const search = useSearchParams();
   const { user, profile } = useAuth();
+  const { currentCurrency, exchangeRate, isLoading, rates } = useCurrency();
   const continueBtnRef = useRef<HTMLDivElement>(null);
 
   const [planName, setPlanName] = useState('Premium');
   const [planTitle, setPlanTitle] = useState('4-Week Deep Transformation Program');
-  const [price, setPrice] = useState(10800);
+  const [basePriceInr, setBasePriceInr] = useState(10800);
   const [survey, setSurvey] = useState<any>(null);
-  const [rates, setRates] = useState<Record<string, number>>({});
   const [rateError, setRateError] = useState(false);
 
   const [step, setStep] = useState(0); // 0: Date & Time, 1: Details, 2: Confirm
@@ -102,20 +102,6 @@ function SomaticBookingFlowContent() {
         // Fetch price dynamically from Firestore Settings to stay connected to Admin Panel edits
         const somaticDocRef = doc(db, 'settings', 'somatic_plans');
         const somaticSnap = await getDoc(somaticDocRef);
-        // Fetch exchange rates from the API endpoint
-        const res = await fetch('/api/exchange-rates');
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        const exchangeRates = data.rates || {};
-        setRates(exchangeRates);
-
-        const currency = currencyForTimezone(tz);
-        const isInternational = currency !== 'INR';
-        const rate = isInternational ? exchangeRates[currency] : 1;
-
-        if (isInternational && !rate) {
-          setRateError(true);
-        }
 
         if (somaticSnap.exists()) {
           const sData = somaticSnap.data();
@@ -126,16 +112,19 @@ function SomaticBookingFlowContent() {
             priceKey = 'elite_price_inr';
           }
           const rawPrice = sData[priceKey] || currentPrice;
-          setPrice(isInternational && rate ? convertInrToCurrency(rawPrice, rate) : rawPrice);
+          setBasePriceInr(rawPrice);
         } else {
-          setPrice(isInternational && rate ? convertInrToCurrency(currentPrice, rate) : currentPrice);
+          setBasePriceInr(currentPrice);
         }
       } catch (e) {
         console.error('Error fetching service details:', e);
       }
     };
     fetchServiceDetails();
-  }, [search, serviceId, tz]);
+  }, [search, serviceId]);
+
+  const isInternational = currentCurrency !== 'INR';
+  const price = isInternational && exchangeRate ? convertInrToCurrency(basePriceInr, exchangeRate, currentCurrency) : basePriceInr;
 
   // Pre-fill user profile info if logged in
   useEffect(() => {
@@ -226,7 +215,7 @@ function SomaticBookingFlowContent() {
           mode,
           notes: details.notes,
           amount: price,
-          currency: currencyForTimezone(tz),
+          currency: currentCurrency,
           user_id: user?.uid || null,
           status: 'pending',
           payment_status: 'unpaid',
@@ -605,7 +594,7 @@ function SomaticBookingFlowContent() {
 
             <div className="border-t border-border/40 pt-4 flex items-center justify-between font-display">
               <span className="text-sm font-medium text-foreground">Total Price:</span>
-              <span className="text-sm font-sans text-black">{formatPrice(price, currencyForTimezone(tz))}</span>
+              <span className="text-sm font-sans text-black">{formatPrice(price, currentCurrency)}</span>
             </div>
           </div>
         </div>

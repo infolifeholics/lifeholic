@@ -11,8 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { formatPrice, currencyForTimezone } from '@/lib/format';
-import { convertInrToCurrency, getUserCurrency, getCurrencyForCountryCode } from '@/lib/currency';
+import { convertInrToCurrency, toRazorpayAmount } from '@/lib/currency';
 import { getCountryByName } from '@/lib/countries';
+import { useCurrency } from '@/components/providers/currency-provider';
 import Script from 'next/script';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -20,6 +21,7 @@ import { doc, getDoc } from 'firebase/firestore';
 export function CheckoutView() {
   const { items, subtotal, clear } = useCart();
   const { user, profile, loading } = useAuth();
+  const { currentCountry, currentCurrency, exchangeRate, isLoading, rates, setOverrideCountry } = useCurrency();
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -39,7 +41,6 @@ export function CheckoutView() {
   const [razorpayReady, setRazorpayReady] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-  const [detectedCurrency, setDetectedCurrency] = useState<string>('INR');
   const [shippingChargeSetting, setShippingChargeSetting] = useState<number | null>(null);
 
   // Sync profile details if they load dynamically later
@@ -56,47 +57,27 @@ export function CheckoutView() {
   // Initialize or update country & currency based on profile or guest geo/tz
   useEffect(() => {
     if (profile) {
-      const cleanCountry = profile.country ? profile.country.trim() : 'India';
-      let code = '';
-      if (cleanCountry.length === 2) {
-        code = cleanCountry;
-      } else {
-        const countryObj = getCountryByName(cleanCountry);
-        code = countryObj ? countryObj.code : '';
-      }
-      const mappedCurrency = getCurrencyForCountryCode(code);
-      setDetectedCurrency(mappedCurrency);
       setForm((prev) => ({
         ...prev,
         country: profile.country || 'India',
       }));
-    } else {
-      // Guest detection using timezone
-      try {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const mappedCurrency = currencyForTimezone(tz);
-        setDetectedCurrency(mappedCurrency);
-        
-        let initialCountry = 'India';
-        if (mappedCurrency === 'USD') initialCountry = 'United States';
-        else if (mappedCurrency === 'GBP') initialCountry = 'United Kingdom';
-        else if (mappedCurrency === 'AED') initialCountry = 'United Arab Emirates';
-        else if (mappedCurrency === 'EUR') initialCountry = 'Germany';
-        else if (mappedCurrency === 'CAD') initialCountry = 'Canada';
-        else if (mappedCurrency === 'AUD') initialCountry = 'Australia';
-        else if (mappedCurrency === 'SGD') initialCountry = 'Singapore';
-        else if (mappedCurrency === 'JPY') initialCountry = 'Japan';
+    } else if (currentCountry) {
+      let initialCountry = 'India';
+      if (currentCurrency === 'USD') initialCountry = 'United States';
+      else if (currentCurrency === 'GBP') initialCountry = 'United Kingdom';
+      else if (currentCurrency === 'AED') initialCountry = 'United Arab Emirates';
+      else if (currentCurrency === 'EUR') initialCountry = 'Germany';
+      else if (currentCurrency === 'CAD') initialCountry = 'Canada';
+      else if (currentCurrency === 'AUD') initialCountry = 'Australia';
+      else if (currentCurrency === 'SGD') initialCountry = 'Singapore';
+      else if (currentCurrency === 'JPY') initialCountry = 'Japan';
 
-        setForm((prev) => ({
-          ...prev,
-          country: initialCountry,
-        }));
-      } catch {
-        setDetectedCurrency('INR');
-        setForm((prev) => ({ ...prev, country: 'India' }));
-      }
+      setForm((prev) => ({
+        ...prev,
+        country: initialCountry,
+      }));
     }
-  }, [profile]);
+  }, [profile, currentCountry, currentCurrency]);
 
   // Update currency dynamically if guest manually changes country input
   useEffect(() => {
@@ -109,31 +90,13 @@ export function CheckoutView() {
         const countryObj = getCountryByName(cleanCountry);
         code = countryObj ? countryObj.code : '';
       }
-      const mappedCurrency = getCurrencyForCountryCode(code);
-      setDetectedCurrency(mappedCurrency);
+      if (code) {
+        setOverrideCountry(code);
+      }
     }
-  }, [form.country, user]);
+  }, [form.country]);
 
-  const [rates, setRates] = useState<Record<string, number>>({});
-  const [ratesError, setRatesError] = useState(false);
   useEffect(() => {
-    fetch('/api/exchange-rates')
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then((data) => {
-        if (data && data.rates) {
-          setRates(data.rates);
-        } else {
-          setRatesError(true);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load exchange rates in CheckoutView:', err);
-        setRatesError(true);
-      });
-
     getDoc(doc(db, 'settings', 'global')).then((snap) => {
       if (snap.exists()) {
         const data = snap.data();
@@ -147,24 +110,22 @@ export function CheckoutView() {
   }, []);
 
   const hasPhysical = items.some((i) => i.type === 'physical');
-  const isInternational = detectedCurrency !== 'INR';
-  const rate = isInternational ? rates[detectedCurrency] : 1;
-  const isLoadingRates = isInternational && Object.keys(rates).length === 0 && !ratesError;
-  const hasError = isInternational && ratesError && Object.keys(rates).length === 0;
+  const isInternational = currentCurrency !== 'INR';
+  const hasError = isInternational && Object.keys(rates).length === 0;
 
   const convertedSubtotal = items.reduce((acc, item) => {
     const price = isInternational 
-      ? convertInrToCurrency(item.price_inr || item.price, rate || 0) 
+      ? convertInrToCurrency(item.price_inr || item.price, exchangeRate || 0, currentCurrency) 
       : (item.price_inr || item.price);
     return acc + price * item.quantity;
   }, 0);
 
   const discount = applied?.discount || 0;
-  const convertedDiscount = isInternational ? convertInrToCurrency(discount, rate || 0) : discount;
+  const convertedDiscount = isInternational ? convertInrToCurrency(discount, exchangeRate || 0, currentCurrency) : discount;
 
   const baseShippingInr = shippingChargeSetting || 0;
   const convertedShipping = baseShippingInr > 0
-    ? (isInternational ? convertInrToCurrency(baseShippingInr, rate || 0) : baseShippingInr)
+    ? (isInternational ? convertInrToCurrency(baseShippingInr, exchangeRate || 0, currentCurrency) : baseShippingInr)
     : 0;
 
   const total = Math.max(0, convertedSubtotal - convertedDiscount + convertedShipping);
@@ -185,7 +146,7 @@ export function CheckoutView() {
         return;
       }
       setApplied({ code: data.code, discount: data.discount });
-      toast.success(`Code ${data.code} applied — you saved ${formatPrice(data.discount / rate, detectedCurrency)}.`);
+      toast.success(`Code ${data.code} applied — you saved ${formatPrice(data.discount * (exchangeRate || 1), currentCurrency)}.`);
     } catch {
       toast.error('Something went wrong.');
     } finally {
@@ -227,7 +188,7 @@ export function CheckoutView() {
             id: i.id,
             slug: i.slug,
             name: i.name,
-            price: isInternational ? convertInrToCurrency(i.price_inr || i.price, rate || 0) : (i.price_inr || i.price),
+            price: isInternational ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency) : (i.price_inr || i.price),
             quantity: i.quantity,
             image: i.image,
             type: i.type,
@@ -236,7 +197,7 @@ export function CheckoutView() {
           discount: convertedDiscount,
           shipping: convertedShipping,
           total,
-          currency: detectedCurrency,
+          currency: currentCurrency,
           coupon_code: applied?.code || null,
           user_id: user?.id || null,
         }),
@@ -280,8 +241,8 @@ export function CheckoutView() {
 
       const options = {
         key: keyId,
-        amount: Math.round(Number(data.total) * 100),
-        currency: detectedCurrency,
+        amount: toRazorpayAmount(Number(data.total), currentCurrency),
+        currency: currentCurrency,
         name: 'TheLifeHolics',
         description: `Order ${data.number}`,
         image: '/logo.svg',
@@ -428,7 +389,7 @@ export function CheckoutView() {
             </div>
           )}
 
-          {isInternational && isLoadingRates && (
+          {isInternational && isLoading && (
             <div className="p-4 bg-white/5 text-white/50 text-sm font-medium rounded-2xl border border-white/10 animate-pulse leading-relaxed">
               Fetching current regional exchange rates...
             </div>
@@ -454,8 +415,8 @@ export function CheckoutView() {
             </label>
           </div>
 
-          <Button type="submit" size="lg" disabled={placing || !acceptedTerms || isLoadingRates || hasError} className="w-full rounded-full">
-            {placing ? (<><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Processing payment…</>) : `Pay Now · ${formatPrice(total, detectedCurrency)}`}
+          <Button type="submit" size="lg" disabled={placing || !acceptedTerms || isLoading || hasError} className="w-full rounded-full">
+            {placing ? (<><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Processing payment…</>) : `Pay Now · ${formatPrice(total, currentCurrency)}`}
           </Button>
         </form>
 
@@ -473,9 +434,9 @@ export function CheckoutView() {
                 <span className="text-sm font-medium text-foreground">
                   {formatPrice(
                     (isInternational
-                      ? convertInrToCurrency(i.price_inr || i.price, rate || 0)
+                      ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency)
                       : (i.price_inr || i.price)) * i.quantity,
-                    detectedCurrency
+                    currentCurrency
                   )}
                 </span>
               </li>
@@ -507,15 +468,15 @@ export function CheckoutView() {
           )}
 
           <dl className="mt-5 space-y-3 border-t border-border/50 pt-5 text-sm">
-            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, detectedCurrency)}</dd></div>
-            {discount > 0 && <div className="flex justify-between"><dt className="text-success">Discount</dt><dd className="font-medium text-success">−{formatPrice(convertedDiscount, detectedCurrency)}</dd></div>}
+            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, currentCurrency)}</dd></div>
+            {discount > 0 && <div className="flex justify-between"><dt className="text-success">Discount</dt><dd className="font-medium text-success">−{formatPrice(convertedDiscount, currentCurrency)}</dd></div>}
             {baseShippingInr > 0 && (
-              <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(convertedShipping, detectedCurrency)}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(convertedShipping, currentCurrency)}</dd></div>
             )}
-            <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, detectedCurrency)}</dd></div>
+            <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, currentCurrency)}</dd></div>
             {isInternational && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
               <div className="mt-2 inline-flex self-end rounded-full px-3 py-1 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(10,8,6,0.85)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>
-                Note: Charged in INR equivalent: {formatPrice(Math.round(total / (rate || 1)), 'INR')}
+                Note: Charged in INR equivalent: {formatPrice(Math.round(total / (exchangeRate || 1)), 'INR')}
               </div>
             )}
           </dl>

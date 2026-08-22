@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { auth, googleProvider, db } from '@/lib/firebase';
-import { collection, doc, getDoc, setDoc, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, getDocs, limit, orderBy, onSnapshot } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { COUNTRIES, detectCountryFromLocation } from '@/lib/countries';
 import {
@@ -104,64 +104,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    let unsubProfile: (() => void) | null = null;
+
     const unsubscribe = onAuthStateChanged(auth, async (fUser) => {
       setFirebaseUser(fUser);
+      if (unsubProfile) {
+        unsubProfile();
+        unsubProfile = null;
+      }
+
       if (fUser) {
         try {
           const docRef = doc(db, 'profiles', fUser.uid);
-          const docSnap = await getDoc(docRef);
-          if (!docSnap.exists()) {
-            const memberId = await generateNextMemberId();
-            const newProfile: Profile = {
-              id: fUser.uid,
-              member_id: memberId,
-              email: fUser.email,
-              full_name: fUser.displayName || fUser.email?.split('@')[0] || null,
-              phone: fUser.phoneNumber || null,
-              whatsapp: null,
-              timezone: 'Asia/Kolkata',
-              is_admin: false,
-              bio: '',
-              address: '',
-              avatar_url: '',
-            };
-            await setDoc(docRef, newProfile);
-            setProfile(newProfile);
-            try {
-              fetch('/api/auth/welcome', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  email: newProfile.email,
-                  phone: newProfile.phone,
-                  fullName: newProfile.full_name,
-                  userId: newProfile.id,
-                }),
-              });
-            } catch (err) {
-              console.error('Failed to trigger welcome notification via API:', err);
-            }
-          } else {
-            const data = docSnap.data() as Profile;
-            if (!data.member_id) {
-              const newMemberId = await generateNextMemberId();
-              await setDoc(docRef, { member_id: newMemberId }, { merge: true });
-              setProfile({ ...data, member_id: newMemberId });
+          unsubProfile = onSnapshot(docRef, async (docSnap) => {
+            if (!docSnap.exists()) {
+              const memberId = await generateNextMemberId();
+              const newProfile: Profile = {
+                id: fUser.uid,
+                member_id: memberId,
+                email: fUser.email,
+                full_name: fUser.displayName || fUser.email?.split('@')[0] || null,
+                phone: fUser.phoneNumber || null,
+                whatsapp: null,
+                timezone: 'Asia/Kolkata',
+                is_admin: false,
+                bio: '',
+                address: '',
+                avatar_url: '',
+              };
+              await setDoc(docRef, newProfile);
+              setProfile(newProfile);
+              try {
+                fetch('/api/auth/welcome', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    email: newProfile.email,
+                    phone: newProfile.phone,
+                    fullName: newProfile.full_name,
+                    userId: newProfile.id,
+                  }),
+                });
+              } catch (err) {
+                console.error('Failed to trigger welcome notification via API:', err);
+              }
             } else {
-              setProfile(data);
+              const data = docSnap.data() as Profile;
+              if (!data.member_id) {
+                const newMemberId = await generateNextMemberId();
+                await setDoc(docRef, { member_id: newMemberId }, { merge: true });
+                setProfile({ ...data, member_id: newMemberId });
+              } else {
+                setProfile(data);
+              }
             }
-          }
+            setLoading(false);
+          }, (err) => {
+            console.error('Error in profile snapshot listener:', err);
+            setLoading(false);
+          });
         } catch (err) {
-          console.error('Error handling profiles in Firestore:', err);
+          console.error('Error setting up profile listener:', err);
+          setLoading(false);
         }
-        setLoading(false);
       } else {
         setProfile(null);
         setLoading(false);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (unsubProfile) unsubProfile();
+    };
   }, []);
 
   const compatUser = useMemo<CompatUser | null>(() => {

@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { showAppleCartNotification } from '@/components/shop/cart-notification';
-import { convertInrToCurrency, getUserCurrency } from '@/lib/currency';
+import { convertInrToCurrency } from '@/lib/currency';
+import { useCurrency } from '@/components/providers/currency-provider';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -29,51 +30,22 @@ export function AddToCart({
   };
 }) {
   const { items, add, setQuantity, remove } = useCart();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { currentCurrency, exchangeRate, isLoading, rates } = useCurrency();
   const router = useRouter();
   const [qty, setQty] = useState(1);
   const [adding, setAdding] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const [rates, setRates] = useState<Record<string, number>>({});
-  const [ratesError, setRatesError] = useState(false);
-  const [detectedCurrency, setDetectedCurrency] = useState<string>('INR');
-
-  useEffect(() => {
-    const currency = getUserCurrency(profile);
-    setDetectedCurrency(currency);
-  }, [profile]);
-
-  useEffect(() => {
-    fetch('/api/exchange-rates')
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then((data) => {
-        if (data && data.rates) {
-          setRates(data.rates);
-        } else {
-          setRatesError(true);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load exchange rates in AddToCart:', err);
-        setRatesError(true);
-      });
-  }, []);
-
-  const isInternational = detectedCurrency !== 'INR';
-  const rate = isInternational ? rates[detectedCurrency] : 1;
-  const isLoadingRates = isInternational && Object.keys(rates).length === 0 && !ratesError;
-  const hasError = isInternational && ratesError && Object.keys(rates).length === 0;
+  const isInternational = currentCurrency !== 'INR';
+  const hasError = isInternational && Object.keys(rates).length === 0;
 
   const displayPrice = isInternational
-    ? convertInrToCurrency(product.price_inr, rate || 0)
+    ? convertInrToCurrency(product.price_inr, exchangeRate || 0, currentCurrency)
     : product.price_inr;
 
   const displayComparePrice = product.compare_at_inr
-    ? (isInternational ? convertInrToCurrency(product.compare_at_inr, rate || 0) : product.compare_at_inr)
+    ? (isInternational ? convertInrToCurrency(product.compare_at_inr, exchangeRate || 0, currentCurrency) : product.compare_at_inr)
     : null;
 
   const onSale = displayComparePrice && displayComparePrice > displayPrice;
@@ -116,9 +88,9 @@ export function AddToCart({
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrice, detectedCurrency)}</span>
+          <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrice, currentCurrency)}</span>
           {onSale && (
-            <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, detectedCurrency)}</span>
+            <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, currentCurrency)}</span>
           )}
         </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center w-full">
@@ -163,15 +135,15 @@ export function AddToCart({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        {isLoadingRates ? (
+        {isLoading ? (
           <span className="text-sm text-white/50 animate-pulse">Loading regional price...</span>
         ) : hasError ? (
           <span className="text-sm text-rose-400">Pricing unavailable in your region</span>
         ) : (
           <>
-            <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrice, detectedCurrency)}</span>
+            <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrice, currentCurrency)}</span>
             {onSale && (
-              <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, detectedCurrency)}</span>
+              <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, currentCurrency)}</span>
             )}
           </>
         )}
@@ -200,12 +172,12 @@ export function AddToCart({
         )}
         <Button
           onClick={handleAdd}
-          disabled={outOfStock || adding || isLoadingRates || hasError}
+          disabled={outOfStock || adding || isLoading || hasError}
           size="lg"
           className={cn(
             'flex-1 rounded-full transition-all duration-300',
             success && 'bg-emerald-600 hover:bg-emerald-700 text-white scale-[1.02] shadow-emerald-500/20',
-            (outOfStock || isLoadingRates || hasError) && 'cursor-not-allowed opacity-60'
+            (outOfStock || isLoading || hasError) && 'cursor-not-allowed opacity-60'
           )}
         >
           {adding ? (
@@ -214,12 +186,12 @@ export function AddToCart({
             <span className="flex items-center gap-1.5 justify-center"><Check className="h-5 w-5 animate-scaleUp" /> Added successfully!</span>
           ) : outOfStock ? (
             'Sold out'
-          ) : isLoadingRates ? (
+          ) : isLoading ? (
             'Loading pricing...'
           ) : hasError ? (
             'Pricing temporarily unavailable'
           ) : (
-            `Add to bag (${qty}) · ${formatPrice(displayPrice * qty, detectedCurrency)}`
+            `Add to bag (${qty}) · ${formatPrice(displayPrice * qty, currentCurrency)}`
           )}
         </Button>
       </div>

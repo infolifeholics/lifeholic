@@ -7,6 +7,7 @@ import { SmoothScroll } from '@/components/site/smooth-scroll';
 import { PageTransition } from '@/components/site/page-transition';
 import { PageLoader } from '@/components/site/page-loader';
 import { AuthProvider } from '@/components/providers/auth-provider';
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { CartProvider } from '@/components/providers/cart-provider';
 import { WishlistProvider } from '@/components/providers/wishlist-provider';
 import dynamic from 'next/dynamic';
@@ -38,22 +39,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
       <PageLoader />
       <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <SmoothScroll>
-              <ConfirmProvider>
-                <PageTransition>
-                  <CinematicVideoBg />
-                  <SoundToggle />
-                  <FloatingPetals />
-                  {children}
-                </PageTransition>
-              </ConfirmProvider>
-            </SmoothScroll>
-            <Toaster />
-            <SonnerToaster />
-          </WishlistProvider>
-        </CartProvider>
+        <CurrencyProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <SmoothScroll>
+                <ConfirmProvider>
+                  <PageTransition>
+                    <CinematicVideoBg />
+                    <SoundToggle />
+                    <FloatingPetals />
+                    {children}
+                  </PageTransition>
+                </ConfirmProvider>
+              </SmoothScroll>
+              <Toaster />
+              <SonnerToaster />
+            </WishlistProvider>
+          </CartProvider>
+        </CurrencyProvider>
       </AuthProvider>
     </ThemeProvider>
   );

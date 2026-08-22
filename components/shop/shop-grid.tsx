@@ -10,19 +10,21 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ProductWishlistButton } from '@/components/shop/product-wishlist-button';
 import { formatPrice } from '@/lib/format';
-import { convertInrToCurrency, getUserCurrency } from '@/lib/currency';
+import { convertInrToCurrency } from '@/lib/currency';
 import { doc, getDoc } from 'firebase/firestore';
 import { getProductRoute } from '@/lib/routes';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/components/providers/cart-provider';
 import { useAuth } from '@/components/providers/auth-provider';
+import { useCurrency } from '@/components/providers/currency-provider';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { showAppleCartNotification } from '@/components/shop/cart-notification';
 
 export function ShopGrid({ products: initialProducts }: { products: Product[] }) {
   const { items, add, setQuantity, remove } = useCart();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { currentCurrency, exchangeRate, isLoading, rates } = useCurrency();
   const router = useRouter();
 
   const [products, setProducts] = useState<Product[]>(initialProducts);
@@ -30,33 +32,6 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
   const [category, setCategory] = useState<string>('All');
   const [type, setType] = useState<'All' | 'digital' | 'physical'>('All');
   const [sort, setSort] = useState<'featured' | 'price-asc' | 'price-desc'>('featured');
-  const [rates, setRates] = useState<Record<string, number>>({});
-  const [ratesError, setRatesError] = useState(false);
-  const [detectedCurrency, setDetectedCurrency] = useState<string>('INR');
-
-  useEffect(() => {
-    const currency = getUserCurrency(profile);
-    setDetectedCurrency(currency);
-  }, [profile]);
-
-  useEffect(() => {
-    fetch('/api/exchange-rates')
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then((data) => {
-        if (data && data.rates) {
-          setRates(data.rates);
-        } else {
-          setRatesError(true);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load exchange rates in ShopGrid:', err);
-        setRatesError(true);
-      });
-  }, []);
 
   useEffect(() => {
     const q = firestoreQuery(collection(db, 'products'), where('is_active', '==', true));
@@ -189,10 +164,8 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
       ) : (
         <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((p) => {
-            const isInternational = detectedCurrency !== 'INR';
-            const rate = isInternational ? rates[detectedCurrency] : 1;
-            const isLoadingRates = isInternational && Object.keys(rates).length === 0 && !ratesError;
-            const hasError = isInternational && ratesError && Object.keys(rates).length === 0;
+            const isInternational = currentCurrency !== 'INR';
+            const hasError = isInternational && Object.keys(rates).length === 0;
 
             if (hasError) {
               return (
@@ -202,7 +175,7 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
               );
             }
 
-            if (isLoadingRates) {
+            if (isLoading) {
               return (
                 <div key={p.id} className="p-6 text-center border border-white/10 bg-white/5 rounded-3xl text-white/40 text-xs flex flex-col justify-center h-full min-h-[250px] animate-pulse">
                   Loading regional pricing...
@@ -211,10 +184,10 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
             }
 
             const displayPrice = isInternational
-              ? convertInrToCurrency(p.price_inr, rate || 0)
+              ? convertInrToCurrency(p.price_inr, exchangeRate || 0, currentCurrency)
               : p.price_inr;
             const displayComparePrice = p.compare_at_inr
-              ? (isInternational ? convertInrToCurrency(p.compare_at_inr, rate || 0) : p.compare_at_inr)
+              ? (isInternational ? convertInrToCurrency(p.compare_at_inr, exchangeRate || 0, currentCurrency) : p.compare_at_inr)
               : null;
             const onSale = displayComparePrice && displayComparePrice > displayPrice;
             return (
@@ -246,10 +219,10 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                     <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{p.tagline}</p>
                     <div className="mt-4 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-medium text-foreground">{formatPrice(displayPrice, detectedCurrency)}</span>
+                        <span className="font-medium text-foreground">{formatPrice(displayPrice, currentCurrency)}</span>
                         {onSale && (
                           <span className="text-xs text-muted-foreground line-through">
-                            {formatPrice(displayComparePrice as number, detectedCurrency)}
+                            {formatPrice(displayComparePrice as number, currentCurrency)}
                           </span>
                         )}
                       </div>
