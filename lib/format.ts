@@ -3,23 +3,56 @@
 export const CURRENCIES = {
   INR: { symbol: '₹', label: 'INR' },
   USD: { symbol: '$', label: 'USD' },
+  GBP: { symbol: '£', label: 'GBP' },
+  EUR: { symbol: '€', label: 'EUR' },
+  AED: { symbol: 'AED ', label: 'AED' },
+  CAD: { symbol: 'C$', label: 'CAD' },
+  AUD: { symbol: 'A$', label: 'AUD' },
+  JPY: { symbol: '¥', label: 'JPY' },
+  SGD: { symbol: 'S$', label: 'SGD' },
 } as const;
 
 export type CurrencyCode = keyof typeof CURRENCIES;
 
-export function formatPrice(amount: number, currency: CurrencyCode): string {
-  const c = CURRENCIES[currency];
+export function formatPrice(amount: number, currency: string): string {
   const value = Number(amount || 0);
   if (currency === 'INR') {
-    return `${c.symbol}${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+    return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
   }
+  if (currency === 'JPY') {
+    return `¥${value.toLocaleString('ja-JP', { maximumFractionDigits: 0 })}`;
+  }
+  
+  const c = CURRENCIES[currency as CurrencyCode] || { symbol: '$', label: currency };
   return `${c.symbol}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export function currencyForTimezone(tz: string): CurrencyCode {
+export function currencyForTimezone(tz: string): string {
   const t = tz?.toLowerCase() || '';
-  return t.includes('kolkata') || t.includes('calcutta') || t.includes('india') ? 'INR' : 'USD';
+  if (t.includes('kolkata') || t.includes('calcutta') || t.includes('india')) {
+    return 'INR';
+  }
+  if (t.includes('london') || t.includes('europe/london')) {
+    return 'GBP';
+  }
+  if (t.includes('dubai') || t.includes('asia/dubai')) {
+    return 'AED';
+  }
+  if (t.includes('singapore') || t.includes('asia/singapore')) {
+    return 'SGD';
+  }
+  if (t.includes('tokyo') || t.includes('asia/tokyo')) {
+    return 'JPY';
+  }
+  if (t.includes('sydney') || t.includes('australia/sydney')) {
+    return 'AUD';
+  }
+  if (t.includes('paris') || t.includes('berlin') || t.includes('rome') || t.includes('madrid') || t.includes('amsterdam') || t.includes('brussels')) {
+    return 'EUR';
+  }
+  return 'USD';
 }
+
 
 export const COMMON_TIMEZONES = [
   { value: 'Asia/Kolkata', label: 'India (IST, UTC+5:30)' },

@@ -773,7 +773,7 @@ export function AdminLandingPage() {
       {/* SECTION: Somatic Feed Assets ("A little quiet on your feed") */}
       <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-soft space-y-6">
         <div>
-          <h2 className="font-display text-xl font-medium text-foreground">Somatic Feed Assets ("A little quiet on your feed")</h2>
+          <h2 className="font-display text-xl font-medium text-foreground">Somatic Feed Assets (&quot;A little quiet on your feed&quot;)</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Manage the four media slots displayed in the Instagram section on the landing page. Each slot supports either an image or a video.
           </p>

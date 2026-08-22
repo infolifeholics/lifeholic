@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { triggerBookingNotification } from '@/lib/notifications';
 import { getIstWeekday, istDateTimeToUtc, writeAuditLog } from '@/lib/booking-utils';
+import { getExchangeRates } from '@/lib/exchange-rates';
+import { convertInrToCurrency, getUserCurrency, getCurrencyForCountryCode } from '@/lib/currency';
+import { getCountryByName } from '@/lib/countries';
 
 import { rateLimiter, getIpFromRequest } from '@/lib/rate-limit';
 
@@ -315,6 +318,15 @@ export async function POST(req: Request) {
     let newBookingId = '';
     let insertedBookingData: any = null;
 
+    // Fetch exchange rates before starting the transaction
+    let rates: Record<string, number> = {};
+    try {
+      const ratesData = await getExchangeRates();
+      rates = ratesData.rates || {};
+    } catch (err) {
+      console.error('Failed to load exchange rates in bookings API route:', err);
+    }
+
     try {
       await adminDb.runTransaction(async (transaction) => {
         // Read and verify Slot configuration inside the transaction
@@ -357,16 +369,12 @@ export async function POST(req: Request) {
         const globalSettingsRef = adminDb.collection('settings').doc('global');
         const globalSettingsSnap = await transaction.get(globalSettingsRef);
         let meetingLink = null;
-        let usdToInrRate = null;
         let gstPercentage = 18;
         if (globalSettingsSnap.exists) {
           const gSettings = globalSettingsSnap.data();
           if (gSettings) {
             if (gSettings.meeting_provider === 'gmeet' && gSettings.google_meet_link) {
               meetingLink = gSettings.google_meet_link;
-            }
-            if (typeof gSettings.usd_to_inr_rate === 'number' && gSettings.usd_to_inr_rate > 0) {
-              usdToInrRate = gSettings.usd_to_inr_rate;
             }
             if (typeof gSettings.gst_percentage === 'number') {
               gstPercentage = gSettings.gst_percentage;
@@ -388,18 +396,33 @@ export async function POST(req: Request) {
 
         let finalCurrency = 'INR';
         if (profile && profile.country) {
-          const countryStr = profile.country.trim().toLowerCase();
-          finalCurrency = (countryStr === 'india' || countryStr === 'in') ? 'INR' : 'USD';
+          finalCurrency = getUserCurrency(profile, client_timezone || undefined);
         } else {
-          const isIndiaCountry = clientCountry === 'IN' || clientCountry.toLowerCase() === 'india';
-          const isIndiaTz = (client_timezone?.toLowerCase().includes('kolkata') ||
-                             client_timezone?.toLowerCase().includes('calcutta') ||
-                             client_timezone?.toLowerCase().includes('india'));
-          finalCurrency = (isIndiaCountry || isIndiaTz) ? 'INR' : 'USD';
+          // If no profile, use client country or timezone
+          const cleanCountry = clientCountry.trim();
+          let code = '';
+          if (cleanCountry.length === 2) {
+            code = cleanCountry;
+          } else {
+            const countryObj = getCountryByName(cleanCountry);
+            code = countryObj ? countryObj.code : '';
+          }
+          finalCurrency = getCurrencyForCountryCode(code);
+          
+          if (finalCurrency === 'USD') {
+            const isIndiaTz = (client_timezone?.toLowerCase().includes('kolkata') ||
+                               client_timezone?.toLowerCase().includes('calcutta') ||
+                               client_timezone?.toLowerCase().includes('india'));
+            if (isIndiaTz) {
+              finalCurrency = 'INR';
+            }
+          }
         }
-        
-        if (finalCurrency === 'USD' && (!usdToInrRate || isNaN(usdToInrRate))) {
-          throw new Error('International payments are currently unavailable. USD to INR exchange rate is not configured by the admin.');
+
+        const targetRate = finalCurrency === 'INR' ? 1 : (rates[finalCurrency] || null);
+
+        if (finalCurrency !== 'INR' && (!targetRate || isNaN(targetRate))) {
+          throw new Error('International payments are currently unavailable. Dynamic exchange rates failed to resolve.');
         }
 
         let calculatedBaseAmount = 0;
@@ -425,8 +448,8 @@ export async function POST(req: Request) {
           const gstInr = Math.round((basePriceInr * gstPercentage) / 100);
           const totalInr = basePriceInr + gstInr;
 
-          calculatedBaseAmount = finalCurrency === 'USD' && usdToInrRate
-            ? Math.round((totalInr / usdToInrRate) * 100) / 100
+          calculatedBaseAmount = finalCurrency !== 'INR' && targetRate
+            ? convertInrToCurrency(totalInr, targetRate)
             : totalInr;
         }
 

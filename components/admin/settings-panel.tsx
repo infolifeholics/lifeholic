@@ -248,6 +248,10 @@ export function AdminSettingsPanel() {
   });
 
   const [certSettings, setCertSettings] = useState<CertificateSettings>(DEFAULT_CERTIFICATE_SETTINGS);
+  const [exchangeRatesInfo, setExchangeRatesInfo] = useState<{
+    fetched_at?: string;
+    base?: string;
+  } | null>(null);
 
   const fetchAllSettings = async () => {
     setLoading(true);
@@ -257,6 +261,17 @@ export function AdminSettingsPanel() {
       const globalDoc = globalSnap.docs.find((d) => d.id === 'global');
       if (globalDoc) {
         setGlobalSettings({ id: 'global', ...globalDoc.data() } as AdminSettings);
+      }
+
+      // Exchange Rates Info
+      const ratesDocRef = doc(db, 'settings', 'exchange_rates');
+      const ratesSnap = await getDoc(ratesDocRef);
+      if (ratesSnap.exists()) {
+        const rData = ratesSnap.data();
+        setExchangeRatesInfo({
+          fetched_at: rData.fetched_at,
+          base: rData.base || 'INR',
+        });
       }
       
       // Certificate
@@ -445,20 +460,29 @@ export function AdminSettingsPanel() {
                     className="mt-1.5 rounded-xl"
                   />
                 </div>
-                <div>
-                  <Label>International Payment Exchange Rate (1 USD = ₹X)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    required
-                    value={globalSettings.usd_to_inr_rate ?? 85}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      setGlobalSettings({ ...globalSettings, usd_to_inr_rate: isNaN(val) ? 85 : val });
-                    }}
-                    className="mt-1.5 rounded-xl"
-                  />
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4.5 space-y-2.5">
+                  <Label className="text-white/95 font-semibold text-sm flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-emerald-400" />
+                    Automatic Exchange Rates
+                  </Label>
+                  <div className="grid grid-cols-2 gap-3 text-xs text-white/70 mt-1">
+                    <div>
+                      <span className="block text-white/40">Provider</span>
+                      <span className="font-medium text-white/90">Configured (open.er-api.com)</span>
+                    </div>
+                    <div>
+                      <span className="block text-white/40">Base Currency</span>
+                      <span className="font-medium text-white/90">{exchangeRatesInfo?.base || 'INR'}</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="block text-white/40">Last Updated</span>
+                      <span className="font-medium text-white/90">
+                        {exchangeRatesInfo?.fetched_at 
+                          ? new Date(exchangeRatesInfo.fetched_at).toLocaleString() 
+                          : 'Never updated (will sync on next request)'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <Label>Product Shipping Charge (₹)</Label>

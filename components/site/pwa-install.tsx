@@ -98,8 +98,8 @@ export function PwaInstall() {
             <li className="flex items-center gap-1.5 wrap">
               Tap the share button <Share className="h-3.5 w-3.5 inline text-gold" /> at the bottom of Safari.
             </li>
-            <li>Scroll down and select <span className="font-semibold text-white">"Add to Home Screen"</span>.</li>
-            <li>Tap <span className="font-semibold text-white">"Add"</span> in the top right corner.</li>
+            <li>Scroll down and select <span className="font-semibold text-white">&quot;Add to Home Screen&quot;</span>.</li>
+            <li>Tap <span className="font-semibold text-white">&quot;Add&quot;</span> in the top right corner.</li>
           </ol>
           <Button 
             variant="ghost" 

@@ -6,8 +6,10 @@ import { collection, query, where, getDocs, onSnapshot, addDoc, doc, getDoc } fr
 import { useAuth } from '@/components/providers/auth-provider';
 import Link from 'next/link';
 import { AuthModal } from '@/components/auth/auth-modal';
-import { formatPrice } from '@/lib/format';
+import { formatPrice, currencyForTimezone } from '@/lib/format';
 import type { Workshop, WorkshopFeedback, WorkshopRegistration } from '@/lib/types';
+import { convertInrToCurrency, getCurrencyForCountryCode } from '@/lib/currency';
+import { getCountryByName } from '@/lib/countries';
 import { toast } from 'sonner';
 import { 
   Loader2, CalendarDays, Clock, MapPin, Sparkles, CheckCircle2, 
@@ -28,26 +30,35 @@ export default function WorkshopDetailsPage() {
   const [ws, setWs] = useState<Workshop | null>(null);
   const [loading, setLoading] = useState(true);
   const [authOpen, setAuthOpen] = useState(false);
-  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
-  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [currency, setCurrency] = useState<string>('INR');
+  const [rates, setRates] = useState<Record<string, number>>({});
+  const [ratesError, setRatesError] = useState(false);
 
   useEffect(() => {
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
-      const isIndia = tz.toLowerCase().includes('kolkata') || tz.toLowerCase().includes('calcutta') || tz.toLowerCase().includes('india');
-      setCurrency(isIndia ? 'INR' : 'USD');
+      const mappedCurrency = currencyForTimezone(tz);
+      setCurrency(mappedCurrency);
     } catch {
       setCurrency('INR');
     }
 
-    getDoc(doc(db, 'settings', 'global')).then((snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (typeof data.usd_to_inr_rate === 'number' && data.usd_to_inr_rate > 0) {
-          setExchangeRate(data.usd_to_inr_rate);
+    fetch('/api/exchange-rates')
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.rates) {
+          setRates(data.rates);
+        } else {
+          setRatesError(true);
         }
-      }
-    }).catch(err => console.error(err));
+      })
+      .catch((err) => {
+        console.error('Failed to load exchange rates in Workshop page:', err);
+        setRatesError(true);
+      });
   }, []);
 
   // Registration Form States
@@ -239,13 +250,18 @@ export default function WorkshopDetailsPage() {
   const nowStr = new Date().toISOString();
   const isEarlyBirdActive = !!(ws.offer_expiry && nowStr <= ws.offer_expiry);
 
-  const originalPrice = currency === 'USD'
-    ? (ws.price_usd || Math.round((ws.price_inr || 0) / (exchangeRate || 80)))
+  const isInternational = currency !== 'INR';
+  const rate = isInternational ? rates[currency] : 1;
+  const isLoadingRates = isInternational && Object.keys(rates).length === 0 && !ratesError;
+  const hasError = isInternational && ratesError && Object.keys(rates).length === 0;
+
+  const originalPrice = isInternational
+    ? convertInrToCurrency(ws.price_inr || 0, rate || 0)
     : (ws.price_inr || 0);
 
   const earlyBirdPrice = isEarlyBirdActive
-    ? (currency === 'USD'
-        ? (ws.early_bird_price_usd || Math.round((ws.early_bird_price_inr || 0) / (exchangeRate || 80)))
+    ? (isInternational
+        ? convertInrToCurrency(ws.early_bird_price_inr || 0, rate || 0)
         : (ws.early_bird_price_inr || 0))
     : null;
 
@@ -395,7 +411,7 @@ export default function WorkshopDetailsPage() {
                   </p>
                   {isEarlyBirdActive && (
                     <span className="text-[10px] text-muted-foreground line-through">
-                      {formatPrice(currency === 'USD' ? (ws.price_usd || Math.round(ws.price_inr / (exchangeRate || 80))) : ws.price_inr, currency)}
+                      {formatPrice(isInternational ? convertInrToCurrency(ws.price_inr || 0, rate || 0) : ws.price_inr, currency)}
                     </span>
                   )}
                 </div>
@@ -725,7 +741,7 @@ export default function WorkshopDetailsPage() {
                           <button
                             type="button"
                             onClick={() => setCurrency('USD')}
-                            disabled={!exchangeRate}
+                            disabled={isLoadingRates || hasError}
                             className={`px-3 py-1 rounded-lg font-semibold transition-all text-[11px] ${currency === 'USD' ? 'bg-gold text-gold-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground disabled:opacity-50'}`}
                           >
                             USD ($)
@@ -786,8 +802,8 @@ export default function WorkshopDetailsPage() {
                             <span>Promo Discount:</span>
                             <span>
                               -{formatPrice(
-                                currency === 'USD' 
-                                  ? discount / (exchangeRate || 80) 
+                                isInternational 
+                                  ? convertInrToCurrency(discount, rate || 0) 
                                   : discount, 
                                 currency
                               )}
@@ -798,27 +814,27 @@ export default function WorkshopDetailsPage() {
                           <span>Total Payable:</span>
                           <span className="text-gold">
                             {formatPrice(
-                              displayBasePrice - (currency === 'USD' ? discount / (exchangeRate || 80) : discount), 
+                              displayBasePrice - (isInternational ? convertInrToCurrency(discount, rate || 0) : discount), 
                               currency
                             )}
                           </span>
                         </div>
-                        {currency === 'USD' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
+                        {isInternational && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
                           <div className="text-[10px] text-amber-500 text-right mt-1 font-medium">
-                            Note: Charged in INR equivalent: {formatPrice(Math.round((displayBasePrice - (currency === 'USD' ? discount / (exchangeRate || 80) : discount)) * (exchangeRate || 80)), 'INR')}
+                            Note: Charged in INR equivalent: {formatPrice(Math.round((displayBasePrice - (isInternational ? convertInrToCurrency(discount, rate || 0) : discount)) / (rate || 1)), 'INR')}
                           </div>
                         )}
                       </div>
 
-                      {currency === 'USD' && !exchangeRate && (
+                      {isInternational && hasError && (
                         <div className="p-3 bg-destructive/10 text-destructive text-[11px] font-medium rounded-2xl border border-destructive/20 leading-relaxed mt-2 text-center">
-                          International payments are currently unavailable because the exchange rate has not been configured. Please contact the administrator.
+                          International payments are currently unavailable because the exchange rate service failed. Please contact support.
                         </div>
                       )}
 
                       <Button 
                         type="submit" 
-                        disabled={paying || (currency === 'USD' && !exchangeRate)}
+                        disabled={paying || isLoadingRates || hasError}
                         className="w-full rounded-full py-6 bg-gold hover:bg-gold-hover text-gold-foreground font-semibold mt-2"
                       >
                         {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Confirm &amp; Pay'}

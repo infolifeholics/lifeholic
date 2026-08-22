@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { currencyForTimezone, detectTimezone, formatPrice } from '@/lib/format';
+import { convertInrToCurrency } from '@/lib/currency';
 
 type SurveyData = {
   category: string;
@@ -299,7 +300,7 @@ export default function SomaticPlansPage() {
   const billingCycle = 'total';
   const [tz, setTz] = useState(detectTimezone());
   const currency = currencyForTimezone(tz);
-  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [rates, setRates] = useState<Record<string, number>>({});
   const [rateError, setRateError] = useState(false);
   const [planServices, setPlanServices] = useState<{
     essential: any;
@@ -318,19 +319,22 @@ export default function SomaticPlansPage() {
       console.error('Error loading survey:', e);
     }
 
-    getDoc(doc(db, 'settings', 'global')).then((snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (typeof data.usd_to_inr_rate === 'number' && data.usd_to_inr_rate > 0) {
-          setExchangeRate(data.usd_to_inr_rate);
-          return;
+    fetch('/api/exchange-rates')
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.rates) {
+          setRates(data.rates);
+        } else {
+          setRateError(true);
         }
-      }
-      setRateError(true);
-    }).catch(err => {
-      console.error(err);
-      setRateError(true);
-    });
+      })
+      .catch((err) => {
+        console.error('Failed to load exchange rates in somatic plans page:', err);
+        setRateError(true);
+      });
 
     const docRef = doc(db, 'settings', 'somatic_plans');
     const unsub = onSnapshot(docRef, (snap) => {
@@ -400,10 +404,13 @@ export default function SomaticPlansPage() {
     return () => unsub();
   }, []);
 
+  const isInternational = currency !== 'INR';
+  const rate = isInternational ? rates[currency] : 1;
+
   const handleSelectPlan = (planKey: 'essential' | 'premium' | 'elite', defaultPriceInr: number) => {
     const s = planServices ? planServices[planKey] : null;
     const finalPriceInr = s?.price_inr || defaultPriceInr;
-    const finalPrice = currency === 'USD' ? Math.round(finalPriceInr / (exchangeRate || 1)) : finalPriceInr;
+    const finalPrice = isInternational ? convertInrToCurrency(finalPriceInr, rate || 0) : finalPriceInr;
     const finalTitle = s?.title || (planKey === 'essential' ? 'Personal Healing & Clarity Session' : planKey === 'elite' ? 'Ancestral Healing Session' : '4-Week Deep Transformation Program');
     const finalId = s?.id || `somatic_${planKey}`;
 
@@ -448,9 +455,9 @@ export default function SomaticPlansPage() {
   };
 
   const prices = {
-    essential: currency === 'USD' ? Math.round(rawPrices.essential / (exchangeRate || 1)) : rawPrices.essential,
-    premium: currency === 'USD' ? Math.round(rawPrices.premium / (exchangeRate || 1)) : rawPrices.premium,
-    elite: currency === 'USD' ? Math.round(rawPrices.elite / (exchangeRate || 1)) : rawPrices.elite,
+    essential: isInternational ? convertInrToCurrency(rawPrices.essential, rate || 0) : rawPrices.essential,
+    premium: isInternational ? convertInrToCurrency(rawPrices.premium, rate || 0) : rawPrices.premium,
+    elite: isInternational ? convertInrToCurrency(rawPrices.elite, rate || 0) : rawPrices.elite,
   };
 
   const formatPlanPrice = (priceVal: number) => {

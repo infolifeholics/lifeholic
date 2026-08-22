@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { showAppleCartNotification } from '@/components/shop/cart-notification';
-import { convertInrToUsd, getUserCurrency } from '@/lib/currency';
+import { convertInrToCurrency, getUserCurrency } from '@/lib/currency';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -35,8 +35,9 @@ export function AddToCart({
   const [adding, setAdding] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
-  const [detectedCurrency, setDetectedCurrency] = useState<'INR' | 'USD'>('INR');
+  const [rates, setRates] = useState<Record<string, number>>({});
+  const [ratesError, setRatesError] = useState(false);
+  const [detectedCurrency, setDetectedCurrency] = useState<string>('INR');
 
   useEffect(() => {
     const currency = getUserCurrency(profile);
@@ -44,22 +45,35 @@ export function AddToCart({
   }, [profile]);
 
   useEffect(() => {
-    getDoc(doc(db, 'settings', 'global')).then((snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (typeof data.usd_to_inr_rate === 'number' && data.usd_to_inr_rate > 0) {
-          setExchangeRate(data.usd_to_inr_rate);
+    fetch('/api/exchange-rates')
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.rates) {
+          setRates(data.rates);
+        } else {
+          setRatesError(true);
         }
-      }
-    }).catch((err) => console.error(err));
+      })
+      .catch((err) => {
+        console.error('Failed to load exchange rates in AddToCart:', err);
+        setRatesError(true);
+      });
   }, []);
 
-  const displayPrice = detectedCurrency === 'USD'
-    ? convertInrToUsd(product.price_inr, exchangeRate || 1)
+  const isInternational = detectedCurrency !== 'INR';
+  const rate = isInternational ? rates[detectedCurrency] : 1;
+  const isLoadingRates = isInternational && Object.keys(rates).length === 0 && !ratesError;
+  const hasError = isInternational && ratesError && Object.keys(rates).length === 0;
+
+  const displayPrice = isInternational
+    ? convertInrToCurrency(product.price_inr, rate || 0)
     : product.price_inr;
 
   const displayComparePrice = product.compare_at_inr
-    ? (detectedCurrency === 'USD' ? convertInrToUsd(product.compare_at_inr, exchangeRate || 1) : product.compare_at_inr)
+    ? (isInternational ? convertInrToCurrency(product.compare_at_inr, rate || 0) : product.compare_at_inr)
     : null;
 
   const onSale = displayComparePrice && displayComparePrice > displayPrice;
@@ -149,9 +163,17 @@ export function AddToCart({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrice, detectedCurrency)}</span>
-        {onSale && (
-          <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, detectedCurrency)}</span>
+        {isLoadingRates ? (
+          <span className="text-sm text-white/50 animate-pulse">Loading regional price...</span>
+        ) : hasError ? (
+          <span className="text-sm text-rose-400">Pricing unavailable in your region</span>
+        ) : (
+          <>
+            <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrice, detectedCurrency)}</span>
+            {onSale && (
+              <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, detectedCurrency)}</span>
+            )}
+          </>
         )}
       </div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -178,12 +200,12 @@ export function AddToCart({
         )}
         <Button
           onClick={handleAdd}
-          disabled={outOfStock || adding}
+          disabled={outOfStock || adding || isLoadingRates || hasError}
           size="lg"
           className={cn(
             'flex-1 rounded-full transition-all duration-300',
             success && 'bg-emerald-600 hover:bg-emerald-700 text-white scale-[1.02] shadow-emerald-500/20',
-            outOfStock && 'cursor-not-allowed opacity-60'
+            (outOfStock || isLoadingRates || hasError) && 'cursor-not-allowed opacity-60'
           )}
         >
           {adding ? (
@@ -192,6 +214,10 @@ export function AddToCart({
             <span className="flex items-center gap-1.5 justify-center"><Check className="h-5 w-5 animate-scaleUp" /> Added successfully!</span>
           ) : outOfStock ? (
             'Sold out'
+          ) : isLoadingRates ? (
+            'Loading pricing...'
+          ) : hasError ? (
+            'Pricing temporarily unavailable'
           ) : (
             `Add to bag (${qty}) · ${formatPrice(displayPrice * qty, detectedCurrency)}`
           )}

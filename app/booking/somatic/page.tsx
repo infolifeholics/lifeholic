@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { COMMON_TIMEZONES, currencyForTimezone, detectTimezone, formatInTz, formatPrice } from '@/lib/format';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AuthModal } from '@/components/auth/auth-modal';
+import { convertInrToCurrency } from '@/lib/currency';
 
 
 type Slot = {
@@ -35,7 +36,7 @@ function SomaticBookingFlowContent() {
   const [planTitle, setPlanTitle] = useState('4-Week Deep Transformation Program');
   const [price, setPrice] = useState(10800);
   const [survey, setSurvey] = useState<any>(null);
-  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [rates, setRates] = useState<Record<string, number>>({});
   const [rateError, setRateError] = useState(false);
 
   const [step, setStep] = useState(0); // 0: Date & Time, 1: Details, 2: Confirm
@@ -101,19 +102,18 @@ function SomaticBookingFlowContent() {
         // Fetch price dynamically from Firestore Settings to stay connected to Admin Panel edits
         const somaticDocRef = doc(db, 'settings', 'somatic_plans');
         const somaticSnap = await getDoc(somaticDocRef);
-        const globalRef = doc(db, 'settings', 'global');
-        const globalSnap = await getDoc(globalRef);
-        let usdToInrRate = null;
-        if (globalSnap.exists()) {
-          const gData = globalSnap.data();
-          if (typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
-            usdToInrRate = gData.usd_to_inr_rate;
-            setExchangeRate(usdToInrRate);
-          }
-        }
+        // Fetch exchange rates from the API endpoint
+        const res = await fetch('/api/exchange-rates');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const exchangeRates = data.rates || {};
+        setRates(exchangeRates);
 
         const currency = currencyForTimezone(tz);
-        if (currency === 'USD' && !usdToInrRate) {
+        const isInternational = currency !== 'INR';
+        const rate = isInternational ? exchangeRates[currency] : 1;
+
+        if (isInternational && !rate) {
           setRateError(true);
         }
 
@@ -126,9 +126,9 @@ function SomaticBookingFlowContent() {
             priceKey = 'elite_price_inr';
           }
           const rawPrice = sData[priceKey] || currentPrice;
-          setPrice(currency === 'USD' && usdToInrRate ? Math.round(rawPrice / usdToInrRate) : rawPrice);
+          setPrice(isInternational && rate ? convertInrToCurrency(rawPrice, rate) : rawPrice);
         } else {
-          setPrice(currency === 'USD' && usdToInrRate ? Math.round(currentPrice / usdToInrRate) : currentPrice);
+          setPrice(isInternational && rate ? convertInrToCurrency(currentPrice, rate) : currentPrice);
         }
       } catch (e) {
         console.error('Error fetching service details:', e);
@@ -549,12 +549,12 @@ function SomaticBookingFlowContent() {
               )}
 
               {/* Navigation buttons */}
-              {currencyForTimezone(tz) === 'USD' && rateError && (
+              {currencyForTimezone(tz) !== 'INR' && rateError && (
                 <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex gap-3 text-xs text-destructive mb-3">
                   <ShieldAlert className="h-5 w-5 shrink-0" />
                   <div>
                     <span className="font-semibold block">International Bookings Unavailable</span>
-                    International bookings are currently unavailable because the exchange rate has not been configured by the admin. Please contact the administrator.
+                    International bookings are currently unavailable because the exchange rate service failed. Please contact support.
                   </div>
                 </div>
               )}
@@ -562,7 +562,7 @@ function SomaticBookingFlowContent() {
               <div className="flex justify-between pt-4 border-t border-border/20">
                 <Button variant="ghost" onClick={() => setStep(1)} className="rounded-full">Back</Button>
                 <Button
-                  disabled={submitting || (currencyForTimezone(tz) === 'USD' && rateError)}
+                  disabled={submitting || (currencyForTimezone(tz) !== 'INR' && rateError)}
                   onClick={handleBook}
                   className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground px-8 font-semibold shadow-soft"
                 >

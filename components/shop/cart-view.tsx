@@ -1,14 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { ArrowRight, Minus, Plus, ShoppingBag, Trash2, Loader2 } from 'lucide-react';
 import { useCart } from '@/components/providers/cart-provider';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/format';
 
 import { toast } from 'sonner';
-import { convertInrToUsd, getUserCurrency } from '@/lib/currency';
+import { convertInrToCurrency, getUserCurrency } from '@/lib/currency';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
@@ -16,9 +16,10 @@ import { useEffect, useState } from 'react';
 export function CartView() {
   const { items, setQuantity, remove, clear, count } = useCart();
   const { user, profile } = useAuth();
-  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [rates, setRates] = useState<Record<string, number>>({});
+  const [ratesError, setRatesError] = useState(false);
   const [shippingChargeSetting, setShippingChargeSetting] = useState<number | null>(null);
-  const [detectedCurrency, setDetectedCurrency] = useState<'INR' | 'USD'>('INR');
+  const [detectedCurrency, setDetectedCurrency] = useState<string>('INR');
 
   useEffect(() => {
     const currency = getUserCurrency(profile);
@@ -26,12 +27,26 @@ export function CartView() {
   }, [profile]);
 
   useEffect(() => {
+    fetch('/api/exchange-rates')
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.rates) {
+          setRates(data.rates);
+        } else {
+          setRatesError(true);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load exchange rates in CartView:', err);
+        setRatesError(true);
+      });
+
     getDoc(doc(db, 'settings', 'global')).then((snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        if (typeof data.usd_to_inr_rate === 'number' && data.usd_to_inr_rate > 0) {
-          setExchangeRate(data.usd_to_inr_rate);
-        }
         if (typeof data.shipping_charge === 'number') {
           setShippingChargeSetting(data.shipping_charge);
         }
@@ -39,16 +54,21 @@ export function CartView() {
     }).catch((err) => console.error(err));
   }, []);
 
+  const isInternational = detectedCurrency !== 'INR';
+  const rate = isInternational ? rates[detectedCurrency] : 1;
+  const isLoadingRates = isInternational && Object.keys(rates).length === 0 && !ratesError;
+  const hasError = isInternational && ratesError && Object.keys(rates).length === 0;
+
   const convertedSubtotal = items.reduce((acc, item) => {
-    const itemPrice = detectedCurrency === 'USD'
-      ? convertInrToUsd(item.price_inr || item.price, exchangeRate || 1)
+    const itemPrice = isInternational
+      ? convertInrToCurrency(item.price_inr || item.price, rate || 0)
       : (item.price_inr || item.price);
     return acc + itemPrice * item.quantity;
   }, 0);
 
   const baseShippingInr = shippingChargeSetting || 0;
   const convertedShipping = baseShippingInr > 0
-    ? (detectedCurrency === 'USD' ? convertInrToUsd(baseShippingInr, exchangeRate || 1) : baseShippingInr)
+    ? (isInternational ? convertInrToCurrency(baseShippingInr, rate || 0) : baseShippingInr)
     : 0;
 
   const total = convertedSubtotal + convertedShipping;
@@ -140,8 +160,8 @@ export function CartView() {
                   )}
                   <span className="font-medium text-foreground">
                     {formatPrice(
-                      (detectedCurrency === 'USD'
-                        ? convertInrToUsd(i.price_inr || i.price, exchangeRate || 1)
+                      (isInternational
+                        ? convertInrToCurrency(i.price_inr || i.price, rate || 0)
                         : (i.price_inr || i.price)) * i.quantity,
                       detectedCurrency
                     )}
@@ -162,17 +182,34 @@ export function CartView() {
 
         <aside className="h-fit rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft lg:sticky lg:top-28">
           <h2 className="font-display text-xl font-medium text-foreground">Order summary</h2>
-          <dl className="mt-5 space-y-3 text-sm">
-            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, detectedCurrency)}</dd></div>
-            {baseShippingInr > 0 && (
-              <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(convertedShipping, detectedCurrency)}</dd></div>
+          {hasError && (
+            <div className="mt-4 text-xs text-rose-400 border border-rose-500/20 bg-rose-500/5 p-3 rounded-xl">
+              Pricing is temporarily unavailable for your region. Please try again later.
+            </div>
+          )}
+          {isLoadingRates ? (
+            <div className="mt-4 text-xs text-white/50 animate-pulse p-3">
+              Loading regional prices...
+            </div>
+          ) : (
+            <dl className="mt-5 space-y-3 text-sm">
+              <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, detectedCurrency)}</dd></div>
+              {baseShippingInr > 0 && (
+                <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(convertedShipping, detectedCurrency)}</dd></div>
+              )}
+              <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, detectedCurrency)}</dd></div>
+            </dl>
+          )}
+          <Button asChild={!isLoadingRates && !hasError} disabled={isLoadingRates || hasError} className="mt-6 w-full rounded-full" size="lg">
+            {isLoadingRates ? (
+              <span className="flex items-center justify-center gap-1.5"><Loader2 className="h-4 w-4 animate-spin" /> Loading rates...</span>
+            ) : hasError ? (
+              <span className="text-rose-400">Pricing Unavailable</span>
+            ) : (
+              <Link href={user ? "/shop/checkout" : "/auth/login?redirect=/shop/checkout"}>
+                Proceed to checkout <ArrowRight className="ml-1 h-4 w-4" />
+              </Link>
             )}
-            <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, detectedCurrency)}</dd></div>
-          </dl>
-          <Button asChild className="mt-6 w-full rounded-full" size="lg">
-            <Link href={user ? "/shop/checkout" : "/auth/login?redirect=/shop/checkout"}>
-              Proceed to checkout <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
           </Button>
           <p className="mt-3 text-center text-xs text-muted-foreground">Secure checkout · Razorpay (INR) · Stripe (USD)</p>
         </aside>

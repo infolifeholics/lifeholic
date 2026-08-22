@@ -46,7 +46,7 @@ function PaymentPageContent() {
   const [paying, setPaying] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [rates, setRates] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!bookingId) {
@@ -76,13 +76,12 @@ function PaymentPageContent() {
           }
         }
 
-        // Fetch exchange rate dynamically
-        const globalRef = doc(db, 'settings', 'global');
-        const globalSnap = await getDoc(globalRef);
-        if (globalSnap.exists()) {
-          const gData = globalSnap.data();
-          if (typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
-            setExchangeRate(gData.usd_to_inr_rate);
+        // Fetch exchange rates from the API endpoint
+        const res = await fetch('/api/exchange-rates');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.rates) {
+            setRates(data.rates);
           }
         }
 
@@ -507,9 +506,9 @@ function PaymentPageContent() {
               <span className="text-foreground font-display text-lg">Total Amount</span>
               <span className="text-foreground font-normal">{formatPrice(total, currency)}</span>
             </div>
-            {currency === 'USD' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
+            {currency !== 'INR' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
               <div className="text-[10px] text-amber-500 text-right mt-1 font-medium">
-                Note: Charged in INR equivalent: {formatPrice(Math.round(total * (exchangeRate || 1)), 'INR')}
+                Note: Charged in INR equivalent: {formatPrice(Math.round(total / (rates[currency] || 1)), 'INR')}
               </div>
             )}
           </div>
@@ -537,9 +536,9 @@ function PaymentPageContent() {
                 Fast &amp; secure transaction processing (supporting domestic bank transfers, international cards and wallets) powered securely by Razorpay.
               </p>
 
-              {currency === 'USD' && !exchangeRate && (
-                <div className="p-4 bg-destructive/10 text-destructive text-xs font-medium rounded-2xl border border-destructive/20 leading-relaxed mb-3">
-                  International payments are currently unavailable because the exchange rate has not been configured. Please contact the administrator.
+              {currency !== 'INR' && Object.keys(rates).length === 0 && (
+                <div className="p-4 bg-destructive/10 text-destructive text-sm font-medium rounded-2xl border border-destructive/20 leading-relaxed">
+                  International payments are currently unavailable because the exchange rate service failed. Please support.
                 </div>
               )}
 
@@ -565,7 +564,7 @@ function PaymentPageContent() {
 
               <Button
                 onClick={handleRazorpayPayment}
-                disabled={paying || !acceptedTerms || (currency === 'USD' && !exchangeRate)}
+                disabled={paying || !acceptedTerms || (currency !== 'INR' && Object.keys(rates).length === 0)}
                 className="w-full rounded-full py-6 text-base font-semibold shadow-glow bg-gold hover:bg-gold-hover text-gold-foreground"
               >
                 {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : `Pay Now via Razorpay (${currency})`}

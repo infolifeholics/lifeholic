@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getExchangeRates } from '@/lib/exchange-rates';
+import { convertInrToCurrency, getUserCurrency, getCurrencyForCountryCode, toRazorpayAmount } from '@/lib/currency';
 
 function orderNumber() {
   const t = Date.now().toString(36).toUpperCase();
@@ -25,47 +27,38 @@ export async function POST(req: Request) {
       const profileSnap = await adminDb.collection('profiles').doc(user_id).get();
       if (profileSnap.exists) {
         const profile = profileSnap.data() || {};
-        if (profile.country) {
-          const countryStr = profile.country.trim().toLowerCase();
-          currency = (countryStr === 'india' || countryStr === 'in') ? 'INR' : 'USD';
-        } else {
-          const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
-          currency = clientCountry === 'IN' ? 'INR' : 'USD';
-        }
+        currency = getUserCurrency(profile);
       } else {
         const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
-        currency = clientCountry === 'IN' ? 'INR' : 'USD';
+        currency = getCurrencyForCountryCode(clientCountry);
       }
     } else {
       const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
-      currency = clientCountry === 'IN' ? 'INR' : 'USD';
+      currency = getCurrencyForCountryCode(clientCountry);
     }
 
-    // Fetch global settings to get dynamic exchange rate & shipping charge using adminDb
-    let usdToInrRate = 85;
+    // Fetch global settings and exchange rates
+    let rates: Record<string, number> = {};
     let shippingChargeSetting = 0;
     try {
+      const ratesData = await getExchangeRates();
+      rates = ratesData.rates || {};
+
       const globalSnap = await adminDb.collection('settings').doc('global').get();
       if (globalSnap.exists) {
         const gData = globalSnap.data() || {};
-        if (typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
-          usdToInrRate = gData.usd_to_inr_rate;
-        }
         if (typeof gData.shipping_charge === 'number') {
           shippingChargeSetting = gData.shipping_charge;
         }
       }
     } catch (err) {
-      console.error('Error fetching global settings in shop checkout:', err);
+      console.error('Error fetching exchange rates in shop checkout:', err);
     }
 
-    const convertInrToUsd = (priceInr: number, rate: number) => {
-      if (!rate || rate <= 0) return Math.round(priceInr / 85 * 100) / 100;
-      return Math.round((priceInr / rate) * 100) / 100;
-    };
+    const targetRate = currency === 'INR' ? 1 : (rates[currency] || null);
 
-    if (currency === 'USD' && (!usdToInrRate || isNaN(usdToInrRate))) {
-      return NextResponse.json({ error: 'International payments are currently unavailable. USD to INR exchange rate is not configured by the admin.' }, { status: 400 });
+    if (currency !== 'INR' && (!targetRate || isNaN(targetRate))) {
+      return NextResponse.json({ error: 'International payments are currently unavailable. Dynamic exchange rates failed to resolve.' }, { status: 400 });
     }
 
     // 1. Validate prices of all products on the server side using adminDb
@@ -78,7 +71,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `Product not found.` }, { status: 404 });
       }
       const product = productSnap.data() || {};
-      const price = currency === 'USD' ? convertInrToUsd(product.price_inr || 0, usdToInrRate) : (product.price_inr || 0);
+      const price = currency !== 'INR' ? convertInrToCurrency(product.price_inr || 0, targetRate || 0) : (product.price_inr || 0);
       calculatedSubtotal += price * item.quantity;
       
       validatedItems.push({
@@ -112,7 +105,8 @@ export async function POST(req: Request) {
                 calculatedDiscount = coupon.max_discount;
               }
             } else {
-              calculatedDiscount = coupon.value;
+              // Convert coupon flat value (entered in INR) to target currency
+              calculatedDiscount = currency !== 'INR' ? convertInrToCurrency(coupon.value, targetRate || 0) : coupon.value;
             }
           }
         }
@@ -124,7 +118,7 @@ export async function POST(req: Request) {
     // 3. Calculate shipping
     const baseShippingInr = shippingChargeSetting || 0;
     const finalShipping = baseShippingInr > 0
-      ? (currency === 'USD' ? convertInrToUsd(baseShippingInr, usdToInrRate) : baseShippingInr)
+      ? (currency !== 'INR' ? convertInrToCurrency(baseShippingInr, targetRate || 0) : baseShippingInr)
       : 0;
 
     const baseAmount = Math.max(0, calculatedSubtotal - calculatedDiscount + finalShipping);
@@ -132,8 +126,8 @@ export async function POST(req: Request) {
     let chargeCurrency = currency;
 
     const supportUSD = process.env.RAZORPAY_SUPPORT_USD === 'true';
-    if (chargeCurrency === 'USD' && !supportUSD) {
-      finalTotal = Math.round(finalTotal * (usdToInrRate || 1));
+    if (chargeCurrency !== 'INR' && (chargeCurrency !== 'USD' || !supportUSD)) {
+      finalTotal = Math.round(finalTotal / (targetRate || 1));
       chargeCurrency = 'INR';
     }
 
@@ -153,7 +147,7 @@ export async function POST(req: Request) {
             'Authorization': 'Basic ' + Buffer.from(keyId + ':' + keySecret).toString('base64'),
           },
           body: JSON.stringify({
-            amount: Math.round(Number(finalTotal) * 100), // paise/cents
+            amount: toRazorpayAmount(finalTotal, chargeCurrency), // paise/cents
             currency: chargeCurrency,
             receipt: number,
             notes: {
@@ -193,7 +187,7 @@ export async function POST(req: Request) {
       currency: chargeCurrency,
       base_amount: baseAmount,
       base_currency: currency,
-      exchange_rate: usdToInrRate,
+      exchange_rate: targetRate,
       charged_amount: finalTotal,
       charged_currency: chargeCurrency,
       status: 'pending',

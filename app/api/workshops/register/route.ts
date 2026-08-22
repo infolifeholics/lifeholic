@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, addDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, addDoc } from 'firebase/firestore';
+import { getExchangeRates } from '@/lib/exchange-rates';
+import { convertInrToCurrency, getCurrencyForCountryCode, toRazorpayAmount } from '@/lib/currency';
+import { getCountryByName } from '@/lib/countries';
 
 export async function POST(req: Request) {
   try {
@@ -17,25 +20,42 @@ export async function POST(req: Request) {
       user_id,
     } = body;
 
-    // Fetch global settings early to get dynamic exchange rate
-    let usdToInrRate = 80; // default/fallback
+    // Fetch global settings and exchange rates
+    let rates: Record<string, number> = {};
     try {
-      const globalSnap = await getDoc(doc(db, 'settings', 'global'));
-      if (globalSnap.exists()) {
-        const gData = globalSnap.data();
-        if (typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
-          usdToInrRate = gData.usd_to_inr_rate;
-        }
-      }
+      const ratesData = await getExchangeRates();
+      rates = ratesData.rates || {};
     } catch (err) {
-      console.error('Error fetching exchange rate in workshop registration:', err);
+      console.error('Error fetching exchange rates in workshop registration:', err);
     }
 
     const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
-    const currency = body.currency || (clientCountry === 'IN' ? 'INR' : 'USD');
+    
+    let currency = body.currency;
+    if (!currency) {
+      if (country) {
+        const cleanCountry = country.trim();
+        let code = '';
+        if (cleanCountry.length === 2) {
+          code = cleanCountry;
+        } else {
+          const countryObj = getCountryByName(cleanCountry);
+          code = countryObj ? countryObj.code : '';
+        }
+        currency = getCurrencyForCountryCode(code);
+      } else {
+        currency = getCurrencyForCountryCode(clientCountry);
+      }
+    }
 
     if (!workshop_id || !client_name || !client_email || !client_phone) {
       return NextResponse.json({ error: 'Missing mandatory fields.' }, { status: 400 });
+    }
+
+    const targetRate = currency === 'INR' ? 1 : (rates[currency] || null);
+
+    if (currency !== 'INR' && (!targetRate || isNaN(targetRate))) {
+      return NextResponse.json({ error: 'International payments are currently unavailable. Dynamic exchange rates failed to resolve.' }, { status: 400 });
     }
 
     // 1. Fetch workshop details
@@ -63,21 +83,13 @@ export async function POST(req: Request) {
     }
 
     // 4. Calculate dynamic pricing checking Early Bird
-    let basePriceUsd = ws.price_usd;
-    if ((!basePriceUsd || basePriceUsd === 0) && ws.price_inr) {
-      basePriceUsd = Math.round(ws.price_inr / usdToInrRate);
+    let finalPrice = ws.price_inr || 0;
+    if (ws.offer_expiry && nowStr <= ws.offer_expiry && ws.early_bird_price_inr !== undefined && ws.early_bird_price_inr > 0) {
+      finalPrice = ws.early_bird_price_inr;
     }
 
-    let finalPrice = currency === 'USD' ? (basePriceUsd || 0) : (ws.price_inr || 0);
-
-    if (ws.offer_expiry && nowStr <= ws.offer_expiry) {
-      let earlyBird = currency === 'USD' ? ws.early_bird_price_usd : ws.early_bird_price_inr;
-      if (currency === 'USD' && (!earlyBird || earlyBird === 0) && ws.early_bird_price_inr) {
-        earlyBird = Math.round(ws.early_bird_price_inr / usdToInrRate);
-      }
-      if (earlyBird !== undefined && earlyBird > 0) {
-        finalPrice = earlyBird;
-      }
+    if (currency !== 'INR' && targetRate) {
+      finalPrice = convertInrToCurrency(finalPrice, targetRate);
     }
 
     // Check coupon code
@@ -110,8 +122,8 @@ export async function POST(req: Request) {
           discount = coupon.max_discount;
         }
       } else {
-        if (currency === 'USD') {
-          discount = (coupon.value || 0) / usdToInrRate;
+        if (currency !== 'INR' && targetRate) {
+          discount = (coupon.value || 0) * targetRate;
         } else {
           discount = coupon.value || 0;
         }
@@ -119,16 +131,12 @@ export async function POST(req: Request) {
       finalPrice = Math.max(0, finalPrice - discount);
     }
 
-    if (currency === 'USD' && (!usdToInrRate || isNaN(usdToInrRate))) {
-      return NextResponse.json({ error: 'International payments are currently unavailable. USD to INR exchange rate is not configured by the admin.' }, { status: 400 });
-    }
-
     let chargePrice = finalPrice;
     let chargeCurrency = currency;
 
     const supportUSD = process.env.RAZORPAY_SUPPORT_USD === 'true';
-    if (chargeCurrency === 'USD' && !supportUSD) {
-      chargePrice = Math.round(chargePrice * (usdToInrRate || 1));
+    if (chargeCurrency !== 'INR' && (chargeCurrency !== 'USD' || !supportUSD)) {
+      chargePrice = Math.round(chargePrice / (targetRate || 1));
       chargeCurrency = 'INR';
     }
 
@@ -147,7 +155,7 @@ export async function POST(req: Request) {
             'Authorization': 'Basic ' + Buffer.from(keyId + ':' + keySecret).toString('base64'),
           },
           body: JSON.stringify({
-            amount: Math.round(Number(chargePrice) * 100), // paise/cents
+            amount: toRazorpayAmount(chargePrice, chargeCurrency),
             currency: chargeCurrency,
             receipt: regId,
           }),
@@ -183,7 +191,7 @@ export async function POST(req: Request) {
       currency: chargeCurrency,
       base_amount: finalPrice,
       base_currency: currency,
-      exchange_rate: usdToInrRate,
+      exchange_rate: targetRate,
       charged_amount: chargePrice,
       charged_currency: chargeCurrency,
       payment_status: 'unpaid',

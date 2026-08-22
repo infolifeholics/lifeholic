@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { getExchangeRates } from '@/lib/exchange-rates';
+import { convertInrToCurrency, toRazorpayAmount } from '@/lib/currency';
 
 export async function POST(req: Request) {
   try {
@@ -17,24 +19,20 @@ export async function POST(req: Request) {
     }
     const b = bookingSnap.data() || {};
 
-    // Fetch global settings to get dynamic exchange rate
-    let usdToInrRate = null;
+    // Fetch exchange rates
+    let rates: Record<string, number> = {};
     try {
-      const globalSnap = await adminDb.collection('settings').doc('global').get();
-      if (globalSnap.exists) {
-        const gData = globalSnap.data();
-        if (gData && typeof gData.usd_to_inr_rate === 'number' && gData.usd_to_inr_rate > 0) {
-          usdToInrRate = gData.usd_to_inr_rate;
-        }
-      }
+      const ratesData = await getExchangeRates();
+      rates = ratesData.rates || {};
     } catch (err) {
       console.error('Error fetching exchange rate in bookings create-order:', err);
     }
 
     const currency = b.currency || 'INR';
+    const targetRate = currency === 'INR' ? 1 : (rates[currency] || null);
 
-    if (currency === 'USD' && (!usdToInrRate || isNaN(usdToInrRate))) {
-      return NextResponse.json({ error: 'International payments are currently unavailable. USD to INR exchange rate is not configured by the admin.' }, { status: 400 });
+    if (currency !== 'INR' && (!targetRate || isNaN(targetRate))) {
+      return NextResponse.json({ error: 'International payments are currently unavailable. Dynamic exchange rates failed to resolve.' }, { status: 400 });
     }
 
     // 2. Fetch the correct service/somatic plan price from the database in INR
@@ -114,8 +112,8 @@ export async function POST(req: Request) {
           discountInr = couponData.max_discount;
         }
       } else {
-        if (currency === 'USD' && usdToInrRate) {
-          discountInr = couponData.value * usdToInrRate;
+        if (currency !== 'INR' && targetRate) {
+          discountInr = couponData.value / targetRate;
         } else {
           discountInr = couponData.value;
         }
@@ -131,18 +129,18 @@ export async function POST(req: Request) {
     let basePrice = basePriceInr;
     let discount = discountInr;
 
-    if (currency === 'USD' && usdToInrRate) {
-      finalAmount = Math.round((totalInr / usdToInrRate) * 100) / 100;
-      basePrice = Math.round((basePriceInr / usdToInrRate) * 100) / 100;
-      discount = Math.round((discountInr / usdToInrRate) * 100) / 100;
+    if (currency !== 'INR' && targetRate) {
+      finalAmount = convertInrToCurrency(totalInr, targetRate);
+      basePrice = convertInrToCurrency(basePriceInr, targetRate);
+      discount = convertInrToCurrency(discountInr, targetRate);
     }
 
     let chargeCurrency = currency;
 
     const supportUSD = process.env.RAZORPAY_SUPPORT_USD === 'true';
-    if (chargeCurrency === 'USD' && !supportUSD) {
-      // Convert the USD final amount back to INR (using dynamic rate) to create an INR order.
-      finalAmount = Math.round(finalAmount * (usdToInrRate || 1));
+    if (chargeCurrency !== 'INR' && (chargeCurrency !== 'USD' || !supportUSD)) {
+      // Convert the international final amount back to INR (using dynamic rate) to create an INR order.
+      finalAmount = Math.round(finalAmount / (targetRate || 1));
       chargeCurrency = 'INR';
     }
 
@@ -162,7 +160,7 @@ export async function POST(req: Request) {
         amount: basePrice,
         base_amount: basePrice,
         base_currency: currency,
-        exchange_rate: usdToInrRate,
+        exchange_rate: targetRate,
         charged_amount: finalAmount,
         charged_currency: chargeCurrency,
       }, { merge: true });
@@ -183,7 +181,7 @@ export async function POST(req: Request) {
           'Authorization': 'Basic ' + Buffer.from(keyId + ':' + keySecret).toString('base64'),
         },
         body: JSON.stringify({
-          amount: Math.round(finalAmount * 100), // in paise/cents
+          amount: toRazorpayAmount(finalAmount, chargeCurrency), // in paise/cents
           currency: chargeCurrency,
           receipt: booking_id,
         }),
@@ -205,7 +203,7 @@ export async function POST(req: Request) {
         amount: basePrice,
         base_amount: basePrice,
         base_currency: currency,
-        exchange_rate: usdToInrRate,
+        exchange_rate: targetRate,
         charged_amount: finalAmount,
         charged_currency: chargeCurrency,
       }, { merge: true });
@@ -224,7 +222,7 @@ export async function POST(req: Request) {
       amount: basePrice, // Store the base price in booking doc as per original schema
       base_amount: basePrice,
       base_currency: currency,
-      exchange_rate: usdToInrRate,
+      exchange_rate: targetRate,
       charged_amount: finalAmount,
       charged_currency: chargeCurrency,
     }, { merge: true });

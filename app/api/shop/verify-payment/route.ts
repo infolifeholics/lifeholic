@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import { triggerOrderNotification } from '@/lib/notifications';
+import { fromRazorpayAmount } from '@/lib/currency';
 
 export async function POST(req: Request) {
   try {
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
               phone: notes.phone || null,
               address: addressParsed,
               items: itemsParsed,
-              total: rzpOrder.amount / 100,
+              total: fromRazorpayAmount(rzpOrder.amount, rzpOrder.currency || 'INR'),
               currency: rzpOrder.currency || 'INR',
               status: 'pending',
               payment_status: 'unpaid',
