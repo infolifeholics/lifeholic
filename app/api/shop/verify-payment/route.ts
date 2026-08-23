@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import { triggerOrderNotification } from '@/lib/notifications';
 import { fromRazorpayAmount } from '@/lib/currency';
+import { createShiprocketOrder, buildShiprocketPayload } from '@/lib/shiprocket';
 
 export async function POST(req: Request) {
   try {
@@ -129,7 +130,9 @@ export async function POST(req: Request) {
 
     const updatedOrder = {
       status: 'paid',
+      order_status: 'processing',
       payment_status: 'paid',
+      payment_method: o.payment_method || 'razorpay',
       payment_ref: razorpay_payment_id,
       payment_provider: 'razorpay',
       updated_at: new Date().toISOString()
@@ -138,6 +141,30 @@ export async function POST(req: Request) {
     await orderDocRef.set(updatedOrder, { merge: true });
 
     const mergedOrder = { ...o, ...updatedOrder };
+
+    // Create Shiprocket PREPAID shipment (only for orders with physical items)
+    const hasPhysical = (mergedOrder.items || []).some((i: any) => i.type === 'physical');
+    if (hasPhysical) {
+      try {
+        // Idempotency: skip if Shiprocket order already exists
+        if (!mergedOrder.shiprocket_order_id) {
+          const srPayload = buildShiprocketPayload(mergedOrder, 'PREPAID');
+          const srResult = await createShiprocketOrder(srPayload);
+          if (srResult) {
+            await orderDocRef.set({
+              shiprocket_order_id: srResult.shiprocketOrderId,
+              shipment_id: srResult.shipmentId,
+              awb: srResult.awb,
+              courier_name: srResult.courierName,
+              tracking_url: srResult.trackingUrl,
+              shipping_status: srResult.shippingStatus,
+            }, { merge: true });
+          }
+        }
+      } catch (srErr) {
+        console.error('[VerifyPayment] Shiprocket error (non-fatal):', srErr);
+      }
+    }
 
     // Trigger Notification
     try {

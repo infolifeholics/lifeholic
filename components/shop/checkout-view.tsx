@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Loader2, Lock, Tag, X, ShieldCheck } from 'lucide-react';
+import { Loader2, Lock, Tag, X, Package, CreditCard } from 'lucide-react';
 import { useCart } from '@/components/providers/cart-provider';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { formatPrice, currencyForTimezone } from '@/lib/format';
+import { formatPrice } from '@/lib/format';
 import { convertInrToCurrency, toRazorpayAmount } from '@/lib/currency';
 import { getCountryByName } from '@/lib/countries';
 import { useCurrency } from '@/components/providers/currency-provider';
@@ -40,10 +40,9 @@ export function CheckoutView() {
   const [placing, setPlacing] = useState(false);
   const [razorpayReady, setRazorpayReady] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-
+  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
   const [shippingChargeSetting, setShippingChargeSetting] = useState<number | null>(null);
 
-  // Sync profile details if they load dynamically later
   useEffect(() => {
     if (user) {
       setForm((prev) => ({
@@ -54,13 +53,9 @@ export function CheckoutView() {
     }
   }, [user]);
 
-  // Initialize or update country & currency based on profile or guest geo/tz
   useEffect(() => {
     if (profile) {
-      setForm((prev) => ({
-        ...prev,
-        country: profile.country || 'India',
-      }));
+      setForm((prev) => ({ ...prev, country: profile.country || 'India' }));
     } else if (currentCountry) {
       let initialCountry = 'India';
       if (currentCurrency === 'USD') initialCountry = 'United States';
@@ -71,28 +66,15 @@ export function CheckoutView() {
       else if (currentCurrency === 'AUD') initialCountry = 'Australia';
       else if (currentCurrency === 'SGD') initialCountry = 'Singapore';
       else if (currentCurrency === 'JPY') initialCountry = 'Japan';
-
-      setForm((prev) => ({
-        ...prev,
-        country: initialCountry,
-      }));
+      setForm((prev) => ({ ...prev, country: initialCountry }));
     }
   }, [profile, currentCountry, currentCurrency]);
 
-  // Update currency dynamically if guest manually changes country input
   useEffect(() => {
     if (form.country) {
       const cleanCountry = form.country.trim();
-      let code = '';
-      if (cleanCountry.length === 2) {
-        code = cleanCountry;
-      } else {
-        const countryObj = getCountryByName(cleanCountry);
-        code = countryObj ? countryObj.code : '';
-      }
-      if (code) {
-        setOverrideCountry(code);
-      }
+      let code = cleanCountry.length === 2 ? cleanCountry : (getCountryByName(cleanCountry)?.code || '');
+      if (code) setOverrideCountry(code);
     }
   }, [form.country]);
 
@@ -100,22 +82,24 @@ export function CheckoutView() {
     getDoc(doc(db, 'settings', 'global')).then((snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        if (typeof data.shipping_charge === 'number') {
-          setShippingChargeSetting(data.shipping_charge);
-        }
+        if (typeof data.shipping_charge === 'number') setShippingChargeSetting(data.shipping_charge);
       }
-    }).catch(err => {
-      console.error(err);
-    });
+    }).catch(console.error);
   }, []);
+
+  // Reset to Razorpay if currency becomes international
+  useEffect(() => {
+    if (currentCurrency !== 'INR' && paymentMethod === 'cod') setPaymentMethod('razorpay');
+  }, [currentCurrency, paymentMethod]);
 
   const hasPhysical = items.some((i) => i.type === 'physical');
   const isInternational = currentCurrency !== 'INR';
   const hasError = isInternational && Object.keys(rates).length === 0;
+  const isCodAvailable = !isInternational && hasPhysical;
 
   const convertedSubtotal = items.reduce((acc, item) => {
-    const price = isInternational 
-      ? convertInrToCurrency(item.price_inr || item.price, exchangeRate || 0, currentCurrency) 
+    const price = isInternational
+      ? convertInrToCurrency(item.price_inr || item.price, exchangeRate || 0, currentCurrency)
       : (item.price_inr || item.price);
     return acc + price * item.quantity;
   }, 0);
@@ -129,6 +113,8 @@ export function CheckoutView() {
     : 0;
 
   const total = Math.max(0, convertedSubtotal - convertedDiscount + convertedShipping);
+  const displayCurrency = paymentMethod === 'cod' ? 'INR' : currentCurrency;
+  const displayTotal = paymentMethod === 'cod' ? Math.max(0, (items.reduce((acc, i) => acc + (i.price_inr || i.price) * i.quantity, 0)) - (applied?.discount || 0) + baseShippingInr) : total;
 
   const applyCoupon = async () => {
     if (!coupon) return;
@@ -140,101 +126,74 @@ export function CheckoutView() {
         body: JSON.stringify({ code: coupon, subtotal }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || 'Could not apply code.');
-        setApplied(null);
-        return;
-      }
+      if (!res.ok) { toast.error(data.error || 'Could not apply code.'); setApplied(null); return; }
       setApplied({ code: data.code, discount: data.discount });
       toast.success(`Code ${data.code} applied — you saved ${formatPrice(data.discount * (exchangeRate || 1), currentCurrency)}.`);
-    } catch {
-      toast.error('Something went wrong.');
-    } finally {
-      setCouponLoading(false);
-    }
+    } catch { toast.error('Something went wrong.'); } finally { setCouponLoading(false); }
   };
 
-  const placeOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (items.length === 0) return;
-
-    // Razorpay script check
-    if (!(window as any).Razorpay) {
-      toast.error('Razorpay SDK is loading. Please wait a moment and try again.');
-      return;
-    }
-
-    // Terms acceptance check
-    if (!acceptedTerms) {
-      toast.error('Please accept the Terms & Conditions and Cancellation & Refund Policy to proceed.');
-      return;
-    }
-
+  const placeCodOrder = async () => {
     setPlacing(true);
     try {
-      const address = hasPhysical
-        ? { line1: form.line1, city: form.city, state: form.state, postal_code: form.postal_code, country: form.country }
-        : null;
-
-      const res = await fetch('/api/shop/checkout', {
+      const res = await fetch('/api/shop/cod-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: form.email,
           full_name: form.full_name,
           phone: form.phone,
-          address,
-          items: items.map((i) => ({
-            id: i.id,
-            slug: i.slug,
-            name: i.name,
-            price: isInternational ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency) : (i.price_inr || i.price),
-            quantity: i.quantity,
-            image: i.image,
-            type: i.type,
-          })),
-          subtotal: convertedSubtotal,
-          discount: convertedDiscount,
-          shipping: convertedShipping,
-          total,
-          currency: currentCurrency,
+          address: { line1: form.line1, city: form.city, state: form.state, postal_code: form.postal_code, country: form.country },
+          items: items.map((i) => ({ id: i.id, slug: i.slug, name: i.name, price: i.price_inr || i.price, quantity: i.quantity, image: i.image, type: i.type })),
           coupon_code: applied?.code || null,
           user_id: user?.id || null,
         }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || 'Could not place order.');
-        setPlacing(false);
-        return;
-      }
+      if (!res.ok) { toast.error(data.error || 'Could not place COD order.'); setPlacing(false); return; }
+      toast.success('COD order placed successfully!');
+      clear();
+      router.push(`/shop/thank-you?order=${data.number}&method=cod`);
+    } catch { toast.error('Something went wrong placing your COD order.'); setPlacing(false); }
+  };
+
+  const placeRazorpayOrder = async () => {
+    if (!(window as any).Razorpay) { toast.error('Razorpay SDK is loading. Please wait a moment and try again.'); return; }
+    setPlacing(true);
+    try {
+      const address = hasPhysical
+        ? { line1: form.line1, city: form.city, state: form.state, postal_code: form.postal_code, country: form.country }
+        : null;
+      const res = await fetch('/api/shop/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email, full_name: form.full_name, phone: form.phone, address,
+          items: items.map((i) => ({
+            id: i.id, slug: i.slug, name: i.name,
+            price: isInternational ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency) : (i.price_inr || i.price),
+            quantity: i.quantity, image: i.image, type: i.type,
+          })),
+          subtotal: convertedSubtotal, discount: convertedDiscount, shipping: convertedShipping,
+          total, currency: currentCurrency, coupon_code: applied?.code || null, user_id: user?.id || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || 'Could not place order.'); setPlacing(false); return; }
 
       const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mockKey123';
-
       if (keyId === 'rzp_test_mockKey123') {
         toast.info('Using Demo/Test Payment Mode. Processing order confirmation...');
         setTimeout(async () => {
           try {
             const verifyRes = await fetch('/api/shop/verify-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_payment_id: 'pay_mock_' + data.id,
-                razorpay_order_id: 'order_mock_' + data.id,
-                razorpay_signature: 'sig_mock_' + data.id,
-                order_id: data.id,
-              }),
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ razorpay_payment_id: 'pay_mock_' + data.id, razorpay_order_id: 'order_mock_' + data.id, razorpay_signature: 'sig_mock_' + data.id, order_id: data.id }),
             });
-
             if (!verifyRes.ok) throw new Error('Verification failed.');
-
             toast.success('Test payment verified & order confirmed!');
             clear();
             router.push(`/shop/thank-you?order=${data.number}`);
-          } catch (err) {
-            toast.error('Failed to verify test payment status.');
-            setPlacing(false);
-          }
+          } catch { toast.error('Failed to verify test payment status.'); setPlacing(false); }
         }, 1500);
         return;
       }
@@ -250,118 +209,77 @@ export function CheckoutView() {
         handler: async function (response: any) {
           try {
             const verifyRes = await fetch('/api/shop/verify-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_signature: response.razorpay_signature,
-                order_id: data.id,
-              }),
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ razorpay_payment_id: response.razorpay_payment_id, razorpay_order_id: response.razorpay_order_id, razorpay_signature: response.razorpay_signature, order_id: data.id }),
             });
-
             if (!verifyRes.ok) throw new Error('Verification failed.');
-
             toast.success('Payment verified & order confirmed!');
             clear();
             router.push(`/shop/thank-you?order=${data.number}`);
-          } catch (err) {
-            toast.error('Failed to verify payment status.');
-            setPlacing(false);
-          }
+          } catch { toast.error('Failed to verify payment status.'); setPlacing(false); }
         },
-        prefill: {
-          name: form.full_name,
-          email: form.email,
-          contact: form.phone || '',
-        },
-        theme: {
-          color: '#d4af37',
-        },
-        modal: {
-          ondismiss: function () {
-            toast.info('Payment cancelled. You can retry placing the order.');
-            setPlacing(false);
-          }
-        }
+        prefill: { name: form.full_name, email: form.email, contact: form.phone || '' },
+        theme: { color: '#d4af37' },
+        modal: { ondismiss: function () { toast.info('Payment cancelled. You can retry placing the order.'); setPlacing(false); } },
       };
-
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
-    } catch {
-      toast.error('Something went wrong.');
-      setPlacing(false);
-    }
+    } catch { toast.error('Something went wrong.'); setPlacing(false); }
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-4 text-sm text-muted-foreground">Checking authentication status...</p>
-      </div>
-    );
-  }
+  const placeOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (items.length === 0) return;
+    if (!acceptedTerms) { toast.error('Please accept the Terms & Conditions and Cancellation & Refund Policy to proceed.'); return; }
+    if (paymentMethod === 'cod') await placeCodOrder();
+    else await placeRazorpayOrder();
+  };
 
-  if (!user) {
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
-        <h1 className="font-display text-3xl font-medium text-foreground">Sign in required</h1>
-        <p className="mt-3 max-w-sm text-pretty text-muted-foreground">
-          You must be signed in to check out and complete your order.
-        </p>
-        <Button asChild className="mt-6 rounded-full">
-          <a href={`/auth/login?redirect=/shop/checkout`}>Sign in to continue</a>
-        </Button>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="mt-4 text-sm text-muted-foreground">Checking authentication status...</p>
+    </div>
+  );
 
-  if (items.length === 0) {
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
-        <h1 className="font-display text-3xl font-medium text-foreground">Your bag is empty</h1>
-        <p className="mt-3 text-muted-foreground">Add something before checking out.</p>
-        <Button asChild className="mt-6 rounded-full"><a href="/shop">Browse the shop</a></Button>
-      </div>
-    );
-  }
+  if (!user) return (
+    <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+      <h1 className="font-display text-3xl font-medium text-foreground">Sign in required</h1>
+      <p className="mt-3 max-w-sm text-pretty text-muted-foreground">You must be signed in to check out and complete your order.</p>
+      <Button asChild className="mt-6 rounded-full"><a href={`/auth/login?redirect=/shop/checkout`}>Sign in to continue</a></Button>
+    </div>
+  );
+
+  if (items.length === 0) return (
+    <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+      <h1 className="font-display text-3xl font-medium text-foreground">Your bag is empty</h1>
+      <p className="mt-3 text-muted-foreground">Add something before checking out.</p>
+      <Button asChild className="mt-6 rounded-full"><a href="/shop">Browse the shop</a></Button>
+    </div>
+  );
 
   return (
     <div>
-      <Script 
-        src="https://checkout.razorpay.com/v1/checkout.js" 
-        onLoad={() => setRazorpayReady(true)}
-      />
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setRazorpayReady(true)} />
       <h1 className="font-display text-4xl font-medium tracking-tight text-foreground">Checkout</h1>
       <div className="mt-10 grid gap-10 lg:grid-cols-[1.4fr_1fr]">
         <form onSubmit={placeOrder} className="space-y-6">
+          {/* Contact */}
           <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
             <h2 className="font-display text-lg font-medium text-foreground">Contact</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1.5" />
-              </div>
-              <div>
-                <Label htmlFor="name">Full name</Label>
-                <Input id="name" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="mt-1.5" />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1.5" />
-              </div>
+              <div className="sm:col-span-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1.5" /></div>
+              <div><Label htmlFor="name">Full name</Label><Input id="name" required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="mt-1.5" /></div>
+              <div><Label htmlFor="phone">Phone</Label><Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1.5" /></div>
             </div>
           </div>
 
+          {/* Shipping address */}
           {hasPhysical && (
             <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
               <h2 className="font-display text-lg font-medium text-foreground">Shipping address</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <Label htmlFor="line1">Address</Label>
-                  <Input id="line1" required value={form.line1} onChange={(e) => setForm({ ...form, line1: e.target.value })} className="mt-1.5" />
-                </div>
+                <div className="sm:col-span-2"><Label htmlFor="line1">Address</Label><Input id="line1" required value={form.line1} onChange={(e) => setForm({ ...form, line1: e.target.value })} className="mt-1.5" /></div>
                 <div><Label htmlFor="city">City</Label><Input id="city" required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="mt-1.5" /></div>
                 <div><Label htmlFor="state">State / Province</Label><Input id="state" required value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} className="mt-1.5" /></div>
                 <div><Label htmlFor="postal">Postal code</Label><Input id="postal" required value={form.postal_code} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} className="mt-1.5" /></div>
@@ -370,17 +288,40 @@ export function CheckoutView() {
             </div>
           )}
 
+          {/* Payment Method Selector */}
           <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
-            <h2 className="font-display text-lg font-medium text-foreground">Payment</h2>
-            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border bg-secondary/40 p-4 text-sm text-muted-foreground">
-              <Lock className="h-4 w-4 text-gold" />
-              <div>
-                <p className="font-semibold text-foreground">Secure Payment Gateway</p>
-                <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-                  Fast &amp; secure transaction powered by Razorpay. Note: Orders once placed cannot be cancelled.
-                </p>
-              </div>
+            <h2 className="font-display text-lg font-medium text-foreground">Payment method</h2>
+            <div className="mt-4 space-y-3">
+              <label htmlFor="pay-razorpay" className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-4 transition-all ${paymentMethod === 'razorpay' ? 'border-gold bg-gold/5' : 'border-border/60 hover:border-gold/40'}`}>
+                <input id="pay-razorpay" type="radio" name="payment_method" value="razorpay" checked={paymentMethod === 'razorpay'} onChange={() => setPaymentMethod('razorpay')} className="accent-gold" />
+                <CreditCard className="h-5 w-5 text-gold shrink-0" />
+                <div>
+                  <p className="font-semibold text-sm text-foreground">Online Payment</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Pay securely via Razorpay (Card, UPI, Netbanking)</p>
+                </div>
+              </label>
+
+              {isCodAvailable && (
+                <label htmlFor="pay-cod" className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-4 transition-all ${paymentMethod === 'cod' ? 'border-gold bg-gold/5' : 'border-border/60 hover:border-gold/40'}`}>
+                  <input id="pay-cod" type="radio" name="payment_method" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="accent-gold" />
+                  <Package className="h-5 w-5 text-gold shrink-0" />
+                  <div>
+                    <p className="font-semibold text-sm text-foreground">Cash on Delivery</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Pay in cash when your order arrives. India only.</p>
+                  </div>
+                </label>
+              )}
             </div>
+
+            {paymentMethod === 'razorpay' && (
+              <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border bg-secondary/40 p-4 text-sm text-muted-foreground">
+                <Lock className="h-4 w-4 text-gold" />
+                <div>
+                  <p className="font-semibold text-foreground">Secure Payment Gateway</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">Fast &amp; secure transaction powered by Razorpay. Note: Orders once placed cannot be cancelled.</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {isInternational && hasError && (
@@ -388,38 +329,39 @@ export function CheckoutView() {
               International payments are currently unavailable because the exchange rate service failed. Please contact support.
             </div>
           )}
-
           {isInternational && isLoading && (
             <div className="p-4 bg-white/5 text-white/50 text-sm font-medium rounded-2xl border border-white/10 animate-pulse leading-relaxed">
               Fetching current regional exchange rates...
             </div>
           )}
 
+          {/* Terms */}
           <div className="flex items-start gap-2.5 p-3 rounded-2xl border border-white/10" style={{ backgroundColor: 'rgba(10, 8, 6, 0.80)' }}>
-            <input
-              type="checkbox"
-              id="accept-shop-terms"
-              checked={acceptedTerms}
-              onChange={(e) => setAcceptedTerms(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-gold focus:ring-gold"
-            />
+            <input type="checkbox" id="accept-shop-terms" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-gold focus:ring-gold" />
             <label htmlFor="accept-shop-terms" className="text-xs text-white/90 leading-relaxed select-none">
               I accept the{' '}
-              <Link href="/legal/terms" target="_blank" className="font-semibold hover:underline" style={{ color: '#D4AF37' }}>
-                Terms &amp; Conditions
-              </Link>{' '}
+              <Link href="/legal/terms" target="_blank" className="font-semibold hover:underline" style={{ color: '#D4AF37' }}>Terms &amp; Conditions</Link>{' '}
               and{' '}
-              <Link href="/legal/refund" target="_blank" className="font-semibold hover:underline" style={{ color: '#D4AF37' }}>
-                Cancellation &amp; Refund Policy
-              </Link>.
+              <Link href="/legal/refund" target="_blank" className="font-semibold hover:underline" style={{ color: '#D4AF37' }}>Cancellation &amp; Refund Policy</Link>.
             </label>
           </div>
 
-          <Button type="submit" size="lg" disabled={placing || !acceptedTerms || isLoading || hasError} className="w-full rounded-full">
-            {placing ? (<><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Processing payment…</>) : `Pay Now · ${formatPrice(total, currentCurrency)}`}
+          <Button
+            type="submit"
+            size="lg"
+            disabled={placing || !acceptedTerms || (paymentMethod === 'razorpay' && (isLoading || hasError))}
+            className="w-full rounded-full"
+          >
+            {placing
+              ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Processing…</>
+              : paymentMethod === 'cod'
+                ? `Place Order (COD) · ${formatPrice(displayTotal, 'INR')}`
+                : `Pay Now · ${formatPrice(total, currentCurrency)}`
+            }
           </Button>
         </form>
 
+        {/* Order Summary */}
         <aside className="h-fit rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft lg:sticky lg:top-28">
           <h2 className="font-display text-xl font-medium text-foreground">Order summary</h2>
           <ul className="mt-5 space-y-3">
@@ -433,10 +375,12 @@ export function CheckoutView() {
                 </div>
                 <span className="text-sm font-medium text-foreground">
                   {formatPrice(
-                    (isInternational
-                      ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency)
-                      : (i.price_inr || i.price)) * i.quantity,
-                    currentCurrency
+                    (paymentMethod === 'cod'
+                      ? (i.price_inr || i.price)
+                      : isInternational
+                        ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency)
+                        : (i.price_inr || i.price)) * i.quantity,
+                    displayCurrency
                   )}
                 </span>
               </li>
@@ -446,12 +390,7 @@ export function CheckoutView() {
           <div className="mt-5 flex gap-2">
             <div className="relative flex-1">
               <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Coupon code"
-                value={coupon}
-                onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-                className="rounded-full pl-9 uppercase"
-              />
+              <Input placeholder="Coupon code" value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} className="rounded-full pl-9 uppercase" />
             </div>
             <Button type="button" onClick={applyCoupon} disabled={couponLoading} variant="outline" className="rounded-full">
               {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
@@ -461,20 +400,21 @@ export function CheckoutView() {
           {applied && (
             <div className="mt-3 flex items-center justify-between rounded-xl bg-success/10 px-3 py-2 text-sm">
               <span className="text-success">{applied.code} applied</span>
-              <button onClick={() => setApplied(null)} className="text-muted-foreground hover:text-foreground">
-                <X className="h-4 w-4" />
-              </button>
+              <button onClick={() => setApplied(null)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
             </div>
           )}
 
           <dl className="mt-5 space-y-3 border-t border-border/50 pt-5 text-sm">
-            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, currentCurrency)}</dd></div>
-            {discount > 0 && <div className="flex justify-between"><dt className="text-success">Discount</dt><dd className="font-medium text-success">−{formatPrice(convertedDiscount, currentCurrency)}</dd></div>}
+            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(paymentMethod === 'cod' ? items.reduce((a, i) => a + (i.price_inr || i.price) * i.quantity, 0) : convertedSubtotal, displayCurrency)}</dd></div>
+            {discount > 0 && <div className="flex justify-between"><dt className="text-success">Discount</dt><dd className="font-medium text-success">−{formatPrice(paymentMethod === 'cod' ? discount : convertedDiscount, displayCurrency)}</dd></div>}
             {baseShippingInr > 0 && (
-              <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(convertedShipping, currentCurrency)}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(paymentMethod === 'cod' ? baseShippingInr : convertedShipping, displayCurrency)}</dd></div>
             )}
-            <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, currentCurrency)}</dd></div>
-            {isInternational && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
+            <div className="flex justify-between border-t border-border/50 pt-3">
+              <dt className="font-medium text-foreground">Total</dt>
+              <dd className="font-display text-2xl font-medium text-foreground">{formatPrice(displayTotal, displayCurrency)}</dd>
+            </div>
+            {isInternational && paymentMethod === 'razorpay' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
               <div className="mt-2 inline-flex self-end rounded-full px-3 py-1 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(10,8,6,0.85)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>
                 Note: Charged in INR equivalent: {formatPrice(Math.round(total / (exchangeRate || 1)), 'INR')}
               </div>

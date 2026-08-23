@@ -1547,67 +1547,142 @@ export function AccountDashboard() {
                 <Empty icon={Package} title="No orders placed yet" desc="Visit our shop to explore items and place your first order." cta={{ href: '/shop', label: 'Go to Shop' }} />
               ) : (
                 <div className="space-y-4">
-                  {orders.map((order) => (
-                    <div key={order.id} className="rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft space-y-4 hover:border-gold/30 transition-colors">
-                      <div className="flex flex-wrap items-center justify-between border-b border-zinc-800 pb-4 gap-2">
-                        <div>
-                          <p className="font-display font-medium text-white text-lg">Order ID: {order.number}</p>
-                          <p className="text-xs text-white/60">Order Date: {new Date(order.created_at).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>
+                  {orders.map((order) => {
+                    const isCod = (order as any).payment_method === 'cod';
+                    const paymentStatus = (order as any).payment_status || (order.status === 'paid' ? 'paid' : 'pending');
+                    const orderStatus = (order as any).order_status || order.status || 'pending';
+                    const shippingStatus = (order as any).shipping_status;
+                    const awb = (order as any).awb;
+                    const courierName = (order as any).courier_name;
+                    const trackingUrl = (order as any).tracking_url;
+                    const hasTracking = awb || courierName || trackingUrl;
+
+                    const orderStatusLabel: Record<string, string> = {
+                      pending: 'Pending', processing: 'Processing', paid: 'Paid',
+                      shipped: 'Shipped', in_transit: 'In Transit',
+                      out_for_delivery: 'Out for Delivery', delivered: 'Delivered',
+                      completed: 'Completed', rto: 'Returned',
+                    };
+
+                    return (
+                      <div key={order.id} className="rounded-3xl border border-zinc-800 bg-black text-white p-6 shadow-soft space-y-4 hover:border-gold/30 transition-colors">
+                        {/* Order header */}
+                        <div className="flex flex-wrap items-start justify-between border-b border-zinc-800 pb-4 gap-3">
+                          <div>
+                            <p className="font-display font-medium text-white text-lg">Order {order.number}</p>
+                            <p className="text-xs text-white/60">
+                              {new Date(order.created_at).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {/* Payment Method */}
+                            <span className={cn(
+                              'rounded-full px-2.5 py-1 text-xs font-semibold border',
+                              isCod
+                                ? 'bg-yellow-500/15 border-yellow-500/30 text-yellow-400'
+                                : 'bg-blue-500/15 border-blue-500/30 text-blue-400'
+                            )}>
+                              {isCod ? '📦 COD' : '💳 Online'}
+                            </span>
+                            {/* Payment Status */}
+                            <span className={cn(
+                              'rounded-full px-2.5 py-1 text-xs font-semibold border capitalize',
+                              paymentStatus === 'paid'
+                                ? 'bg-success/15 border-success/30 text-success'
+                                : 'bg-warning/15 border-warning/30 text-warning'
+                            )}>
+                              {paymentStatus === 'paid' ? 'Paid' : isCod ? 'Pay on Delivery' : 'Pending'}
+                            </span>
+                            {/* Order / Shipping Status */}
+                            <span className={cn(
+                              'rounded-full px-2.5 py-1 text-xs font-semibold capitalize border',
+                              orderStatus === 'completed' || orderStatus === 'delivered'
+                                ? 'bg-success/15 border-success/30 text-success'
+                                : orderStatus === 'shipped' || orderStatus === 'in_transit' || orderStatus === 'out_for_delivery'
+                                  ? 'bg-blue-500/15 border-blue-500/30 text-blue-400'
+                                  : 'bg-zinc-900 border-zinc-800 text-white/60'
+                            )}>
+                              {orderStatusLabel[orderStatus] || orderStatus}
+                            </span>
+                            <Button size="sm" variant="outline" className="rounded-full text-xs gap-1.5 h-8 border-gold/40 text-gold hover:bg-gold/10 bg-transparent" onClick={() => window.print()}>
+                              <FileText className="h-3.5 w-3.5" /> Invoice
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold capitalize tracking-wider border',
-                            order.status === 'paid' || order.status === 'fulfilled' ? 'bg-success/15 border-success/30 text-success' :
-                              order.status === 'pending' ? 'bg-warning/15 border-warning/30 text-warning' : 'bg-zinc-900 border-zinc-800 text-white/60'
-                          )}>
-                            Status: {order.status}
-                          </span>
-                          <Button size="sm" variant="outline" className="rounded-full text-xs gap-1.5 h-8 border-gold/40 text-gold hover:bg-gold/10 bg-transparent" onClick={() => window.print()}>
-                            <FileText className="h-3.5 w-3.5" /> Invoice
-                          </Button>
-                        </div>
-                      </div>
-                      <ul className="divide-y divide-zinc-850">
-                        {order.items?.map((item: any, idx: number) => {
-                          const itemSlug = item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-                          return (
-                            <li key={idx} className="flex py-3.5 gap-4 items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                {item.image ? (
-                                  <img src={item.image} alt="" className="h-14 w-14 rounded-2xl object-cover border border-zinc-800 shadow-sm" />
-                                ) : (
-                                  <div className="h-14 w-14 rounded-2xl bg-zinc-900 flex items-center justify-center border border-zinc-800">
-                                    <Package className="h-6 w-6 text-white/40" />
+
+                        {/* Items */}
+                        <ul className="divide-y divide-zinc-850">
+                          {order.items?.map((item: any, idx: number) => {
+                            const itemSlug = item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                            return (
+                              <li key={idx} className="flex py-3.5 gap-4 items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  {item.image ? (
+                                    <img src={item.image} alt="" className="h-14 w-14 rounded-2xl object-cover border border-zinc-800 shadow-sm" />
+                                  ) : (
+                                    <div className="h-14 w-14 rounded-2xl bg-zinc-900 flex items-center justify-center border border-zinc-800">
+                                      <Package className="h-6 w-6 text-white/40" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="font-semibold text-sm text-white">{item.name}</p>
+                                    <p className="text-xs text-white/60 capitalize">{item.type || 'Physical'} · Qty {item.quantity}</p>
                                   </div>
-                                )}
-                                <div>
-                                  <p className="font-semibold text-sm text-white">{item.name}</p>
-                                  <p className="text-xs text-white/60 capitalize">{item.type || 'Physical'} · Qty {item.quantity}</p>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="font-semibold text-sm text-white">{formatPrice(item.price * item.quantity, order.currency as 'INR' | 'USD')}</span>
-                                <Button asChild size="sm" variant="ghost" className="h-8 rounded-full hover:bg-zinc-800 text-xs gap-1 text-white hover:text-white bg-transparent">
-                                  <Link href={`/shop/${itemSlug}`} target="_blank">
-                                    View <ExternalLink className="h-3 w-3" />
-                                  </Link>
-                                </Button>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                      <div className="flex justify-between items-center border-t border-zinc-800 pt-4 text-xs text-white/60">
-                        <span>Paid via: {order.payment_provider || 'Manual Payment Gateway'}</span>
-                        <div className="text-right">
-                          <span className="text-xs">Amount Paid: </span>
-                          <span className="font-bold text-sm text-white">{formatPrice(order.total, order.currency as 'INR' | 'USD')}</span>
+                                <div className="flex items-center gap-3">
+                                  <span className="font-semibold text-sm text-white">{formatPrice(item.price * item.quantity, order.currency as 'INR' | 'USD')}</span>
+                                  <Button asChild size="sm" variant="ghost" className="h-8 rounded-full hover:bg-zinc-800 text-xs gap-1 text-white hover:text-white bg-transparent">
+                                    <Link href={`/shop/${itemSlug}`} target="_blank">View <ExternalLink className="h-3 w-3" /></Link>
+                                  </Button>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+
+                        {/* Shipping / Tracking */}
+                        {hasTracking && (
+                          <div className="rounded-2xl bg-zinc-900/60 border border-zinc-800 p-4 space-y-2">
+                            <p className="text-xs font-semibold text-gold uppercase tracking-wider">Shipping Info</p>
+                            {courierName && (
+                              <p className="text-xs text-white/60">Courier: <span className="text-white font-medium">{courierName}</span></p>
+                            )}
+                            {awb && (
+                              <p className="text-xs text-white/60">AWB / Tracking #: <span className="text-white font-mono font-medium">{awb}</span></p>
+                            )}
+                            {shippingStatus && (
+                              <p className="text-xs text-white/60">Shipping Status: <span className="text-white font-medium">{orderStatusLabel[shippingStatus] || shippingStatus}</span></p>
+                            )}
+                            {trackingUrl && (
+                              <a
+                                href={trackingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-gold/40 px-3 py-1.5 text-xs font-semibold text-gold hover:bg-gold/10 transition-colors"
+                              >
+                                🚚 Track Shipment
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Footer */}
+                        <div className="flex justify-between items-center border-t border-zinc-800 pt-4 text-xs text-white/60">
+                          <span>
+                            {isCod ? 'Cash on Delivery' : `Paid via: ${order.payment_provider || 'Razorpay'}`}
+                          </span>
+                          <div className="text-right">
+                            <span className="text-xs">Total: </span>
+                            <span className="font-bold text-sm text-white">{formatPrice(order.total, order.currency as 'INR' | 'USD')}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </TabsContent>
+
 
             {/* 11. CART TAB */}
             <TabsContent value="cart">
