@@ -102,7 +102,7 @@ export function AboutClientPage() {
                   LifeHolics began with a profound inner experience. On the night of 14th August 2019, I heard a
                   female voice say, <strong className="text-[#c59b27] font-bold">&ldquo;I&apos;m pregnant.&rdquo;</strong> Spiritually, pregnancy symbolizes the birth of something that needs
                   to be nurtured with love and care. Within a few weeks, LifeHolics came into existence. Looking back, I
-                  now understand that it wasn&apos;t just the birth of a purpose—it was the birth of a purpose. Over the
+                  now understand that it wasn&apos;t just the birth of a purpose it was the birth of a purpose. Over the
                   years, my own healing journey has taught me that real transformation begins from within, and this
                   community is an extension of everything life and the Universe have helped me learn.
                 </p>
