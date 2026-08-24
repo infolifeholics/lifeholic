@@ -200,8 +200,11 @@ function PaymentPageContent() {
 
   if (!bookingData) return null;
 
-  const subtotal = bookingData.amount;
   const currency = bookingData.currency;
+  const isNewBookingSchema = bookingData.base_amount !== undefined;
+  const subtotal = isNewBookingSchema
+    ? bookingData.amount
+    : Math.round(bookingData.amount / (1 + (currency === 'INR' ? gstPercentage : 0) / 100));
 
   // GST calculation (dynamic percentage if INR)
   const gst = currency === 'INR' ? Math.round(((subtotal - discount) * gstPercentage) / 100) : 0;

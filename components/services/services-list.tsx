@@ -14,7 +14,7 @@ import { convertInrToCurrency } from '@/lib/currency';
 
 export function ServicesList({ initialServices }: { initialServices: Service[] }) {
   const [services, setServices] = useState<Service[]>(initialServices);
-  const { currentCurrency, exchangeRate } = useCurrency();
+  const { currentCurrency, exchangeRate, gstPercentage } = useCurrency();
 
   useEffect(() => {
     const q = query(collection(db, 'services'));
@@ -72,11 +72,12 @@ export function ServicesList({ initialServices }: { initialServices: Service[] }
                     from <span className="font-medium text-foreground">
                       {formatPrice(
                         currentCurrency === 'INR'
-                          ? s.price_inr
-                          : convertInrToCurrency(s.price_inr, exchangeRate || 0, currentCurrency),
+                          ? Math.round(s.price_inr * (1 + gstPercentage / 100))
+                          : convertInrToCurrency(Math.round(s.price_inr * (1 + gstPercentage / 100)), exchangeRate || 0, currentCurrency),
                         currentCurrency
                       )}
                     </span>
+                    <span className="text-[10px] text-muted-foreground ml-1">(incl. GST)</span>
                   </span>
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground transition-transform group-hover:translate-x-0.5">
                     Explore <ArrowUpRight className="h-3.5 w-3.5" />

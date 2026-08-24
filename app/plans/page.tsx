@@ -299,7 +299,7 @@ export default function SomaticPlansPage() {
     });
   };
   const billingCycle = 'total';
-  const { currentCountry, currentCurrency, exchangeRate, isLoading: currencyLoading, rates } = useCurrency();
+  const { currentCountry, currentCurrency, exchangeRate, isLoading: currencyLoading, rates, gstPercentage } = useCurrency();
   const [planServices, setPlanServices] = useState<{
     essential: any;
     premium: any;
@@ -429,9 +429,9 @@ export default function SomaticPlansPage() {
   const isB2 = survey?.subcategory?.toLowerCase().includes('ancestral') || false;
 
   const rawPrices = {
-    essential: planServices?.essential?.price_inr || 4444,
-    premium: planServices?.premium?.price_inr || 11000,
-    elite: planServices?.elite?.price_inr || 21000,
+    essential: Math.round((planServices?.essential?.price_inr || 4444) * (1 + gstPercentage / 100)),
+    premium: Math.round((planServices?.premium?.price_inr || 11000) * (1 + gstPercentage / 100)),
+    elite: Math.round((planServices?.elite?.price_inr || 21000) * (1 + gstPercentage / 100)),
   };
 
   const prices = {
@@ -599,6 +599,7 @@ export default function SomaticPlansPage() {
                     <div className="mt-6">
                       <span className="font-display text-4xl font-semibold text-gold">
                         {formatPrice(priceVal, currentCurrency)}
+                        <span className="text-[10px] text-muted-foreground ml-1.5 font-normal font-sans">(incl. GST)</span>
                       </span>
                       <span className="text-xs text-muted-foreground ml-1">/ {planKey === 'essential' ? 'session' : 'program'}</span>
                       {(() => {

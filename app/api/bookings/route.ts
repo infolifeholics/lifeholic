@@ -426,6 +426,8 @@ export async function POST(req: Request) {
         }
 
         let calculatedBaseAmount = 0;
+        let calculatedGstAmount = 0;
+        let calculatedTotalAmount = 0;
         if (!isSubsequentBooking) {
           let basePriceInr = 0;
           if (isSomatic) {
@@ -449,11 +451,17 @@ export async function POST(req: Request) {
           const totalInr = basePriceInr + gstInr;
 
           calculatedBaseAmount = finalCurrency !== 'INR' && targetRate
+            ? convertInrToCurrency(basePriceInr, targetRate)
+            : basePriceInr;
+          calculatedGstAmount = finalCurrency !== 'INR' && targetRate
+            ? convertInrToCurrency(gstInr, targetRate)
+            : gstInr;
+          calculatedTotalAmount = finalCurrency !== 'INR' && targetRate
             ? convertInrToCurrency(totalInr, targetRate)
             : totalInr;
         }
 
-        const finalAmount = calculatedBaseAmount;
+        const finalAmount = calculatedTotalAmount;
         let pgOrderId = null;
 
         // Check somatic package number tracking if user is booking a subsequent session
@@ -492,7 +500,14 @@ export async function POST(req: Request) {
           mode,
           status: initialStatus,
           payment_status: initialPaymentStatus,
-          amount: finalAmount,
+          amount: calculatedBaseAmount,
+          base_amount: calculatedBaseAmount,
+          base_currency: finalCurrency,
+          gst_rate: gstPercentage,
+          gst_amount: calculatedGstAmount,
+          charged_amount: calculatedTotalAmount,
+          charged_currency: finalCurrency,
+          exchange_rate: targetRate,
           currency: finalCurrency,
           notes: notes || null,
           category: category || null,

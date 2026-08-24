@@ -14,9 +14,10 @@ export function ServiceHero({ service }: { service: Service }) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
   const y = useTransform(scrollYProgress, [0, 1], [0, 100]);
-  const { currentCurrency, exchangeRate } = useCurrency();
+  const { currentCurrency, exchangeRate, gstPercentage } = useCurrency();
   const isInternational = currentCurrency !== 'INR';
-  const displayPrice = isInternational && exchangeRate ? convertInrToCurrency(service.price_inr, exchangeRate, currentCurrency) : service.price_inr;
+  const priceWithGst = Math.round(service.price_inr * (1 + gstPercentage / 100));
+  const displayPrice = isInternational && exchangeRate ? convertInrToCurrency(priceWithGst, exchangeRate, currentCurrency) : priceWithGst;
 
   return (
     <section ref={ref} className="relative overflow-hidden pt-12">
@@ -50,7 +51,7 @@ export function ServiceHero({ service }: { service: Service }) {
                     Book this session <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                   <span className="text-sm text-white/70 font-medium">
-                    from <span className="font-semibold text-white">{formatPrice(displayPrice, currentCurrency)}</span>
+                    from <span className="font-semibold text-white">{formatPrice(displayPrice, currentCurrency)}</span> <span className="text-[10px] text-white/60 ml-0.5">(incl. GST)</span>
                   </span>
                 </div>
               </Reveal>

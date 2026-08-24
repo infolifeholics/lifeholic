@@ -257,10 +257,9 @@ export function AdminSettingsPanel() {
     setLoading(true);
     try {
       // Global
-      const globalSnap = await getDocs(collection(db, 'settings'));
-      const globalDoc = globalSnap.docs.find((d) => d.id === 'global');
-      if (globalDoc) {
-        setGlobalSettings({ id: 'global', ...globalDoc.data() } as AdminSettings);
+      const globalDocSnap = await getDoc(doc(db, 'settings', 'global'));
+      if (globalDocSnap.exists()) {
+        setGlobalSettings({ id: 'global', ...globalDocSnap.data() } as AdminSettings);
       }
 
       // Exchange Rates Info
