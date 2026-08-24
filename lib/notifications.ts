@@ -248,7 +248,7 @@ export async function triggerOrderNotification(orderId: string, orderData: any) 
       email,
       phone || null,
       vars,
-      undefined,
+      orderId,
       user_id || undefined
     );
 
@@ -259,7 +259,7 @@ export async function triggerOrderNotification(orderId: string, orderData: any) 
       adminEmail,
       ownerPhone,
       vars,
-      undefined,
+      orderId,
       undefined
     );
     console.log(`[Notifications] Successfully queued order notifications for Order Number: ${orderNumber}`);

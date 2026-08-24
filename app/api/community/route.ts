@@ -77,7 +77,8 @@ export async function POST(req: Request) {
           clientPhone: phone.trim(),
           actionDetails: message.trim(), // reason/message
           sessionDate: formattedDate,
-        }
+        },
+        docRef.id
       );
 
       // 4b. User confirmation (Email + WhatsApp)
@@ -87,7 +88,8 @@ export async function POST(req: Request) {
         phone.trim(),
         {
           memberName: name.trim(),
-        }
+        },
+        docRef.id
       );
     } catch (notifErr: any) {
       // Notification failure should NOT fail the application itself
