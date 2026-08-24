@@ -71,6 +71,9 @@ export async function POST(req: Request) {
           const updatedBooking = {
             payment_status: 'paid',
             status: 'confirmed',
+            payment_verified: true,
+            razorpay_payment_id: paymentId,
+            razorpay_order_id: orderId,
             status_timeline: updatedTimeline,
             payment_history: updatedHistory,
             updated_at: new Date().toISOString()

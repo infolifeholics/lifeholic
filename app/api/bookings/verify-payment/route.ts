@@ -33,6 +33,12 @@ export async function POST(req: Request) {
     }
     const b = bookingSnap.data() || {};
 
+    // Idempotency: skip if already paid and confirmed
+    if (b.status === 'confirmed' && b.payment_status === 'paid') {
+      console.log(`[VerifyPayment] Booking ${booking_id} is already paid and confirmed. Skipping verification processing (Idempotency).`);
+      return NextResponse.json({ ok: true, message: 'Already verified' });
+    }
+
     // Create payment entry in payments collection
     const paymentRef = adminDb.collection('payments').doc(razorpay_payment_id);
     await paymentRef.set({
@@ -78,6 +84,9 @@ export async function POST(req: Request) {
     const updatedBooking = {
       payment_status: 'paid',
       status: 'confirmed',
+      payment_verified: true,
+      razorpay_payment_id,
+      razorpay_order_id,
       status_timeline: updatedTimeline,
       payment_history: updatedHistory,
       updated_at: new Date().toISOString()

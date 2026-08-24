@@ -9,6 +9,8 @@ import { writeToDLQ } from './dead-letter';
 const EMAIL_SUBJECTS: Record<string, string> = {
   welcome: 'Welcome to TheLifeHolics!',
   booking_confirmation: 'Session Booking Received',
+  booking_pending_payment: 'Booking Payment Pending',
+  booking_payment_expired: 'Booking Hold Expired',
   booking_cancelled: 'Session Booking Cancelled',
   booking_reminder: 'Upcoming Session Reminder',
   booking_status_changed: 'Booking Status Update',
@@ -39,7 +41,13 @@ export async function processNotificationJob(job: NotificationJob): Promise<void
 
   // ── 1. Push Email Task ───────────────────────────────────────────────────
   if (shouldSendEmail) {
-    const subject = EMAIL_SUBJECTS[job.type] || 'LifeHolics Notification';
+    let subject = EMAIL_SUBJECTS[job.type] || 'LifeHolics Notification';
+    if (job.type === 'admin_alert') {
+      const actionLower = job.vars.bookingStatus?.toLowerCase() || '';
+      const detailsLower = job.vars.actionDetails?.toLowerCase() || '';
+      const isProduct = actionLower.includes('order') || actionLower.includes('product') || detailsLower.includes('order') || detailsLower.includes('product');
+      subject = isProduct ? 'Product Alert' : 'Session Alert';
+    }
     const templateFn = EMAIL_TEMPLATES[job.type as keyof typeof EMAIL_TEMPLATES];
 
     if (!templateFn) {

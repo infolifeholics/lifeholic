@@ -47,6 +47,7 @@ function PaymentPageContent() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [rates, setRates] = useState<Record<string, number>>({});
+  const [gstPercentage, setGstPercentage] = useState(18);
 
   useEffect(() => {
     if (!bookingId) {
@@ -82,6 +83,16 @@ function PaymentPageContent() {
           const data = await res.json();
           if (data && data.rates) {
             setRates(data.rates);
+          }
+        }
+
+        // Fetch global settings for dynamic GST percentage
+        const globalRef = doc(db, 'settings', 'global');
+        const globalSnap = await getDoc(globalRef);
+        if (globalSnap.exists()) {
+          const gData = globalSnap.data();
+          if (gData && typeof gData.gst_percentage === 'number') {
+            setGstPercentage(gData.gst_percentage);
           }
         }
 
@@ -192,8 +203,8 @@ function PaymentPageContent() {
   const subtotal = bookingData.amount;
   const currency = bookingData.currency;
 
-  // GST calculation (18% if INR)
-  const gst = currency === 'INR' ? Math.round((subtotal - discount) * 0.18) : 0;
+  // GST calculation (dynamic percentage if INR)
+  const gst = currency === 'INR' ? Math.round(((subtotal - discount) * gstPercentage) / 100) : 0;
   const total = subtotal - discount + gst;
 
   const handleRazorpayPayment = async () => {
@@ -497,7 +508,7 @@ function PaymentPageContent() {
 
             {gst > 0 && (
               <div className="flex items-center justify-between text-muted-foreground">
-                <span>GST (18%)</span>
+                <span>GST ({gstPercentage}%)</span>
                 <span>{formatPrice(gst, currency)}</span>
               </div>
             )}

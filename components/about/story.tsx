@@ -15,13 +15,13 @@ export function AboutStory() {
             <Reveal delay={0.1}>
               <div className="mt-8 space-y-5 text-pretty text-base leading-relaxed text-muted-foreground">
                 <p>
-                  As I began my own journey of healing and self-discovery, I realized that many of our struggles—whether related to health, relationships, finances, or emotions—often have deeper roots than what we see on the surface.
+                  As I began my own journey of healing and self-discovery, I realized that many of our struggles whether related to health, relationships, finances, or emotions often have deeper roots than what we see on the surface.
                 </p>
                 <p>
-                  The more I explored these deeper emotional, energetic, and spiritual patterns, the more I started understanding myself. As I healed and applied these learnings in my own life, I began noticing meaningful changes—not just in how I felt, but in how I experienced life itself.
+                  The more I explored these deeper emotional, energetic, and spiritual patterns, the more I started understanding myself. As I healed and applied these learnings in my own life, I began noticing meaningful changes not just in how I felt, but in how I experienced life itself.
                 </p>
                 <p>
-                  LifeHolics began with a profound inner experience. On the night of 14th August 2019, I heard a female voice say, <strong className="text-gold">&quot;I&apos;m pregnant.&quot;</strong> Spiritually, pregnancy symbolizes the birth of something that needs to be nurtured with love and care. Within a few weeks, LifeHolics came into existence. Looking back, I now understand that it wasn&apos;t just the birth of a platform—it was the birth of a purpose. Over the years, my own healing journey has taught me that real transformation begins from within, and this community is an extension of everything life and the Universe have helped me learn.
+                  LifeHolics began with a profound inner experience. On the night of 14th August 2019, I heard a female voice say, <strong className="text-gold">&quot;I&apos;m pregnant.&quot;</strong> Spiritually, pregnancy symbolizes the birth of something that needs to be nurtured with love and care. Within a few weeks, LifeHolics came into existence. Looking back, I now understand that it wasn&apos;t just the birth of a platform it was the birth of a purpose. Over the years, my own healing journey has taught me that real transformation begins from within, and this community is an extension of everything life and the Universe have helped me learn.
                 </p>
                 <p>
                   Lifeholics was created with the intention of helping people gain clarity about their life’s challenges, understand the deeper patterns influencing them, and begin a journey of healing and transformation.

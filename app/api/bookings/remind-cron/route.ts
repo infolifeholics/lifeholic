@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, runTransaction } from 'firebase/firestore';
 import { queueNotification } from '@/lib/notifications/notification-service';
 
 const WINDOW_TOLERANCE_MINUTES = 15; // ± minutes tolerance
@@ -118,8 +118,70 @@ export async function GET(req: Request) {
       }
     }
 
-    console.log(`[Remind-Cron] Done. ${sentCount.length} reminder(s) dispatched.`);
-    return NextResponse.json({ ok: true, sentReminders: sentCount });
+    // 3. Expiration Cleanup for Pending Unpaid bookings older than 15 minutes
+    const expirationLimit = new Date(now.getTime() - 15 * 60 * 1000);
+    const pendingQuery = query(
+      collection(db, 'bookings'),
+      where('status', '==', 'pending'),
+      where('payment_status', '==', 'unpaid')
+    );
+    const pendingSnap = await getDocs(pendingQuery);
+    let expiredCount = 0;
+
+    for (const pendingDoc of pendingSnap.docs) {
+      const pData = pendingDoc.data();
+      const pId = pendingDoc.id;
+      const createdAtTime = pData.created_at ? new Date(pData.created_at) : new Date(pData.start_time);
+      
+      if (createdAtTime < expirationLimit) {
+        let expiredSuccessfully = false;
+        const timeline = pData.status_timeline || [];
+        const updatedTimeline = [
+          ...timeline,
+          {
+            status: 'cancelled',
+            timestamp: new Date().toISOString(),
+            updated_by: 'System',
+            note: 'Booking expired because payment was not completed'
+          }
+        ];
+        const updatedBooking = {
+          status: 'cancelled',
+          status_timeline: updatedTimeline,
+          updated_at: new Date().toISOString()
+        };
+
+        try {
+          await runTransaction(db, async (transaction) => {
+            const docRef = doc(db, 'bookings', pId);
+            const docSnap = await transaction.get(docRef);
+            if (!docSnap.exists()) return;
+            const currentData = docSnap.data();
+            if (currentData.status === 'pending' && currentData.payment_status === 'unpaid') {
+              transaction.update(docRef, updatedBooking);
+              expiredSuccessfully = true;
+            }
+          });
+        } catch (err) {
+          console.error(`[Remind-Cron] Transaction failed for expiring booking ${pId}:`, err);
+        }
+
+        if (expiredSuccessfully) {
+          try {
+            const { triggerBookingNotification } = await import('@/lib/notifications');
+            await triggerBookingNotification(pId, { ...pData, ...updatedBooking }, 'cancelled');
+          } catch (err) {
+            console.error(`[Remind-Cron] Failed to trigger notification for expired booking ${pId}:`, err);
+          }
+
+          expiredCount++;
+          console.log(`[Remind-Cron] Expired unpaid booking ${pId} (created at ${createdAtTime.toISOString()})`);
+        }
+      }
+    }
+
+    console.log(`[Remind-Cron] Done. ${sentCount.length} reminder(s) dispatched. ${expiredCount} booking(s) expired.`);
+    return NextResponse.json({ ok: true, sentReminders: sentCount, expiredBookingsCount: expiredCount });
   } catch (err: any) {
     console.error('[Remind-Cron] Error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });

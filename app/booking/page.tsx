@@ -30,7 +30,7 @@ export default async function BookingPage() {
         <SectionHeading
           eyebrow="Begin here"
           title="Book your session"
-          description="A few quiet steps. Your slot is reserved the instant you confirm — no one else can take it."
+          description="A few quiet steps. Your slot is reserved the instant you confirm no one else can take it."
         />
       </section>
 

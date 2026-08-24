@@ -192,6 +192,39 @@ export const EMAIL_TEMPLATES = {
     return getBaseHtml('Booking Confirmed', content, vars);
   },
 
+  booking_pending_payment: (vars: TemplateVars) => {
+    const content = `
+      <h2>Your Session Booking is Incomplete (Payment Pending)</h2>
+      <p>Hello ${vars.memberName},</p>
+      <p>Your session slot has been temporarily reserved. Please complete your payment to finalize and confirm your booking. Note that unpaid bookings are temporarily held for 15 minutes before the slot is automatically released.</p>
+      <div class="details-box">
+        <div class="details-row"><span class="label">Booking ID:</span><span class="value">${vars.bookingId || 'N/A'}</span></div>
+        <div class="details-row"><span class="label">Session:</span><span class="value">${vars.actionDetails || 'Session'}</span></div>
+        <div class="details-row"><span class="label">Date:</span><span class="value">${vars.sessionDate || 'N/A'}</span></div>
+        <div class="details-row"><span class="label">Time:</span><span class="value">${vars.sessionTime || 'N/A'} (IST)</span></div>
+      </div>
+      <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/booking/payment?id=${vars.bookingId}" class="btn">Proceed to Payment</a>
+    `;
+    return getBaseHtml('Booking Payment Pending', content, vars);
+  },
+
+  booking_payment_expired: (vars: TemplateVars) => {
+    const content = `
+      <h2>Your Session Booking Hold Has Expired</h2>
+      <p>Hello ${vars.memberName},</p>
+      <p>We did not receive payment for your temporarily reserved session slot within the 15-minute hold period. As a result, the temporary hold has expired, the booking has been cancelled, and the slot has been released for other users.</p>
+      <div class="details-box">
+        <div class="details-row"><span class="label">Booking ID:</span><span class="value">${vars.bookingId || 'N/A'}</span></div>
+        <div class="details-row"><span class="label">Session:</span><span class="value">${vars.actionDetails || 'Session'}</span></div>
+        <div class="details-row"><span class="label">Date:</span><span class="value">${vars.sessionDate || 'N/A'}</span></div>
+        <div class="details-row"><span class="label">Time:</span><span class="value">${vars.sessionTime || 'N/A'} (IST)</span></div>
+      </div>
+      <p>If you still wish to schedule this session, please make a new booking and complete the payment process.</p>
+      <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/booking" class="btn">Book Another Session</a>
+    `;
+    return getBaseHtml('Booking Hold Expired', content, vars);
+  },
+
   booking_cancelled: (vars: TemplateVars) => {
     const content = `
       <h2>Session Booking Cancelled</h2>
@@ -284,8 +317,12 @@ export const EMAIL_TEMPLATES = {
   },
 
   admin_alert: (vars: TemplateVars) => {
+    const actionLower = vars.bookingStatus?.toLowerCase() || '';
+    const detailsLower = vars.actionDetails?.toLowerCase() || '';
+    const isProduct = actionLower.includes('order') || actionLower.includes('product') || detailsLower.includes('order') || detailsLower.includes('product');
+    const headerTitle = isProduct ? 'Product Alert' : 'Session Alert';
     const content = `
-      <h2>System Administration Alert</h2>
+      <h2>${headerTitle}</h2>
       <p>Hello Admin,</p>
       <p>An administrative action was performed on the booking platform:</p>
       <div class="details-box">
@@ -296,7 +333,7 @@ export const EMAIL_TEMPLATES = {
       </div>
       <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/admin" class="btn">Open Admin Portal</a>
     `;
-    return getBaseHtml('Admin System Alert', content, vars);
+    return getBaseHtml(headerTitle, content, vars);
   },
 
   promo_offer: (vars: TemplateVars) => {
@@ -434,6 +471,12 @@ export const WHATSAPP_TEMPLATES = {
   },
   booking_confirmation: (vars: TemplateVars) => {
     return `Your session with Lifeholics is confirmed!\n\nHi ${vars.memberName},\n\nYour ${vars.actionDetails || 'session'} has been successfully booked.\n\n📅 Date: ${vars.sessionDate}\n🕒 Time: ${vars.sessionTime}\n\n🔗 Meeting Link:\n${vars.meetLink || 'Will be shared soon'}\n\nKindly Note:\n• Please join a few minutes before your scheduled time.\n• Sessions are non-refundable.\n• If you’re unable to attend, you may reschedule at least 48 hours in advance.\n• Requests within 48 hours may not be accommodated.\n\nWe look forward to supporting you on your healing journey.\n\nTeam Lifeholics`;
+  },
+  booking_pending_payment: (vars: TemplateVars) => {
+    return `Your session booking is incomplete (Payment Pending)!\n\nHi ${vars.memberName},\n\nYour slot for ${vars.actionDetails || 'session'} has been temporarily reserved. Please complete your payment to confirm your booking.\n\n📅 Date: ${vars.sessionDate}\n🕒 Time: ${vars.sessionTime}\n\n💳 Complete Payment:\n${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/booking/payment?id=${vars.bookingId}\n\nNote: Unpaid slots are held temporarily for 15 minutes before the reservation expires.\n\nTeam Lifeholics`;
+  },
+  booking_payment_expired: (vars: TemplateVars) => {
+    return `Your session booking hold has expired.\n\nHi ${vars.memberName},\n\nWe did not receive payment for your temporarily reserved slot within the 15-minute hold period. The booking (ID: ${vars.bookingId}) has been cancelled and the slot released.\n\n📅 Date: ${vars.sessionDate}\n🕒 Time: ${vars.sessionTime}\n\nIf you still wish to schedule this session, please make a new booking:\n${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/booking\n\nTeam Lifeholics`;
   },
   booking_cancelled: (vars: TemplateVars) => {
     return `Hello ${vars.memberName}, your booking (ID: ${vars.bookingId}) for ${vars.sessionDate} at ${vars.sessionTime} IST has been cancelled. Contact support for assistance.`;

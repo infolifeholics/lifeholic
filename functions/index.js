@@ -165,51 +165,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
         created_at: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
-
-    // Email templates
-    const emailSubject = `Booking Submitted (ID: ${bookingId})`;
-    const emailBody = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
-        <h2 style="color: #c5a880;">Lifeholics Booking Request</h2>
-        <p>Hello ${client_name}, your booking request has been submitted and is currently pending payment.</p>
-        <hr style="border: 0; border-top: 1px solid #eee;" />
-        <ul style="list-style: none; padding-left: 0; line-height: 1.8;">
-          <li><strong>Booking ID:</strong> ${bookingId}</li>
-          <li><strong>Service:</strong> ${service_title}</li>
-          <li><strong>Date:</strong> ${dateStr}</li>
-          <li><strong>Time:</strong> ${timeStr}</li>
-          <li><strong>Status:</strong> ${status}</li>
-        </ul>
-        <div style="text-align: center; margin-top: 25px;">
-          <a href="https://thelifeholics.com/account" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 30px; font-weight: bold;">View Booking Pass</a>
-        </div>
-      </div>
-    `;
-
-    try {
-      await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
-        to: client_email,
-        subject: emailSubject,
-        html: emailBody,
-      });
-      await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
-        to: adminEmail,
-        subject: `[ADMIN] ${emailSubject}`,
-        html: emailBody,
-      });
-    } catch (e) {
-      logger.error("Failed to send creation emails:", e);
-    }
-
-    const userMsg = `Hello ${client_name}, your booking for ${service_title} on ${dateStr} is created (ID: ${bookingId}).`;
-    if (client_phone) {
-      await sendWhatsAppNotification(client_phone, userMsg, {
-        name: "booking_created",
-        params: [bookingId, client_name, service_title, dateStr, timeStr, status]
-      });
-    }
+    logger.info(`Booking created. Notification emails handled by Next.js application queue.`);
   }
 
   // 2. Booking Confirmed
@@ -224,40 +180,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
         created_at: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
-
-    const emailSubject = `Booking Confirmed! (ID: ${bookingId})`;
-    const emailBody = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
-        <h2 style="color: #4caf50;">Lifeholics Session Confirmed</h2>
-        <p>Hello ${client_name}, your booking with ID ${bookingId} has been confirmed!</p>
-        <hr style="border: 0; border-top: 1px solid #eee;" />
-        <ul style="list-style: none; padding-left: 0; line-height: 1.8;">
-          <li><strong>Service:</strong> ${service_title}</li>
-          <li><strong>Date:</strong> ${dateStr}</li>
-          <li><strong>Time:</strong> ${timeStr}</li>
-          ${finalMeetLink ? `<li><strong>Meeting Link:</strong> <a href="${finalMeetLink}">${finalMeetLink}</a></li>` : ""}
-        </ul>
-      </div>
-    `;
-
-    try {
-      await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
-        to: client_email,
-        subject: emailSubject,
-        html: emailBody,
-      });
-    } catch (e) {
-      logger.error("Failed to send confirmation email:", e);
-    }
-
-    const confirmMsg = `Hello ${client_name}, your booking (ID: ${bookingId}) is confirmed for ${service_title} on ${dateStr}!${finalMeetLink ? ` Join link: ${finalMeetLink}` : ""}`;
-    if (client_phone) {
-      await sendWhatsAppNotification(client_phone, confirmMsg, {
-        name: "booking_confirmed",
-        params: [bookingId, client_name, service_title, dateStr, timeStr, "Confirmed"]
-      });
-    }
+    logger.info(`Booking confirmed. Notification emails handled by Next.js application queue.`);
   }
 
   // 3. Meeting Link Added/Updated
@@ -272,32 +195,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
         created_at: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
-
-    const emailSubject = `Meeting Link Added (Booking ID: ${bookingId})`;
-    const emailBody = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
-        <h2 style="color: #c5a880;">Your Session Meeting Link</h2>
-        <p>Hello ${client_name}, the meeting link for your upcoming session ${service_title} has been set:</p>
-        <p style="font-size: 16px; font-weight: bold; text-align: center;">
-          <a href="${meeting_link}" style="color: #c5a880;">Join Session URL</a>
-        </p>
-      </div>
-    `;
-
-    try {
-      await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
-        to: client_email,
-        subject: emailSubject,
-        html: emailBody,
-      });
-    } catch (e) {
-      logger.error("Failed to send meeting link email:", e);
-    }
-
-    if (client_phone) {
-      await sendWhatsAppNotification(client_phone, `Your meeting link for booking ${bookingId} has been added: ${meeting_link}`);
-    }
+    logger.info(`Meeting link updated. Notification emails handled by Next.js application queue.`);
   }
 
   // 4. Booking Cancelled
@@ -312,25 +210,7 @@ exports.handleBookingNotification = onDocumentWritten("bookings/{bookingId}", as
         created_at: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
-
-    const emailSubject = `Booking Cancelled (ID: ${bookingId})`;
-    const emailBody = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
-        <h2 style="color: #f44336;">Booking Cancelled</h2>
-        <p>Hello ${client_name}, your booking with ID ${bookingId} has been cancelled.</p>
-      </div>
-    `;
-
-    try {
-      await mailTransport.sendMail({
-        from: process.env.SMTP_FROM || '"LifeHolics" <support@thelifeholics.com>',
-        to: client_email,
-        subject: emailSubject,
-        html: emailBody,
-      });
-    } catch (e) {
-      logger.error("Failed to send cancelled email:", e);
-    }
+    logger.info(`Booking cancelled. Notification emails handled by Next.js application queue.`);
   }
 });
 
@@ -429,6 +309,64 @@ exports.sendSessionReminders = onSchedule("every 15 minutes", async (event) => {
           reminder_sent_at: admin.firestore.FieldValue.serverTimestamp()
         });
       }
+    }
+
+    // 3. Expiration Cleanup for Pending Unpaid bookings older than 15 minutes
+    const expirationLimit = new Date(now.getTime() - 15 * 60 * 1000);
+    try {
+      const pendingSnap = await db.collection("bookings")
+        .where("status", "==", "pending")
+        .where("payment_status", "==", "unpaid")
+        .get();
+
+      let expiredCount = 0;
+      for (const pendingDoc of pendingSnap.docs) {
+        const pData = pendingDoc.data();
+        const pId = pendingDoc.id;
+        const createdAtTime = pData.created_at ? new Date(pData.created_at) : new Date(pData.start_time);
+
+        if (createdAtTime < expirationLimit) {
+          const timeline = pData.status_timeline || [];
+          const updatedTimeline = [
+            ...timeline,
+            {
+              status: "cancelled",
+              timestamp: new Date().toISOString(),
+              updated_by: "System Expiry Cron",
+              note: "Booking expired because payment was not completed"
+            }
+          ];
+
+          await pendingDoc.ref.update({
+            status: "cancelled",
+            status_timeline: updatedTimeline,
+            updated_at: new Date().toISOString()
+          });
+          expiredCount++;
+          logger.info(`Expired unpaid booking ${pId} (created at ${createdAtTime.toISOString()})`);
+        }
+      }
+      logger.info(`Session booking cleanup completed. Expired ${expiredCount} bookings.`);
+    } catch (cleanErr) {
+      logger.error("Failed to execute session booking expiration cleanup:", cleanErr);
+    }
+
+    // Fetch Next.js remind-cron API to automate checks & cleanup
+    try {
+      const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://thelifeholics.com";
+      const cronSecret = process.env.CRON_SECRET || "";
+      const headers = {};
+      if (cronSecret) {
+        headers["Authorization"] = `Bearer ${cronSecret}`;
+      }
+      const response = await fetch(`${siteUrl}/api/bookings/remind-cron`, {
+        method: "GET",
+        headers
+      });
+      logger.info(`Successfully triggered Next.js remind-cron API from Firebase scheduler. Status: ${response.status}`);
+    } catch (fetchErr) {
+      logger.error("Failed to trigger Next.js remind-cron API from Firebase scheduler:", fetchErr);
     }
   } catch (err) {
     logger.error("Error in sendSessionReminders cron execution:", err);

@@ -5,6 +5,8 @@ export type NotificationChannel = 'email' | 'whatsapp' | 'both';
 export type NotificationType =
   | 'welcome'
   | 'booking_confirmation'
+  | 'booking_pending_payment'
+  | 'booking_payment_expired'
   | 'booking_cancelled'
   | 'booking_reminder'
   | 'booking_status_changed'

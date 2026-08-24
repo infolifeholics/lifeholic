@@ -145,10 +145,13 @@ export async function triggerBookingNotification(
     };
 
     let templateType: any = 'booking_status_changed';
-    if (eventType === 'created' || eventType === 'confirmed') {
+    if (eventType === 'created') {
+      templateType = 'booking_pending_payment';
+    } else if (eventType === 'confirmed') {
       templateType = 'booking_confirmation';
     } else if (eventType === 'cancelled') {
-      templateType = 'booking_cancelled';
+      const isExpired = bookingData.status_timeline?.some((t: any) => t.note?.toLowerCase().includes('expired') || t.status?.toLowerCase().includes('expired')) || false;
+      templateType = isExpired ? 'booking_payment_expired' : 'booking_cancelled';
     }
 
     await queueNotification(
@@ -172,11 +175,13 @@ export async function triggerBookingNotification(
     }).catch((err) => console.error('[Notifications] Failed to save DB notification:', err));
 
     // Admin Alert
-    if (eventType === 'created' || eventType === 'cancelled') {
+    if (eventType === 'created' || eventType === 'confirmed' || eventType === 'cancelled') {
       await notifyAdmins(
-        eventType === 'created' ? 'New Booking' : 'Booking Cancelled',
+        eventType === 'created' ? 'Payment Pending Booking' : (eventType === 'confirmed' ? 'Booking Confirmed' : 'Booking Cancelled'),
         client_name,
-        `Session for ${service_title} scheduled on ${dateStr} at ${timeStr} IST`,
+        eventType === 'created'
+          ? `Session for ${service_title} temporarily reserved (Payment Pending) on ${dateStr} at ${timeStr} IST.`
+          : `Session for ${service_title} scheduled on ${dateStr} at ${timeStr} IST`,
         bookingId
       );
     }
