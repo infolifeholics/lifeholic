@@ -18,7 +18,6 @@ type CurrencyContextType = {
   locationSource: 'profile' | 'manual' | 'automatic' | 'fallback';
   isLoading: boolean;
   rates: Record<string, number>;
-  gstPercentage: number;
   setOverrideCountry: (countryCode: string) => void;
   clearOverrideCountry: () => void;
 };
@@ -32,7 +31,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [autoCurrency, setAutoCurrency] = useState('INR');
   const [isLoading, setIsLoading] = useState(true);
   const [override, setOverride] = useState<OverrideData | null>(null);
-  const [gstPercentage, setGstPercentage] = useState(18);
 
   // Read override from localStorage on mount
   useEffect(() => {
@@ -66,9 +64,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         }
         if (data.currency) {
           setAutoCurrency(data.currency);
-        }
-        if (typeof data.gst_percentage === 'number') {
-          setGstPercentage(data.gst_percentage);
         }
       } catch (err) {
         console.error('Error loading currency data:', err);
@@ -137,7 +132,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     locationSource,
     isLoading: isLoading || authLoading,
     rates,
-    gstPercentage,
     setOverrideCountry,
     clearOverrideCountry,
   };

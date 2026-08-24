@@ -14,10 +14,9 @@ export function ServiceHero({ service }: { service: Service }) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
   const y = useTransform(scrollYProgress, [0, 1], [0, 100]);
-  const { currentCurrency, exchangeRate, gstPercentage } = useCurrency();
+  const { currentCurrency, exchangeRate } = useCurrency();
   const isInternational = currentCurrency !== 'INR';
-  const priceWithGst = Math.round(service.price_inr * (1 + gstPercentage / 100));
-  const displayPrice = isInternational && exchangeRate ? convertInrToCurrency(priceWithGst, exchangeRate, currentCurrency) : priceWithGst;
+  const displayPrice = isInternational && exchangeRate ? convertInrToCurrency(service.price_inr, exchangeRate, currentCurrency) : service.price_inr;
 
   return (
     <section ref={ref} className="relative overflow-hidden pt-12">

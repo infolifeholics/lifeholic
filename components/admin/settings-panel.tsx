@@ -498,21 +498,6 @@ export function AdminSettingsPanel() {
                     className="mt-1.5 rounded-xl"
                   />
                 </div>
-                <div>
-                  <Label>GST Percentage (%)</Label>
-                  <Input
-                    type="number"
-                    step="1"
-                    min="0"
-                    placeholder="Enter GST percentage"
-                    value={globalSettings.gst_percentage !== undefined && globalSettings.gst_percentage !== null ? globalSettings.gst_percentage : 18}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      setGlobalSettings({ ...globalSettings, gst_percentage: isNaN(val) ? 18 : val });
-                    }}
-                    className="mt-1.5 rounded-xl"
-                  />
-                </div>
               </div>
             </div>
 

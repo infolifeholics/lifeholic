@@ -369,15 +369,11 @@ export async function POST(req: Request) {
         const globalSettingsRef = adminDb.collection('settings').doc('global');
         const globalSettingsSnap = await transaction.get(globalSettingsRef);
         let meetingLink = null;
-        let gstPercentage = 18;
         if (globalSettingsSnap.exists) {
           const gSettings = globalSettingsSnap.data();
           if (gSettings) {
             if (gSettings.meeting_provider === 'gmeet' && gSettings.google_meet_link) {
               meetingLink = gSettings.google_meet_link;
-            }
-            if (typeof gSettings.gst_percentage === 'number') {
-              gstPercentage = gSettings.gst_percentage;
             }
           }
         }
@@ -426,7 +422,6 @@ export async function POST(req: Request) {
         }
 
         let calculatedBaseAmount = 0;
-        let calculatedGstAmount = 0;
         let calculatedTotalAmount = 0;
         if (!isSubsequentBooking) {
           let basePriceInr = 0;
@@ -447,18 +442,10 @@ export async function POST(req: Request) {
             basePriceInr = service.price_inr || 0;
           }
 
-          const gstInr = Math.round((basePriceInr * gstPercentage) / 100);
-          const totalInr = basePriceInr + gstInr;
-
           calculatedBaseAmount = finalCurrency !== 'INR' && targetRate
             ? convertInrToCurrency(basePriceInr, targetRate)
             : basePriceInr;
-          calculatedGstAmount = finalCurrency !== 'INR' && targetRate
-            ? convertInrToCurrency(gstInr, targetRate)
-            : gstInr;
-          calculatedTotalAmount = finalCurrency !== 'INR' && targetRate
-            ? convertInrToCurrency(totalInr, targetRate)
-            : totalInr;
+          calculatedTotalAmount = calculatedBaseAmount;
         }
 
         const finalAmount = calculatedTotalAmount;
@@ -503,8 +490,8 @@ export async function POST(req: Request) {
           amount: calculatedBaseAmount,
           base_amount: calculatedBaseAmount,
           base_currency: finalCurrency,
-          gst_rate: gstPercentage,
-          gst_amount: calculatedGstAmount,
+          gst_rate: 0,
+          gst_amount: 0,
           charged_amount: calculatedTotalAmount,
           charged_currency: finalCurrency,
           exchange_rate: targetRate,

@@ -89,19 +89,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Fetch GST settings (default to 18%)
-    let gstPercentage = 18;
-    try {
-      const globalSnap = await adminDb.collection('settings').doc('global').get();
-      if (globalSnap.exists) {
-        const gData = globalSnap.data();
-        if (gData && typeof gData.gst_percentage === 'number') {
-          gstPercentage = gData.gst_percentage;
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching GST percentage:', err);
-    }
+    // No longer fetching global settings for dynamic GST percentage. Session price is already tax-inclusive.
 
     // Calculate discount in INR first
     let discountInr = 0;
@@ -121,8 +109,7 @@ export async function POST(req: Request) {
     }
 
     const subtotalInr = Math.max(0, basePriceInr - discountInr);
-    const gstInr = Math.round((subtotalInr * gstPercentage) / 100);
-    const totalInr = subtotalInr + gstInr;
+    const totalInr = subtotalInr;
 
     // Convert values to target currency
     let finalAmount = totalInr;
@@ -216,6 +203,8 @@ export async function POST(req: Request) {
       base_amount: basePrice,
       base_currency: currency,
       exchange_rate: targetRate,
+      gst_rate: 0,
+      gst_amount: 0,
       charged_amount: finalAmount,
       charged_currency: chargeCurrency,
     }, { merge: true });

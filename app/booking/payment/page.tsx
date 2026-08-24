@@ -200,15 +200,10 @@ function PaymentPageContent() {
 
   if (!bookingData) return null;
 
+  const subtotal = bookingData.amount;
   const currency = bookingData.currency;
-  const isNewBookingSchema = bookingData.base_amount !== undefined;
-  const subtotal = isNewBookingSchema
-    ? bookingData.amount
-    : Math.round(bookingData.amount / (1 + (currency === 'INR' ? gstPercentage : 0) / 100));
-
-  // GST calculation (dynamic percentage if INR)
-  const gst = currency === 'INR' ? Math.round(((subtotal - discount) * gstPercentage) / 100) : 0;
-  const total = subtotal - discount + gst;
+  const gst = 0;
+  const total = subtotal - discount;
 
   const handleRazorpayPayment = async () => {
     if (!(window as any).Razorpay) {
@@ -509,15 +504,11 @@ function PaymentPageContent() {
               </div>
             )}
 
-            {gst > 0 && (
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span>GST ({gstPercentage}%)</span>
-                <span>{formatPrice(gst, currency)}</span>
-              </div>
-            )}
-
             <div className="flex items-center justify-between border-t border-border/60 pt-4 text-base font-medium">
-              <span className="text-foreground font-display text-lg">Total Amount</span>
+              <div>
+                <span className="text-foreground font-display text-lg">Total Amount</span>
+                <span className="text-[10px] text-muted-foreground block font-normal">(GST Included)</span>
+              </div>
               <span className="text-foreground font-normal">{formatPrice(total, currency)}</span>
             </div>
             {currency !== 'INR' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (

@@ -16,18 +16,6 @@ export function ServicePriceBlock({
   variant?: 'details' | 'cta';
 }) {
   const { currentCurrency, exchangeRate, isLoading, rates } = useCurrency();
-  const [gstPercentage, setGstPercentage] = useState<number>(18);
-
-  useEffect(() => {
-    getDoc(doc(db, 'settings', 'global')).then((snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (typeof data.gst_percentage === 'number') {
-          setGstPercentage(data.gst_percentage);
-        }
-      }
-    }).catch((err) => console.error(err));
-  }, []);
 
   const isInternational = currentCurrency !== 'INR';
   const hasError = isInternational && Object.keys(rates).length === 0;
@@ -48,23 +36,10 @@ export function ServicePriceBlock({
     );
   }
 
-  // GST INR
-  const gstInr = Math.round((priceInr * gstPercentage) / 100);
-  const totalInr = priceInr + gstInr;
-
   // Convert
   const displayTotal = isInternational
-    ? convertInrToCurrency(totalInr, exchangeRate || 0, currentCurrency)
-    : totalInr;
-
-  const displayBase = isInternational
     ? convertInrToCurrency(priceInr, exchangeRate || 0, currentCurrency)
     : priceInr;
-
-  // Ensure Base + GST = Total mathematically
-  const displayGst = isInternational
-    ? Math.round((displayTotal - displayBase) * 100) / 100
-    : gstInr;
 
   if (variant === 'cta') {
     return (
@@ -74,17 +49,12 @@ export function ServicePriceBlock({
 
   return (
     <div className="w-full space-y-3 pt-3 border-t border-white/10 mt-3 text-sm">
-      <div className="flex justify-between">
-        <span className="text-white/80 font-semibold">Starting from</span>
-        <span className="font-bold text-white">{formatPrice(displayBase, currentCurrency)}</span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-white/80 font-semibold">GST ({gstPercentage}%)</span>
-        <span className="font-bold text-white">{formatPrice(displayGst, currentCurrency)}</span>
-      </div>
-      <div className="flex justify-between pt-3 border-t border-white/10 items-end">
-        <span className="text-white/90 font-semibold text-base">Total</span>
-        <span className="font-display text-2xl font-bold text-gold">{formatPrice(displayTotal, currentCurrency)}</span>
+      <div className="flex justify-between items-end">
+        <span className="text-white/80 font-semibold text-sm">Session Price</span>
+        <div className="text-right">
+          <span className="font-display text-2xl font-bold text-gold">{formatPrice(displayTotal, currentCurrency)}</span>
+          <span className="text-[10px] text-white/50 block font-normal">(incl. GST)</span>
+        </div>
       </div>
     </div>
   );
