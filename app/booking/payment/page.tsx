@@ -68,6 +68,12 @@ function PaymentPageContent() {
         const data = docSnap.data();
         setBookingData({ id: docSnap.id, ...data });
 
+        // If booking is already paid or confirmed (e.g. subsequent package session), redirect directly to success
+        if (data && (data.payment_status === 'paid' || data.status === 'confirmed')) {
+          router.push(`/booking/success?id=${docSnap.id}`);
+          return;
+        }
+
         // Fetch associated service
         if (data.service_id) {
           const serviceRef = doc(db, 'services', data.service_id);

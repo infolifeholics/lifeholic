@@ -92,6 +92,7 @@ export function AddToCart({
           {onSale && (
             <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, currentCurrency)}</span>
           )}
+          <span className="text-xs text-white/50 font-normal self-end mb-1">(incl. GST)</span>
         </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center w-full">
           <div className="inline-flex items-center rounded-full border border-border bg-card">
@@ -145,6 +146,7 @@ export function AddToCart({
             {onSale && (
               <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, currentCurrency)}</span>
             )}
+            <span className="text-xs text-white/50 font-normal self-end mb-1">(incl. GST)</span>
           </>
         )}
       </div>

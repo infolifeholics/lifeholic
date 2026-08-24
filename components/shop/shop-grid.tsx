@@ -225,6 +225,7 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                             {formatPrice(displayComparePrice as number, currentCurrency)}
                           </span>
                         )}
+                        <span className="text-[10px] text-muted-foreground ml-1">(incl. GST)</span>
                       </div>
                     </div>
 

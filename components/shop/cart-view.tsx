@@ -172,7 +172,13 @@ export function CartView() {
               {baseShippingInr > 0 && (
                 <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(convertedShipping, currentCurrency)}</dd></div>
               )}
-              <div className="flex justify-between border-t border-border/50 pt-3"><dt className="font-medium text-foreground">Total</dt><dd className="font-display text-2xl font-medium text-foreground">{formatPrice(total, currentCurrency)}</dd></div>
+              <div className="flex justify-between border-t border-border/50 pt-3">
+                <div>
+                  <dt className="font-medium text-foreground">Total</dt>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5 font-normal">(GST Included)</span>
+                </div>
+                <dd className="font-display text-2xl font-medium text-black">{formatPrice(total, currentCurrency)}</dd>
+              </div>
             </dl>
           )}
           <Button asChild={!isLoading && !hasError} disabled={isLoading || hasError} className="mt-6 w-full rounded-full" size="lg">

@@ -411,8 +411,11 @@ export function CheckoutView() {
               <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(paymentMethod === 'cod' ? baseShippingInr : convertedShipping, displayCurrency)}</dd></div>
             )}
             <div className="flex justify-between border-t border-border/50 pt-3">
-              <dt className="font-medium text-foreground">Total</dt>
-              <dd className="font-display text-2xl font-medium text-foreground">{formatPrice(displayTotal, displayCurrency)}</dd>
+              <div>
+                <dt className="font-medium text-foreground">Total</dt>
+                <span className="text-[10px] text-muted-foreground block mt-0.5 font-normal">(GST Included)</span>
+              </div>
+              <dd className="font-display text-2xl font-medium text-gold">{formatPrice(displayTotal, displayCurrency)}</dd>
             </div>
             {isInternational && paymentMethod === 'razorpay' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
               <div className="mt-2 inline-flex self-end rounded-full px-3 py-1 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(10,8,6,0.85)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>

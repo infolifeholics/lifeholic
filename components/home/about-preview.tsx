@@ -106,7 +106,7 @@ export function HomeAboutPreview() {
                   <p>
                     The more I explored these deeper emotional, energetic, and spiritual patterns, the more I started
                     understanding myself. As I healed and applied these learnings in my own life, I began noticing
-                    meaningful changes—not just in how I felt, but in how I experienced life itself.
+                    meaningful changes not just in how I felt, but in how I experienced life itself.
                   </p>
                   <p>
                     LifeHolics began with a profound inner experience. On the night of 14th August 2019, I heard a
