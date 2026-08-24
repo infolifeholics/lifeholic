@@ -39,7 +39,7 @@ export function AboutClientPage() {
     <div className="relative bg-background/20 backdrop-blur-[3px] z-10 min-h-screen pt-36 pb-24 sm:pt-44">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid items-start gap-12 lg:grid-cols-[1fr_1.3fr] lg:gap-20">
-          
+
           {/* Left Column: Image Card */}
           <div className="relative lg:sticky lg:top-28">
             <div className="flex flex-col gap-6">
@@ -89,14 +89,14 @@ export function AboutClientPage() {
             <Reveal delay={0.25}>
               <div className="mt-8 space-y-6 text-black font-medium text-base sm:text-lg leading-relaxed">
                 <p>
-                  As I began my own journey of healing and self-discovery, I realized that many of our struggles—
-                  whether related to health, relationships, finances, or emotions—often have deeper roots than what
+                  As I began my own journey of healing and self-discovery, I realized that many of our struggles
+                  whether related to health, relationships, finances, or emotions often have deeper roots than what
                   we see on the surface.
                 </p>
                 <p>
                   The more I explored these deeper emotional, energetic, and spiritual patterns, the more I started
                   understanding myself. As I healed and applied these learnings in my own life, I began noticing
-                  meaningful changes—not just in how I felt, but in how I experienced life itself.
+                  meaningful changes not just in how I felt, but in how I experienced life itself.
                 </p>
                 <p>
                   LifeHolics began with a profound inner experience. On the night of 14th August 2019, I heard a
