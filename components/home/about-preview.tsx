@@ -100,8 +100,7 @@ export function HomeAboutPreview() {
               <Reveal delay={0.25}>
                 <div className="mt-8 space-y-6 text-black/90 font-medium text-base sm:text-lg leading-relaxed max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
                   <p>
-                    As I began my own journey of healing and self-discovery, I realized that many of our struggles—
-                    whether related to health, relationships, finances, or emotions—often have deeper roots than what
+                    As I began my own journey of healing and self-discovery, I realized that many of our struggles whether related to health, relationships, finances, or emotions often have deeper roots than what
                     we see on the surface.
                   </p>
                   <p>
@@ -113,7 +112,7 @@ export function HomeAboutPreview() {
                     LifeHolics began with a profound inner experience. On the night of 14th August 2019, I heard a
                     female voice say, <strong className="text-gold font-bold">&ldquo;I&apos;m pregnant.&rdquo;</strong> Spiritually, pregnancy symbolizes the birth of something that needs
                     to be nurtured with love and care. Within a few weeks, LifeHolics came into existence. Looking back, I
-                    now understand that it wasn&apos;t just the birth of a purpose—it was the birth of a purpose. Over the
+                    now understand that it wasn&apos;t just the birth of a purpose it was the birth of a purpose. Over the
                     years, my own healing journey has taught me that real transformation begins from within, and this
                     community is an extension of everything life and the Universe have helped me learn.
                   </p>
