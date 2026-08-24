@@ -287,6 +287,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `All ${activePkg.total_sessions} sessions for this package have already been completed or booked.` }, { status: 400 });
       }
 
+      // Enforce the 30-day validity window for the newly selected slot
+      if (start > new Date(activePkg.expiry_date)) {
+        return NextResponse.json({ error: 'Selected slot date exceeds the 30-day package validity period.' }, { status: 400 });
+      }
+      if (start < new Date(activePkg.start_date)) {
+        return NextResponse.json({ error: 'Selected slot date is before the package start date.' }, { status: 400 });
+      }
+
       // Get last session status check
       if (activePkg.booking_ids && activePkg.booking_ids.length > 0) {
         const lastBookingId = activePkg.booking_ids[activePkg.booking_ids.length - 1];

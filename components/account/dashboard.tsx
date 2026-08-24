@@ -224,6 +224,64 @@ export function AccountDashboard() {
 
   const [userPackages, setUserPackages] = useState<any[]>([]);
 
+  // Automated reschedule state hooks
+  const [rescheduleBooking, setRescheduleBooking] = useState<any>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleSlots, setRescheduleSlots] = useState<any[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<any>(null);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [submittingReschedule, setSubmittingReschedule] = useState(false);
+
+  useEffect(() => {
+    if (!rescheduleBooking || !rescheduleDate) return;
+    const loadSlots = async () => {
+      setLoadingSlots(true);
+      try {
+        const res = await fetch(`/api/bookings/slots?service_id=${rescheduleBooking.service_id}&date=${rescheduleDate}`);
+        if (res.ok) {
+          const data = await res.json();
+          setRescheduleSlots(data.slots || []);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+    loadSlots();
+  }, [rescheduleBooking, rescheduleDate]);
+
+  const handleConfirmReschedule = async () => {
+    if (!rescheduleBooking || !selectedSlot) return;
+    setSubmittingReschedule(true);
+    try {
+      const res = await fetch('/api/bookings/reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: rescheduleBooking.id,
+          start_time: selectedSlot.start,
+          end_time: selectedSlot.end
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Session rescheduled successfully!');
+        setRescheduleBooking(null);
+        setRescheduleDate('');
+        setRescheduleSlots([]);
+        setSelectedSlot(null);
+        window.location.reload();
+      } else {
+        toast.error(data.error || 'Failed to reschedule.');
+      }
+    } catch (err) {
+      toast.error('Something went wrong.');
+    } finally {
+      setSubmittingReschedule(false);
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
 
@@ -1147,7 +1205,24 @@ export function AccountDashboard() {
                       <span className="block text-xs font-bold uppercase tracking-wider">Session {stepNum}</span>
                       <span className="block text-[10px] mt-1 capitalize">
                         {stepStatus === 'completed' && '✅ Completed'}
-                        {stepStatus === 'booked' && `📅 Booked (${bookingDateStr})`}
+                        {stepStatus === 'booked' && (
+                          <div className="mt-2 space-y-1">
+                            <span className="block text-[10px] text-gold font-semibold">📅 {bookingDateStr}</span>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const bDetails = bookings.find(b => b.id === linkedBookingId);
+                                if (bDetails) {
+                                  setRescheduleBooking(bDetails);
+                                }
+                              }}
+                              className="text-[10px] text-gold hover:underline font-bold block mx-auto mt-1"
+                            >
+                              🔄 Reschedule
+                            </button>
+                          </div>
+                        )}
                         {stepStatus === 'available' && (
                           <Link href={bookingUrl} className="hover:underline text-gold font-semibold">
                             ⏳ Book Now
@@ -1184,7 +1259,7 @@ export function AccountDashboard() {
               ) : (
                 <div className="grid gap-4">
                   {upcomingBookings.map((b) => (
-                    <BookingCardKeyed key={b.id} b={b} timezone={timezone} onSelect={() => setSelectedBooking(b)} />
+                    <BookingCardKeyed key={b.id} b={b} timezone={timezone} onSelect={() => setSelectedBooking(b)} onReschedule={setRescheduleBooking} />
                   ))}
                 </div>
               )}
@@ -1197,7 +1272,7 @@ export function AccountDashboard() {
               ) : (
                 <div className="grid gap-4">
                   {completedBookings.map((b) => (
-                    <BookingCardKeyed key={b.id} b={b} timezone={timezone} onSelect={() => setSelectedBooking(b)} />
+                    <BookingCardKeyed key={b.id} b={b} timezone={timezone} onSelect={() => setSelectedBooking(b)} onReschedule={setRescheduleBooking} />
                   ))}
                 </div>
               )}
@@ -2082,6 +2157,99 @@ export function AccountDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* AUTOMATED RESCHEDULE MODAL */}
+      <AnimatePresence>
+        {rescheduleBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 text-left" onClick={(e) => e.stopPropagation()}>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setRescheduleBooking(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-md rounded-3xl border border-zinc-800 bg-black text-white shadow-glow p-6 overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="flex justify-between items-center pb-3 border-b border-zinc-800">
+                <span className="font-display font-semibold text-base text-white">Reschedule Session</span>
+                <button onClick={() => setRescheduleBooking(null)} className="p-1 rounded-full hover:bg-zinc-900 text-muted-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="py-4 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+                <div>
+                  <label className="block text-xs font-semibold text-white/60 mb-2 uppercase">Select Date</label>
+                  <Input
+                    type="date"
+                    value={rescheduleDate}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => {
+                      setRescheduleDate(e.target.value);
+                      setSelectedSlot(null);
+                    }}
+                    className="rounded-xl bg-zinc-900 border-zinc-800 text-white focus-visible:ring-gold"
+                  />
+                </div>
+
+                {rescheduleDate && (
+                  <div>
+                    <label className="block text-xs font-semibold text-white/60 mb-2 uppercase">Available Slots</label>
+                    {loadingSlots ? (
+                      <p className="text-xs text-white/50 animate-pulse">Loading slots...</p>
+                    ) : rescheduleSlots.length === 0 ? (
+                      <p className="text-xs text-rose-400">No slots available on this date.</p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {rescheduleSlots.map((slot, idx) => (
+                          <button
+                            key={idx}
+                            disabled={slot.booked}
+                            onClick={() => setSelectedSlot(slot)}
+                            className={cn(
+                              "py-2 px-3 text-xs font-medium rounded-xl border transition-all text-center",
+                              slot.booked && "bg-zinc-950 border-zinc-900 text-white/20 line-through cursor-not-allowed",
+                              selectedSlot?.start === slot.start
+                                ? "bg-gold text-gold-foreground border-gold"
+                                : "bg-zinc-900 border-zinc-800 text-white hover:border-gold/50"
+                            )}
+                          >
+                            {slot.start_time}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 justify-end pt-3 border-t border-zinc-800 mt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setRescheduleBooking(null)}
+                  className="rounded-full text-xs h-9 px-4 border border-white/20 text-white bg-white/5 hover:bg-white/10 hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={submittingReschedule || !selectedSlot}
+                  onClick={handleConfirmReschedule}
+                  className="rounded-full text-xs h-9 px-4 bg-gold hover:bg-gold-hover text-gold-foreground font-semibold"
+                >
+                  {submittingReschedule ? 'Rescheduling...' : 'Confirm Reschedule'}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -2097,11 +2265,7 @@ function Empty({ icon: Icon, title, desc, cta }: { icon: any; title: string; des
   );
 }
 
-function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: string; onSelect: () => void }) {
-  const [requesting, setRequesting] = useState(false);
-  const [reschedDate, setReschedDate] = useState('');
-  const [reschedTime, setReschedTime] = useState('');
-  const [submittingRequest, setSubmittingRequest] = useState(false);
+function BookingCardKeyed({ b, timezone, onSelect, onReschedule }: { b: Booking; timezone: string; onSelect: () => void; onReschedule?: (b: Booking) => void }) {
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
@@ -2144,57 +2308,6 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
       toast.error('Failed to cancel session.');
     } finally {
       setCancelling(false);
-    }
-  };
-
-  const handleRequestReschedule = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!reschedDate || !reschedTime) {
-      toast.error('Please choose a date and time.');
-      return;
-    }
-    setSubmittingRequest(true);
-    try {
-      const proposedStart = new Date(`${reschedDate}T${reschedTime}`);
-      if (isNaN(proposedStart.getTime())) {
-        toast.error('Invalid date or time.');
-        return;
-      }
-      const duration = (new Date(b.end_time).getTime() - new Date(b.start_time).getTime());
-      const proposedEnd = new Date(proposedStart.getTime() + duration);
-
-      const rescheduleRequest = {
-        requested_by: 'user',
-        proposed_start_time: proposedStart.toISOString(),
-        proposed_end_time: proposedEnd.toISOString(),
-        status: 'pending',
-        timestamp: new Date().toISOString()
-      };
-
-      const timeline = b.status_timeline || [];
-      const updatedTimeline = [
-        ...timeline,
-        {
-          status: b.status,
-          timestamp: new Date().toISOString(),
-          note: `User requested reschedule to ${proposedStart.toLocaleString()}`
-        }
-      ];
-
-      const { doc, setDoc } = await import('firebase/firestore');
-      const { db } = await import('@/lib/firebase');
-      await setDoc(doc(db, 'bookings', b.id), {
-        reschedule_request: rescheduleRequest,
-        status_timeline: updatedTimeline,
-        updated_at: new Date().toISOString()
-      }, { merge: true });
-
-      toast.success('Reschedule request sent to Admin!');
-      setRequesting(false);
-    } catch (e) {
-      toast.error('Failed to submit request.');
-    } finally {
-      setSubmittingRequest(false);
     }
   };
 
@@ -2254,47 +2367,13 @@ function BookingCardKeyed({ b, timezone, onSelect }: { b: Booking; timezone: str
               </span>
             )}
 
-            {requesting ? (
-              <div className="space-y-3 p-3 rounded-2xl bg-zinc-900/50 border border-zinc-800 w-full mt-2">
-                <p className="font-semibold text-white text-xs">Propose New Session Time</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[9px] text-muted-foreground uppercase font-semibold">Date</label>
-                    <Input
-                      type="date"
-                      value={reschedDate}
-                      onChange={(e) => setReschedDate(e.target.value)}
-                      className="rounded-xl mt-1 text-xs h-8 bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[9px] text-muted-foreground uppercase font-semibold">Time</label>
-                    <Input
-                      type="time"
-                      value={reschedTime}
-                      onChange={(e) => setReschedTime(e.target.value)}
-                      className="rounded-xl mt-1 text-xs h-8 bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2 justify-end pt-1">
-                  <Button size="sm" variant="outline" onClick={() => setRequesting(false)} className="rounded-full text-xs h-7 px-3 border-zinc-700 text-white hover:bg-zinc-800 bg-transparent">
-                    Cancel
-                  </Button>
-                  <Button size="sm" onClick={handleRequestReschedule} disabled={submittingRequest} className="rounded-full text-xs h-7 px-3 bg-gold hover:bg-gold-hover text-gold-foreground">
-                    {submittingRequest ? 'Submitting...' : 'Submit Request'}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                {b.status === 'confirmed' && (
-                  <Button size="sm" variant="outline" onClick={() => setRequesting(true)} className="rounded-full text-xs h-8 border-gold/40 text-gold hover:bg-gold/10 bg-transparent">
-                    Request Reschedule
-                  </Button>
-                )}
-              </div>
-            )}
+            <div className="flex gap-2">
+              {b.status === 'confirmed' && (
+                <Button size="sm" variant="outline" onClick={() => onReschedule && onReschedule(b)} className="rounded-full text-xs h-8 border-gold/40 text-gold hover:bg-gold/10 bg-transparent">
+                  Reschedule
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>

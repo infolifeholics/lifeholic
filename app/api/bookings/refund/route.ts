@@ -18,6 +18,22 @@ export async function POST(req: Request) {
     }
     const b = bookingSnap.data();
 
+    // Block refund if one or more sessions in the package have been completed
+    if (b.is_somatic_plan && b.user_id) {
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const pkgQuery = query(
+        collection(db, 'somatic_packages'),
+        where('booking_ids', 'array-contains', booking_id)
+      );
+      const pkgSnap = await getDocs(pkgQuery);
+      if (!pkgSnap.empty) {
+        const pkgData = pkgSnap.docs[0].data();
+        if ((pkgData.completed_sessions || 0) > 0) {
+          return NextResponse.json({ error: 'Refunds are not allowed once one or more sessions in the package have been completed.' }, { status: 400 });
+        }
+      }
+    }
+
     // Calculate maximum refundable amount
     const maxRefund = b.amount || 0;
     if (amount > maxRefund) {

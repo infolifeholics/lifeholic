@@ -153,8 +153,8 @@ export async function POST(req: Request) {
     if (totalSessions >= 1 && b.user_id) {
       try {
         const purchaseDate = new Date();
-        const expiryDate = new Date();
-        expiryDate.setDate(purchaseDate.getDate() + 30); // 30 days validity
+        const session1Start = b.start_time ? new Date(b.start_time) : purchaseDate;
+        const expiryDate = new Date(session1Start.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days validity from Session 1
         
         let packageDocRef;
         if (isSomatic) {
@@ -171,7 +171,7 @@ export async function POST(req: Request) {
           client_email: b.client_email,
           purchase_date: purchaseDate.toISOString(),
           expiry_date: expiryDate.toISOString(),
-          start_date: purchaseDate.toISOString(),
+          start_date: session1Start.toISOString(),
           validity_days: 30,
           status: 'active',
           package_type: packageType,

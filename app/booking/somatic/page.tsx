@@ -64,10 +64,36 @@ function SomaticBookingFlowContent() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [activePackage, setActivePackage] = useState<any>(null);
 
   const serviceId = useMemo(() => {
     return `somatic_${planName.toLowerCase()}`;
   }, [planName]);
+
+  // Fetch active somatic package for bounds restriction
+  useEffect(() => {
+    if (!user) {
+      setActivePackage(null);
+      return;
+    }
+    const fetchActivePackage = async () => {
+      try {
+        const { collection, query, where, getDocs } = await import('firebase/firestore');
+        const q = query(
+          collection(db, 'somatic_packages'),
+          where('user_id', '==', user.uid),
+          where('status', '==', 'active')
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          setActivePackage(snap.docs[0].data());
+        }
+      } catch (err) {
+        console.error('Failed to load active package details on booking page:', err);
+      }
+    };
+    fetchActivePackage();
+  }, [user]);
 
   // Load selection context
   useEffect(() => {
@@ -176,16 +202,39 @@ function SomaticBookingFlowContent() {
       arr.push(null);
     }
 
+    // Determine package bounds if active package exists
+    let minAllowed = today;
+    let maxAllowed: Date | null = null;
+    if (activePackage) {
+      if (activePackage.start_date) {
+        const pkgStart = new Date(activePackage.start_date);
+        pkgStart.setHours(0, 0, 0, 0);
+        if (pkgStart > minAllowed) {
+          minAllowed = pkgStart;
+        }
+      }
+      if (activePackage.expiry_date) {
+        maxAllowed = new Date(activePackage.expiry_date);
+        maxAllowed.setHours(23, 59, 59, 999);
+      }
+    }
+
     for (let i = 1; i <= end.getDate(); i++) {
       const d = new Date(month.getFullYear(), month.getMonth(), i);
+
+      let isDisabled = d < minAllowed;
+      if (maxAllowed && d > maxAllowed) {
+        isDisabled = true;
+      }
+
       arr.push({
         date: d,
         formatted: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-        disabled: d < today,
+        disabled: isDisabled,
       });
     }
     return arr;
-  }, [month]);
+  }, [month, activePackage]);
 
   const prevMonth = () => {
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1));
@@ -255,7 +304,11 @@ function SomaticBookingFlowContent() {
       <div className="text-center mb-10">
         <h1 className="font-display text-3xl font-semibold text-foreground">Complete Your Booking</h1>
         <p className="text-sm text-muted-foreground mt-2">
-          Scheduling your first session for <strong className="text-gold">Plan {planName.charAt(0)} · {planName}</strong>
+          {activePackage ? (
+            <span>Scheduling <strong className="text-gold">Session {(activePackage.total_sessions - activePackage.remaining_sessions) + 1}</strong> of your active program package.</span>
+          ) : (
+            <span>Scheduling your first session for <strong className="text-gold">Plan {planName.charAt(0)} · {planName}</strong></span>
+          )}
         </p>
       </div>
 

@@ -48,6 +48,44 @@ export async function GET(req: Request) {
       const diffMs = startTime.getTime() - now.getTime();
       const diffMinutes = diffMs / (1000 * 60);
 
+      const endTime = new Date(booking.end_time || (startTime.getTime() + 60 * 60_000));
+      if (now > endTime) {
+        // Session has ended. Auto-complete it.
+        try {
+          await updateDoc(doc(db, 'bookings', bookingId), {
+            status: 'completed',
+            updated_at: new Date().toISOString()
+          });
+          console.log(`[Remind-Cron] Auto-completed past booking ${bookingId}`);
+
+          // Find if this booking is linked to a somatic package and increment progress
+          const pkgQuery = query(
+            collection(db, 'somatic_packages'),
+            where('booking_ids', 'array-contains', bookingId)
+          );
+          const pkgSnap = await getDocs(pkgQuery);
+          if (!pkgSnap.empty) {
+            const pkgDoc = pkgSnap.docs[0];
+            const pkgData = pkgDoc.data();
+            const nextCompleted = (pkgData.completed_sessions || 0) + 1;
+            const totalSess = pkgData.total_sessions || 4;
+            const updates: Record<string, any> = {
+              completed_sessions: nextCompleted,
+              remaining_sessions: Math.max(0, totalSess - nextCompleted),
+              updated_at: new Date().toISOString()
+            };
+            if (nextCompleted >= totalSess) {
+              updates.status = 'completed';
+            }
+            await updateDoc(doc(db, 'somatic_packages', pkgDoc.id), updates);
+            console.log(`[Remind-Cron] Incremented completed sessions on package ${pkgDoc.id}`);
+          }
+        } catch (err) {
+          console.error(`[Remind-Cron] Failed auto-completion for ${bookingId}:`, err);
+        }
+        continue;
+      }
+
       // Skip past sessions
       if (diffMinutes <= 0) continue;
 
@@ -115,6 +153,45 @@ export async function GET(req: Request) {
         await updateDoc(doc(db, 'bookings', bookingId), updates).catch((err) =>
           console.error(`[Remind-Cron] Failed to update booking ${bookingId}:`, err)
         );
+      }
+    }
+
+    // 2.5 Expiration Sweep for active packages
+    const activePackagesQuery = query(
+      collection(db, 'somatic_packages'),
+      where('status', '==', 'active')
+    );
+    const activePackagesSnap = await getDocs(activePackagesQuery);
+    let expiredPackagesCount = 0;
+
+    for (const pkgDoc of activePackagesSnap.docs) {
+      const pkgData = pkgDoc.data();
+      const expiryTime = new Date(pkgData.expiry_date).getTime();
+      if (Date.now() > expiryTime) {
+        await updateDoc(doc(db, 'somatic_packages', pkgDoc.id), {
+          status: 'expired',
+          updated_at: new Date().toISOString()
+        });
+
+        // Cancel future booked bookings belonging to this package that fall past expiry
+        if (pkgData.booking_ids) {
+          for (const bId of pkgData.booking_ids) {
+            const bRef = doc(db, 'bookings', bId);
+            const bSnap = await getDoc(bRef);
+            if (bSnap.exists()) {
+              const bData = bSnap.data();
+              if (bData.status === 'confirmed' && new Date(bData.start_time).getTime() > expiryTime) {
+                await updateDoc(bRef, {
+                  status: 'cancelled',
+                  updated_at: new Date().toISOString()
+                });
+                console.log(`[Remind-Cron] Cancelled future booking ${bId} due to package expiry.`);
+              }
+            }
+          }
+        }
+        expiredPackagesCount++;
+        console.log(`[Remind-Cron] Expired active package ${pkgDoc.id} due to expiry date.`);
       }
     }
 
