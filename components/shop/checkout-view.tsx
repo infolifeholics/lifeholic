@@ -40,8 +40,8 @@ export function CheckoutView() {
   const [placing, setPlacing] = useState(false);
   const [razorpayReady, setRazorpayReady] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'razorpay' | 'cod'>('razorpay');
   const [shippingChargeSetting, setShippingChargeSetting] = useState<number | null>(null);
+  const paymentMethod = 'razorpay';
 
   useEffect(() => {
     if (user) {
@@ -87,15 +87,9 @@ export function CheckoutView() {
     }).catch(console.error);
   }, []);
 
-  // Reset to Razorpay if currency becomes international
-  useEffect(() => {
-    if (currentCurrency !== 'INR' && paymentMethod === 'cod') setPaymentMethod('razorpay');
-  }, [currentCurrency, paymentMethod]);
-
   const hasPhysical = items.some((i) => i.type === 'physical');
   const isInternational = currentCurrency !== 'INR';
   const hasError = isInternational && Object.keys(rates).length === 0;
-  const isCodAvailable = !isInternational && hasPhysical;
 
   const convertedSubtotal = items.reduce((acc, item) => {
     const price = isInternational
@@ -113,8 +107,8 @@ export function CheckoutView() {
     : 0;
 
   const total = Math.max(0, convertedSubtotal - convertedDiscount + convertedShipping);
-  const displayCurrency = paymentMethod === 'cod' ? 'INR' : currentCurrency;
-  const displayTotal = paymentMethod === 'cod' ? Math.max(0, (items.reduce((acc, i) => acc + (i.price_inr || i.price) * i.quantity, 0)) - (applied?.discount || 0) + baseShippingInr) : total;
+  const displayCurrency = currentCurrency;
+  const displayTotal = total;
 
   const applyCoupon = async () => {
     if (!coupon) return;
@@ -132,29 +126,6 @@ export function CheckoutView() {
     } catch { toast.error('Something went wrong.'); } finally { setCouponLoading(false); }
   };
 
-  const placeCodOrder = async () => {
-    setPlacing(true);
-    try {
-      const res = await fetch('/api/shop/cod-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: form.email,
-          full_name: form.full_name,
-          phone: form.phone,
-          address: { line1: form.line1, city: form.city, state: form.state, postal_code: form.postal_code, country: form.country },
-          items: items.map((i) => ({ id: i.id, slug: i.slug, name: i.name, price: i.price_inr || i.price, quantity: i.quantity, image: i.image, type: i.type })),
-          coupon_code: applied?.code || null,
-          user_id: user?.id || null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) { toast.error(data.error || 'Could not place COD order.'); setPlacing(false); return; }
-      toast.success('COD order placed successfully!');
-      clear();
-      router.push(`/shop/thank-you?order=${data.number}&method=cod`);
-    } catch { toast.error('Something went wrong placing your COD order.'); setPlacing(false); }
-  };
 
   const placeRazorpayOrder = async () => {
     if (!(window as any).Razorpay) { toast.error('Razorpay SDK is loading. Please wait a moment and try again.'); return; }
@@ -231,8 +202,7 @@ export function CheckoutView() {
     e.preventDefault();
     if (items.length === 0) return;
     if (!acceptedTerms) { toast.error('Please accept the Terms & Conditions and Cancellation & Refund Policy to proceed.'); return; }
-    if (paymentMethod === 'cod') await placeCodOrder();
-    else await placeRazorpayOrder();
+    await placeRazorpayOrder();
   };
 
   if (loading) return (
@@ -291,37 +261,13 @@ export function CheckoutView() {
           {/* Payment Method Selector */}
           <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft">
             <h2 className="font-display text-lg font-medium text-foreground">Payment method</h2>
-            <div className="mt-4 space-y-3">
-              <label htmlFor="pay-razorpay" className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-4 transition-all ${paymentMethod === 'razorpay' ? 'border-gold bg-gold/5' : 'border-border/60 hover:border-gold/40'}`}>
-                <input id="pay-razorpay" type="radio" name="payment_method" value="razorpay" checked={paymentMethod === 'razorpay'} onChange={() => setPaymentMethod('razorpay')} className="accent-gold" />
-                <CreditCard className="h-5 w-5 text-gold shrink-0" />
-                <div>
-                  <p className="font-semibold text-sm text-foreground">Online Payment</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Pay securely via Razorpay (Card, UPI, Netbanking)</p>
-                </div>
-              </label>
-
-              {isCodAvailable && (
-                <label htmlFor="pay-cod" className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-4 transition-all ${paymentMethod === 'cod' ? 'border-gold bg-gold/5' : 'border-border/60 hover:border-gold/40'}`}>
-                  <input id="pay-cod" type="radio" name="payment_method" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="accent-gold" />
-                  <Package className="h-5 w-5 text-gold shrink-0" />
-                  <div>
-                    <p className="font-semibold text-sm text-foreground">Cash on Delivery</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Pay in cash when your order arrives. India only.</p>
-                  </div>
-                </label>
-              )}
-            </div>
-
-            {paymentMethod === 'razorpay' && (
-              <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border bg-secondary/40 p-4 text-sm text-muted-foreground">
-                <Lock className="h-4 w-4 text-gold" />
-                <div>
-                  <p className="font-semibold text-foreground">Secure Payment Gateway</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">Fast &amp; secure transaction powered by Razorpay. Note: Orders once placed cannot be cancelled.</p>
-                </div>
+            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border bg-secondary/40 p-4 text-sm text-muted-foreground">
+              <Lock className="h-4 w-4 text-gold" />
+              <div>
+                <p className="font-semibold text-foreground">Secure Online Payment</p>
+                <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">Fast &amp; secure transaction powered by Razorpay. Note: Orders once placed cannot be cancelled.</p>
               </div>
-            )}
+            </div>
           </div>
 
           {isInternational && hasError && (
@@ -349,14 +295,12 @@ export function CheckoutView() {
           <Button
             type="submit"
             size="lg"
-            disabled={placing || !acceptedTerms || (paymentMethod === 'razorpay' && (isLoading || hasError))}
+            disabled={placing || !acceptedTerms || (isLoading || hasError)}
             className="w-full rounded-full"
           >
             {placing
               ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Processing…</>
-              : paymentMethod === 'cod'
-                ? `Place Order (COD) · ${formatPrice(displayTotal, 'INR')}`
-                : `Pay Now · ${formatPrice(total, currentCurrency)}`
+              : `Pay Now · ${formatPrice(total, currentCurrency)}`
             }
           </Button>
         </form>
@@ -375,11 +319,9 @@ export function CheckoutView() {
                 </div>
                 <span className="text-sm font-medium text-foreground">
                   {formatPrice(
-                    (paymentMethod === 'cod'
-                      ? (i.price_inr || i.price)
-                      : isInternational
-                        ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency)
-                        : (i.price_inr || i.price)) * i.quantity,
+                    (isInternational
+                      ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency)
+                      : (i.price_inr || i.price)) * i.quantity,
                     displayCurrency
                   )}
                 </span>
@@ -405,10 +347,10 @@ export function CheckoutView() {
           )}
 
           <dl className="mt-5 space-y-3 border-t border-border/50 pt-5 text-sm">
-            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(paymentMethod === 'cod' ? items.reduce((a, i) => a + (i.price_inr || i.price) * i.quantity, 0) : convertedSubtotal, displayCurrency)}</dd></div>
-            {discount > 0 && <div className="flex justify-between"><dt className="text-success">Discount</dt><dd className="font-medium text-success">−{formatPrice(paymentMethod === 'cod' ? discount : convertedDiscount, displayCurrency)}</dd></div>}
+            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium text-foreground">{formatPrice(convertedSubtotal, displayCurrency)}</dd></div>
+            {discount > 0 && <div className="flex justify-between"><dt className="text-success">Discount</dt><dd className="font-medium text-success">−{formatPrice(convertedDiscount, displayCurrency)}</dd></div>}
             {baseShippingInr > 0 && (
-              <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(paymentMethod === 'cod' ? baseShippingInr : convertedShipping, displayCurrency)}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted-foreground">Shipping</dt><dd className="font-medium text-foreground">{formatPrice(convertedShipping, displayCurrency)}</dd></div>
             )}
             <div className="flex justify-between border-t border-border/50 pt-3">
               <div>
@@ -417,7 +359,7 @@ export function CheckoutView() {
               </div>
               <dd className="font-display text-2xl font-medium text-gold">{formatPrice(displayTotal, displayCurrency)}</dd>
             </div>
-            {isInternational && paymentMethod === 'razorpay' && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
+            {isInternational && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
               <div className="mt-2 inline-flex self-end rounded-full px-3 py-1 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(10,8,6,0.85)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>
                 Note: Charged in INR equivalent: {formatPrice(Math.round(total / (exchangeRate || 1)), 'INR')}
               </div>
