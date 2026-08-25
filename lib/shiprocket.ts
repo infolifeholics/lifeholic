@@ -1,3 +1,7 @@
+import dns from 'dns';
+
+dns.setDefaultResultOrder('ipv4first');
+
 /**
  * lib/shiprocket.ts
  * Centralized Shiprocket API service for TheLifeHolics shop.
@@ -106,7 +110,7 @@ export async function createShiprocketOrder(
     items,
     totalAmountInr,
     paymentMethod,
-    pickupLocation = 'Primary',
+    pickupLocation = 'Home',
   } = payload;
 
   const orderBody = {
@@ -153,6 +157,7 @@ export async function createShiprocketOrder(
   };
 
   try {
+    console.log('[Shiprocket Debug] Sending Order Body:', JSON.stringify(orderBody, null, 2));
     const createRes = await fetch(`${SHIPROCKET_API_URL}/orders/create/adhoc`, {
       method: 'POST',
       headers: {
@@ -162,9 +167,11 @@ export async function createShiprocketOrder(
       body: JSON.stringify(orderBody),
     });
 
+    console.log('[Shiprocket Debug] Response Status:', createRes.status);
     const createData = await createRes.json();
+    console.log('[Shiprocket Debug] Response Body:', JSON.stringify(createData, null, 2));
 
-    if (!createRes.ok) {
+    if (!createRes.ok || !createData.order_id) {
       // Handle duplicate order gracefully
       if (
         String(createData?.message || '').includes('already exists') ||

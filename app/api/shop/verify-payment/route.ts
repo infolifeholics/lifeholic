@@ -115,6 +115,11 @@ export async function POST(req: Request) {
     }
     o = orderSnap.data();
 
+    // Early return if order is already paid/verified
+    if (o.payment_status === 'paid' || o.status === 'paid') {
+      return NextResponse.json({ ok: true, message: 'Payment already verified.' });
+    }
+
     // Create payment entry in payments collection
     const paymentDocRef = adminDb.collection('payments').doc(razorpay_payment_id);
     await paymentDocRef.set({
