@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, getDoc, updateDoc, runTransaction } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import { queueNotification } from '@/lib/notifications/notification-service';
+import { triggerBookingNotification } from '@/lib/notifications';
 
 const WINDOW_TOLERANCE_MINUTES = 15; // ± minutes tolerance
 
@@ -15,27 +15,27 @@ export async function GET(req: Request) {
       }
     }
 
-    // 1. Fetch global settings (meeting link fallback and dynamic reminder window)
+    // 1. Fetch global settings
     let defaultMeetLink = '';
     let reminderHours = 24;
-    const globalSettingsSnap = await getDoc(doc(db, 'settings', 'global'));
-    if (globalSettingsSnap.exists()) {
+    const globalSettingsSnap = await adminDb.collection('settings').doc('global').get();
+    if (globalSettingsSnap.exists) {
       const gData = globalSettingsSnap.data();
-      defaultMeetLink = gData.google_meet_link || '';
-      reminderHours = Number(gData.reminder_hours_before) || 24;
+      if (gData) {
+        defaultMeetLink = gData.google_meet_link || '';
+        reminderHours = Number(gData.reminder_hours_before) || 24;
+      }
     }
 
-    // Dynamic reminder windows:
-    // 1. Dynamic Configured window (e.g. 24h, 2h, etc)
-    // 2. Final 30-minute reminder
     const activeReminderWindows = [
       { key: `reminder_sent_dyn_${reminderHours}h`, minutes: reminderHours * 60, label: `${reminderHours}h` },
       { key: 'reminder_sent_30m',                   minutes: 30,                 label: '30m' }
     ];
 
     // 2. Fetch all confirmed/booked/rescheduled bookings
-    const q = query(collection(db, 'bookings'), where('status', 'in', ['confirmed', 'booked', 'rescheduled']));
-    const snap = await getDocs(q);
+    const snap = await adminDb.collection('bookings')
+      .where('status', 'in', ['confirmed', 'booked', 'rescheduled'])
+      .get();
 
     const now = new Date();
     const sentCount: any[] = [];
@@ -52,35 +52,67 @@ export async function GET(req: Request) {
       if (now > endTime) {
         // Session has ended. Auto-complete it.
         try {
-          await updateDoc(doc(db, 'bookings', bookingId), {
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+          await adminDb.runTransaction(async (transaction) => {
+            const bRef = adminDb.collection('bookings').doc(bookingId);
+            const bSnap = await transaction.get(bRef);
+            if (!bSnap.exists) return;
+            const bData = bSnap.data();
+            if (!bData) return;
+            
+            // Guard: if already completed, do not proceed
+            if (bData.status === 'completed') return;
+
+            let pkgRef = null;
+            let pkgData = null;
+            let completedCount = 0;
+            let totalSess = 4;
+
+            if (bData.package_id) {
+              pkgRef = adminDb.collection('somatic_packages').doc(bData.package_id);
+              const pkgSnap = await transaction.get(pkgRef);
+              
+              if (pkgSnap.exists) {
+                pkgData = pkgSnap.data();
+                if (pkgData) {
+                  totalSess = pkgData.total_sessions || 4;
+                  
+                  // Fetch all bookings for this package
+                  const allBQuery = adminDb.collection('bookings').where('package_id', '==', bData.package_id);
+                  const allBSnap = await allBQuery.get();
+                  
+                  allBSnap.docs.forEach((doc) => {
+                    const d = doc.data();
+                    const bEndTime = new Date(d.end_time || (new Date(d.start_time).getTime() + 30 * 60_000)).getTime();
+                    
+                    if (doc.id === bookingId || d.status === 'completed' || (['confirmed', 'booked', 'rescheduled'].includes(d.status) && now.getTime() > bEndTime)) {
+                      completedCount++;
+                    }
+                  });
+                }
+              }
+            }
+
+            // Perform writes at the end
+            transaction.update(bRef, {
+              status: 'completed',
+              completed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+            if (pkgRef && pkgData) {
+              const updates: Record<string, any> = {
+                completed_sessions: completedCount,
+                remaining_sessions: Math.max(0, totalSess - completedCount),
+                updated_at: new Date().toISOString()
+              };
+              if (completedCount >= totalSess) {
+                updates.status = 'completed';
+              }
+              transaction.update(pkgRef, updates);
+              console.log(`[Remind-Cron] Incremented completed sessions on package ${bData.package_id} to ${completedCount}`);
+            }
           });
           console.log(`[Remind-Cron] Auto-completed past booking ${bookingId}`);
-
-          // Find if this booking is linked to a somatic package and increment progress
-          const pkgQuery = query(
-            collection(db, 'somatic_packages'),
-            where('booking_ids', 'array-contains', bookingId)
-          );
-          const pkgSnap = await getDocs(pkgQuery);
-          if (!pkgSnap.empty) {
-            const pkgDoc = pkgSnap.docs[0];
-            const pkgData = pkgDoc.data();
-            const nextCompleted = (pkgData.completed_sessions || 0) + 1;
-            const totalSess = pkgData.total_sessions || 4;
-            const updates: Record<string, any> = {
-              completed_sessions: nextCompleted,
-              remaining_sessions: Math.max(0, totalSess - nextCompleted),
-              updated_at: new Date().toISOString()
-            };
-            if (nextCompleted >= totalSess) {
-              updates.status = 'completed';
-            }
-            await updateDoc(doc(db, 'somatic_packages', pkgDoc.id), updates);
-            console.log(`[Remind-Cron] Incremented completed sessions on package ${pkgDoc.id}`);
-          }
         } catch (err) {
           console.error(`[Remind-Cron] Failed auto-completion for ${bookingId}:`, err);
         }
@@ -90,7 +122,7 @@ export async function GET(req: Request) {
       // Skip past sessions
       if (diffMinutes <= 0) continue;
 
-      const { client_name, client_email, client_phone, service_title, user_id } = booking;
+      const { client_name, client_email, client_phone, user_id } = booking;
       const meetLink = booking.meeting_link || defaultMeetLink;
 
       const formatterDate = new Intl.DateTimeFormat('en-IN', {
@@ -105,15 +137,12 @@ export async function GET(req: Request) {
       const updates: Record<string, any> = {};
 
       for (const window of activeReminderWindows) {
-        // Already sent for this window?
         if (booking[window.key]) continue;
 
-        // Is the session within this window (±tolerance)?
         const windowMin = window.minutes - WINDOW_TOLERANCE_MINUTES;
         const windowMax = window.minutes + WINDOW_TOLERANCE_MINUTES;
         if (diffMinutes < windowMin || diffMinutes > windowMax) continue;
 
-        // Fire reminder notification
         try {
           await queueNotification(
             'booking_reminder',
@@ -149,40 +178,36 @@ export async function GET(req: Request) {
         }
       }
 
-      // Batch update booking document with reminder flags
       if (Object.keys(updates).length > 0) {
-        await updateDoc(doc(db, 'bookings', bookingId), updates).catch((err) =>
+        await adminDb.collection('bookings').doc(bookingId).update(updates).catch((err) =>
           console.error(`[Remind-Cron] Failed to update booking ${bookingId}:`, err)
         );
       }
     }
 
     // 2.5 Expiration Sweep for active packages
-    const activePackagesQuery = query(
-      collection(db, 'somatic_packages'),
-      where('status', '==', 'active')
-    );
-    const activePackagesSnap = await getDocs(activePackagesQuery);
+    const activePackagesSnap = await adminDb.collection('somatic_packages')
+      .where('status', '==', 'active')
+      .get();
     let expiredPackagesCount = 0;
 
     for (const pkgDoc of activePackagesSnap.docs) {
       const pkgData = pkgDoc.data();
       const expiryTime = new Date(pkgData.expiry_date).getTime();
       if (Date.now() > expiryTime) {
-        await updateDoc(doc(db, 'somatic_packages', pkgDoc.id), {
+        await adminDb.collection('somatic_packages').doc(pkgDoc.id).update({
           status: 'expired',
           updated_at: new Date().toISOString()
         });
 
-        // Cancel future booked bookings belonging to this package that fall past expiry
         if (pkgData.booking_ids) {
           for (const bId of pkgData.booking_ids) {
-            const bRef = doc(db, 'bookings', bId);
-            const bSnap = await getDoc(bRef);
-            if (bSnap.exists()) {
+            const bRef = adminDb.collection('bookings').doc(bId);
+            const bSnap = await bRef.get();
+            if (bSnap.exists) {
               const bData = bSnap.data();
-              if (['confirmed', 'booked', 'rescheduled'].includes(bData.status) && new Date(bData.start_time).getTime() > expiryTime) {
-                await updateDoc(bRef, {
+              if (bData && ['confirmed', 'booked', 'rescheduled'].includes(bData.status) && new Date(bData.start_time).getTime() > expiryTime) {
+                await bRef.update({
                   status: 'expired',
                   expired_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
@@ -199,12 +224,10 @@ export async function GET(req: Request) {
 
     // 3. Expiration Cleanup for Pending Unpaid bookings older than 15 minutes
     const expirationLimit = new Date(now.getTime() - 15 * 60 * 1000);
-    const pendingQuery = query(
-      collection(db, 'bookings'),
-      where('status', '==', 'pending'),
-      where('payment_status', '==', 'unpaid')
-    );
-    const pendingSnap = await getDocs(pendingQuery);
+    const pendingSnap = await adminDb.collection('bookings')
+      .where('status', '==', 'pending')
+      .where('payment_status', '==', 'unpaid')
+      .get();
     let expiredCount = 0;
 
     for (const pendingDoc of pendingSnap.docs) {
@@ -231,12 +254,12 @@ export async function GET(req: Request) {
         };
 
         try {
-          await runTransaction(db, async (transaction) => {
-            const docRef = doc(db, 'bookings', pId);
+          await adminDb.runTransaction(async (transaction) => {
+            const docRef = adminDb.collection('bookings').doc(pId);
             const docSnap = await transaction.get(docRef);
-            if (!docSnap.exists()) return;
+            if (!docSnap.exists) return;
             const currentData = docSnap.data();
-            if (currentData.status === 'pending' && currentData.payment_status === 'unpaid') {
+            if (currentData && currentData.status === 'pending' && currentData.payment_status === 'unpaid') {
               transaction.update(docRef, updatedBooking);
               expiredSuccessfully = true;
             }
@@ -247,7 +270,6 @@ export async function GET(req: Request) {
 
         if (expiredSuccessfully) {
           try {
-            const { triggerBookingNotification } = await import('@/lib/notifications');
             await triggerBookingNotification(pId, { ...pData, ...updatedBooking }, 'cancelled');
           } catch (err) {
             console.error(`[Remind-Cron] Failed to trigger notification for expired booking ${pId}:`, err);
@@ -260,7 +282,7 @@ export async function GET(req: Request) {
     }
 
     console.log(`[Remind-Cron] Done. ${sentCount.length} reminder(s) dispatched. ${expiredCount} booking(s) expired.`);
-    return NextResponse.json({ ok: true, sentReminders: sentCount, expiredBookingsCount: expiredCount });
+    return NextResponse.json({ ok: true, sentReminders: sentCount, expiredBookingsCount: expiredCount, expiredPackagesCount });
   } catch (err: any) {
     console.error('[Remind-Cron] Error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -259,7 +259,7 @@ function SomaticBookingFlowContent() {
           start_time: selectedSlot.start,
           end_time: new Date(
             new Date(selectedSlot.start).getTime() +
-            (planName.toLowerCase().includes('essential') ? 30 : planName.toLowerCase().includes('elite') ? 90 : 60) * 60_000
+            (planName.toLowerCase().includes('elite') ? 90 : 30) * 60_000
           ).toISOString(),
           mode,
           notes: details.notes,

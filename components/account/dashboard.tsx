@@ -1093,8 +1093,17 @@ export function AccountDashboard() {
         {userPackages.map((pkg) => {
           const isSomaticPkg = pkg.package_type === 'somatic_plan' || !pkg.package_type;
           const totalSessions = pkg.total_sessions || 4;
-          const completedSessions = pkg.completed_sessions || 0;
-          const remainingSessions = pkg.remaining_sessions || 0;
+          let completedSessions = 0;
+          pkg.booking_ids?.forEach((bId: string) => {
+            const b = bookings.find(x => x.id === bId);
+            if (b) {
+              const hasEnded = new Date(b.end_time || (new Date(b.start_time).getTime() + 30 * 60_000)).getTime() <= Date.now();
+              if (b.status === 'completed' || (hasEnded && ['confirmed', 'booked', 'rescheduled'].includes(b.status))) {
+                completedSessions++;
+              }
+            }
+          });
+          const remainingSessions = Math.max(0, totalSessions - (pkg.booking_ids?.length || 0));
           const stepArray = Array.from({ length: totalSessions }, (_, i) => i + 1);
 
           let displayPackageName = pkg.package_name;
@@ -1157,7 +1166,10 @@ export function AccountDashboard() {
                   if (linkedBookingId) {
                     const bDetails = bookings.find(b => b.id === linkedBookingId);
                     if (bDetails) {
-                      if (bDetails.status === 'completed') {
+                      const hasEnded = new Date(bDetails.end_time || (new Date(bDetails.start_time).getTime() + 30 * 60_000)).getTime() <= Date.now();
+                      const isCompleted = bDetails.status === 'completed' || (hasEnded && ['confirmed', 'booked', 'rescheduled'].includes(bDetails.status));
+
+                      if (isCompleted) {
                         stepStatus = 'completed';
                       } else if (bDetails.status === 'cancelled' || bDetails.status === 'rejected') {
                         stepStatus = isExpired ? 'expired' : 'available';
@@ -1182,10 +1194,16 @@ export function AccountDashboard() {
                       const prevBookingId = pkg.booking_ids?.[stepNum - 2];
                       if (prevBookingId) {
                         const prevB = bookings.find(b => b.id === prevBookingId);
-                        if (prevB && prevB.status === 'completed') {
-                           stepStatus = 'available';
+                        if (prevB) {
+                          const prevHasEnded = new Date(prevB.end_time || (new Date(prevB.start_time).getTime() + 30 * 60_000)).getTime() <= Date.now();
+                          const prevCompleted = prevB.status === 'completed' || (prevHasEnded && ['confirmed', 'booked', 'rescheduled'].includes(prevB.status));
+                          if (prevCompleted) {
+                            stepStatus = 'available';
+                          } else {
+                            stepStatus = 'locked';
+                          }
                         } else {
-                           stepStatus = 'locked';
+                          stepStatus = 'locked';
                         }
                       } else {
                         stepStatus = 'locked';

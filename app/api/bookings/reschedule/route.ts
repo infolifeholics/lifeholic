@@ -34,7 +34,8 @@ export async function POST(req: Request) {
     }
 
     const oldStart = new Date(b.start_time);
-    if (oldStart.getTime() < now.getTime()) {
+    const oldEnd = new Date(b.end_time || (oldStart.getTime() + 30 * 60_000));
+    if (oldEnd.getTime() < now.getTime()) {
       return NextResponse.json({ error: 'Cannot reschedule an already completed or past session.' }, { status: 400 });
     }
 

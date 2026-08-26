@@ -82,15 +82,20 @@ export function AdminCalendarView({ onSelectBooking }: CalendarViewProps) {
     d1.getMonth() === d2.getMonth() &&
     d1.getDate() === d2.getDate();
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+  const getStatusColor = (b: Booking) => {
+    const status = (b.status || '').toLowerCase();
+    const hasEnded = new Date(b.end_time || (new Date(b.start_time).getTime() + 30 * 60_000)).getTime() <= Date.now();
+    
+    if (status === 'completed' || (hasEnded && ['confirmed', 'booked', 'rescheduled'].includes(status))) {
+      return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'; // GREEN (completed)
+    }
+
+    switch (status) {
       case 'confirmed':
       case 'booked':
         return 'bg-warning/15 text-warning border-warning/30 hover:bg-warning/25'; // YELLOW (upcoming)
       case 'rescheduled':
         return 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/25'; // RED (rescheduled)
-      case 'completed':
-        return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'; // GREEN (completed)
       default:
         return 'bg-secondary text-muted-foreground border-border hover:bg-secondary/80';
     }
@@ -140,7 +145,7 @@ export function AdminCalendarView({ onSelectBooking }: CalendarViewProps) {
                   <button
                     key={b.id}
                     onClick={() => onSelectBooking(b)}
-                    className={cn("w-full text-left text-[9px] px-1.5 py-0.5 rounded border capitalize truncate transition-colors", getStatusColor(b.status))}
+                    className={cn("w-full text-left text-[9px] px-1.5 py-0.5 rounded border capitalize truncate transition-colors", getStatusColor(b))}
                   >
                     {new Date(b.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {b.client_name.split(' ')[0]}
                   </button>
@@ -176,7 +181,7 @@ export function AdminCalendarView({ onSelectBooking }: CalendarViewProps) {
                     <div
                       key={b.id}
                       onClick={() => onSelectBooking(b)}
-                      className={cn("p-2 rounded-2xl border text-left cursor-pointer transition-all space-y-1", getStatusColor(b.status))}
+                      className={cn("p-2 rounded-2xl border text-left cursor-pointer transition-all space-y-1", getStatusColor(b))}
                     >
                       <p className="text-[10px] font-bold truncate">{b.service_title}</p>
                       <div className="flex items-center gap-1 text-[9px] opacity-80">
@@ -214,7 +219,7 @@ export function AdminCalendarView({ onSelectBooking }: CalendarViewProps) {
               <div
                 key={b.id}
                 onClick={() => onSelectBooking(b)}
-                className={cn("p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-colors", getStatusColor(b.status))}
+                className={cn("p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-colors", getStatusColor(b))}
               >
                 <div className="flex items-center gap-4">
                   <span className="text-xs font-mono font-semibold py-1 px-2.5 rounded-full bg-black/10">
