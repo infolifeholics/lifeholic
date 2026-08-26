@@ -34,7 +34,10 @@ export function AdminCalendarView({ onSelectBooking }: CalendarViewProps) {
   useEffect(() => {
     const q = query(collection(db, 'bookings'), orderBy('start_time', 'asc'));
     const unsubscribe = onSnapshot(q, (snap) => {
-      setBookings(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Booking));
+      const filtered = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as Booking)
+        .filter((b) => ['confirmed', 'booked', 'rescheduled', 'completed'].includes((b.status || '').toLowerCase()));
+      setBookings(filtered);
     });
     return () => unsubscribe();
   }, []);
@@ -82,14 +85,12 @@ export function AdminCalendarView({ onSelectBooking }: CalendarViewProps) {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'confirmed':
-        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20';
-      case 'pending':
-        return 'bg-warning/10 text-warning border-warning/30 hover:bg-warning/20';
+      case 'booked':
+        return 'bg-warning/15 text-warning border-warning/30 hover:bg-warning/25'; // YELLOW (upcoming)
+      case 'rescheduled':
+        return 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/25'; // RED (rescheduled)
       case 'completed':
-        return 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20';
-      case 'cancelled':
-      case 'rejected':
-        return 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20';
+        return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'; // GREEN (completed)
       default:
         return 'bg-secondary text-muted-foreground border-border hover:bg-secondary/80';
     }

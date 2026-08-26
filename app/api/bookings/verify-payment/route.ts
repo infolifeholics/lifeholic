@@ -63,7 +63,7 @@ export async function POST(req: Request) {
         note: `Payment ID ${razorpay_payment_id} verified securely.`
       },
       {
-        status: 'confirmed',
+        status: 'booked',
         timestamp: new Date().toISOString(),
         updated_by: 'System',
         note: 'Booking confirmed automatically after payment verification.'
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
 
     const updatedBooking = {
       payment_status: 'paid',
-      status: 'confirmed',
+      status: 'booked',
       payment_verified: true,
       razorpay_payment_id,
       razorpay_order_id,
@@ -184,9 +184,10 @@ export async function POST(req: Request) {
           booking_ids: [booking_id] // First session ID linked
         }, { merge: true });
         
-        // Mark current session as session 1
+        // Mark current session as session 1 and link package_id
         await bookingRef.set({
-          session_number: 1
+          session_number: 1,
+          package_id: packageDocRef.id
         }, { merge: true });
       } catch (err) {
         console.error('[VerifyPayment] Error initializing package:', err);

@@ -33,8 +33,8 @@ export async function GET(req: Request) {
       { key: 'reminder_sent_30m',                   minutes: 30,                 label: '30m' }
     ];
 
-    // 2. Fetch all confirmed bookings
-    const q = query(collection(db, 'bookings'), where('status', '==', 'confirmed'));
+    // 2. Fetch all confirmed/booked/rescheduled bookings
+    const q = query(collection(db, 'bookings'), where('status', 'in', ['confirmed', 'booked', 'rescheduled']));
     const snap = await getDocs(q);
 
     const now = new Date();
@@ -54,6 +54,7 @@ export async function GET(req: Request) {
         try {
           await updateDoc(doc(db, 'bookings', bookingId), {
             status: 'completed',
+            completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
           console.log(`[Remind-Cron] Auto-completed past booking ${bookingId}`);
@@ -180,12 +181,13 @@ export async function GET(req: Request) {
             const bSnap = await getDoc(bRef);
             if (bSnap.exists()) {
               const bData = bSnap.data();
-              if (bData.status === 'confirmed' && new Date(bData.start_time).getTime() > expiryTime) {
+              if (['confirmed', 'booked', 'rescheduled'].includes(bData.status) && new Date(bData.start_time).getTime() > expiryTime) {
                 await updateDoc(bRef, {
-                  status: 'cancelled',
+                  status: 'expired',
+                  expired_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 });
-                console.log(`[Remind-Cron] Cancelled future booking ${bId} due to package expiry.`);
+                console.log(`[Remind-Cron] Marked booking ${bId} as EXPIRED due to package expiry.`);
               }
             }
           }

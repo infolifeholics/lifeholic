@@ -19,6 +19,11 @@ export async function POST(req: Request) {
     }
     const b = bookingSnap.data() || {};
 
+    if (b.session_number > 1 || b.package_id) {
+      return NextResponse.json({ error: 'Subsequent sessions in a package do not require payment.' }, { status: 400 });
+    }
+
+
     // Fetch exchange rates
     let rates: Record<string, number> = {};
     try {

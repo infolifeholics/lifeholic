@@ -270,6 +270,11 @@ export async function POST(req: Request) {
       }
     }
 
+    const bodyActivePkgId = body.activePkgId || body.package_id;
+    if (isSomatic && activePkg && !bodyActivePkgId) {
+      return NextResponse.json({ error: 'You already have an active program package. Please schedule your remaining sessions instead.' }, { status: 400 });
+    }
+
     if (activePkg) {
       const nowTime = Date.now();
       const expiryTime = new Date(activePkg.expiry_date).getTime();
@@ -370,7 +375,7 @@ export async function POST(req: Request) {
         }
 
         const isSubsequentBooking = activePkg ? true : false;
-        const initialStatus = isSubsequentBooking ? 'confirmed' : (body.status || 'pending');
+        const initialStatus = isSubsequentBooking ? 'booked' : (body.status || 'pending');
         const initialPaymentStatus = isSubsequentBooking ? 'paid' : (body.payment_status || 'unpaid');
 
         // Fetch global settings inside the transaction to follow correct order (reads before writes)
@@ -471,6 +476,9 @@ export async function POST(req: Request) {
             if (pkgData) {
               const currentBookingCount = (pkgData.booking_ids || []).length;
               sessionNumber = currentBookingCount + 1;
+              if (currentBookingCount >= (pkgData.total_sessions || 4)) {
+                throw new Error('ALL_SESSIONS_BOOKED');
+              }
             }
           }
         } else if (isSomatic) {
@@ -485,6 +493,7 @@ export async function POST(req: Request) {
           is_somatic_plan: isSomatic,
           somatic_plan_name: isSomatic ? somaticPlanName : null,
           user_id: user_id || null,
+          package_id: activePkgId || null,
           client_name,
           client_email,
           client_phone: client_phone || null,
@@ -589,7 +598,12 @@ export async function POST(req: Request) {
         .catch((err) => console.error('[Background Notification Error]:', err));
     }
  
-    return NextResponse.json({ ok: true, id: newBookingId });
+    return NextResponse.json({
+      ok: true,
+      id: newBookingId,
+      status: insertedBookingData?.status,
+      payment_status: insertedBookingData?.payment_status
+    });
   } catch (error: any) {
     console.error('Booking error:', error);
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });

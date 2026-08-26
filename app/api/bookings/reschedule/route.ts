@@ -110,7 +110,7 @@ export async function POST(req: Request) {
         // Claim new lock
         transaction.set(newLockRef, {
           booking_id,
-          status: 'confirmed',
+          status: 'rescheduled',
           start_time: start.toISOString(),
           created_at: new Date().toISOString()
         });
@@ -120,19 +120,32 @@ export async function POST(req: Request) {
         const updatedTimeline = [
           ...timeline,
           {
-            status: 'confirmed',
+            status: 'rescheduled',
             timestamp: new Date().toISOString(),
             updated_by: 'User',
             note: `Rescheduled from ${oldStart.toLocaleString()} to ${start.toLocaleString()}`
           }
         ];
 
+        const rescheduleHistory = b.reschedule_history || [];
+        const updatedRescheduleHistory = [
+          ...rescheduleHistory,
+          {
+            old_start_time: b.start_time,
+            old_end_time: b.end_time || null,
+            new_start_time: start.toISOString(),
+            new_end_time: end.toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ];
+
         transaction.update(bookingRef, {
           start_time: start.toISOString(),
           end_time: end.toISOString(),
-          status: 'confirmed',
+          status: 'rescheduled',
           rescheduled_at: new Date().toISOString(),
           status_timeline: updatedTimeline,
+          reschedule_history: updatedRescheduleHistory,
           updated_at: new Date().toISOString()
         });
       });

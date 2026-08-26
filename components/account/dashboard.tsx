@@ -1138,12 +1138,21 @@ export function AccountDashboard() {
                 </div>
               </div>
 
+              {/* Expiry Message */}
+              {(pkg.status === 'expired' || new Date().getTime() > new Date(pkg.expiry_date).getTime()) && (
+                <div className="mt-2.5 mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-2xl text-xs text-rose-400 font-medium">
+                  Your ${totalSessions}-session Somatic package has expired. You completed ${completedSessions} sessions.
+                </div>
+              )}
+
               {/* Stages Step Tracker */}
               <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 mt-6">
                 {stepArray.map((stepNum) => {
                   const linkedBookingId = pkg.booking_ids?.[stepNum - 1];
-                  let stepStatus: 'completed' | 'booked' | 'available' | 'locked' = 'locked';
+                  let stepStatus: 'completed' | 'booked' | 'rescheduled' | 'available' | 'locked' | 'expired' = 'locked';
                   let bookingDateStr = '';
+
+                  const isExpired = pkg.status === 'expired' || new Date().getTime() > new Date(pkg.expiry_date).getTime();
 
                   if (linkedBookingId) {
                     const bDetails = bookings.find(b => b.id === linkedBookingId);
@@ -1151,16 +1160,23 @@ export function AccountDashboard() {
                       if (bDetails.status === 'completed') {
                         stepStatus = 'completed';
                       } else if (bDetails.status === 'cancelled' || bDetails.status === 'rejected') {
-                        stepStatus = 'available';
+                        stepStatus = isExpired ? 'expired' : 'available';
+                      } else if (bDetails.status === 'rescheduled') {
+                        stepStatus = 'rescheduled';
+                        bookingDateStr = new Date(bDetails.start_time).toLocaleDateString() + ' ' + new Date(bDetails.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      } else if (bDetails.status === 'expired') {
+                        stepStatus = 'expired';
                       } else {
                         stepStatus = 'booked';
-                        bookingDateStr = new Date(bDetails.start_time).toLocaleDateString();
+                        bookingDateStr = new Date(bDetails.start_time).toLocaleDateString() + ' ' + new Date(bDetails.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                       }
                     } else {
-                      stepStatus = 'booked';
+                      stepStatus = isExpired ? 'expired' : 'booked';
                     }
                   } else {
-                    if (stepNum === 1) {
+                    if (isExpired) {
+                      stepStatus = 'expired';
+                    } else if (stepNum === 1) {
                       stepStatus = 'available';
                     } else {
                       const prevBookingId = pkg.booking_ids?.[stepNum - 2];
@@ -1169,17 +1185,12 @@ export function AccountDashboard() {
                         if (prevB && prevB.status === 'completed') {
                            stepStatus = 'available';
                         } else {
-                          stepStatus = 'locked';
+                           stepStatus = 'locked';
                         }
                       } else {
                         stepStatus = 'locked';
                       }
                     }
-                  }
-
-                  const isExpired = pkg.status === 'expired' || new Date().getTime() > new Date(pkg.expiry_date).getTime();
-                  if (isExpired && stepStatus !== 'completed') {
-                    stepStatus = 'locked';
                   }
 
                   // Determine booking URL
@@ -1192,22 +1203,43 @@ export function AccountDashboard() {
                     <div key={stepNum} className={cn(
                       "p-4 rounded-2xl border text-center transition-all",
                       stepStatus === 'completed' && "bg-black border-emerald-500/30 text-emerald-400",
-                      stepStatus === 'booked' && "bg-black border-gold/30 text-gold",
+                      (stepStatus === 'booked' || stepStatus === 'rescheduled') && "bg-black border-gold/30 text-gold",
                       stepStatus === 'available' && "bg-black border-zinc-800 text-white hover:border-gold/30 cursor-pointer",
-                      stepStatus === 'locked' && "bg-black border-zinc-900 text-white/40 opacity-60"
+                      stepStatus === 'locked' && "bg-black border-zinc-900 text-white/40 opacity-60",
+                      stepStatus === 'expired' && "bg-black border-rose-500/20 text-rose-400 opacity-80"
                     )}>
                       <div className="flex justify-center mb-2">
                         {stepStatus === 'completed' && <CheckCircle2 className="h-5 w-5 text-emerald-400" />}
-                        {stepStatus === 'booked' && <CalendarDays className="h-5 w-5 text-gold" />}
+                        {(stepStatus === 'booked' || stepStatus === 'rescheduled') && <CalendarDays className="h-5 w-5 text-gold" />}
                         {stepStatus === 'available' && <Clock className="h-5 w-5 text-white" />}
                         {stepStatus === 'locked' && <Lock className="h-5 w-5 text-white/40" />}
+                        {stepStatus === 'expired' && <AlertCircle className="h-5 w-5 text-rose-400" />}
                       </div>
                       <span className="block text-xs font-bold uppercase tracking-wider">Session {stepNum}</span>
                       <span className="block text-[10px] mt-1 capitalize">
                         {stepStatus === 'completed' && '✅ Completed'}
+                        {stepStatus === 'rescheduled' && (
+                          <div className="mt-2 space-y-1">
+                            <span className="block text-[10px] text-rose-400 font-semibold">🔄 Rescheduled</span>
+                            <span className="block text-[9px] text-white/60">📅 {bookingDateStr}</span>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const bDetails = bookings.find(b => b.id === linkedBookingId);
+                                if (bDetails) {
+                                  setRescheduleBooking(bDetails);
+                                }
+                              }}
+                              className="text-[10px] text-gold hover:underline font-bold block mx-auto mt-1"
+                            >
+                              🔄 Reschedule
+                            </button>
+                          </div>
+                        )}
                         {stepStatus === 'booked' && (
                           <div className="mt-2 space-y-1">
-                            <span className="block text-[10px] text-gold font-semibold">📅 {bookingDateStr}</span>
+                            <span className="block text-[9px] text-white/60">📅 {bookingDateStr}</span>
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
@@ -1224,13 +1256,12 @@ export function AccountDashboard() {
                           </div>
                         )}
                         {stepStatus === 'available' && (
-                          <Link href={bookingUrl} className="hover:underline text-gold font-semibold">
+                          <Link href={bookingUrl} className="hover:underline text-gold font-semibold font-sans">
                             ⏳ Book Now
                           </Link>
                         )}
-                        {stepStatus === 'locked' && (
-                          isExpired ? (isSomaticPkg ? '🔒 Plan Expired' : '🔒 Package Expired') : '🔒 Locked'
-                        )}
+                        {stepStatus === 'locked' && '🔒 Locked'}
+                        {stepStatus === 'expired' && '🔒 Expired'}
                       </span>
                     </div>
                   );
@@ -2359,7 +2390,7 @@ function BookingCardKeyed({ b, timezone, onSelect, onReschedule }: { b: Booking;
           View full details &rarr;
         </span>
 
-        {((b.status === 'confirmed' || b.status === 'pending') && new Date(b.start_time).getTime() > Date.now()) && (
+        {((['confirmed', 'booked', 'rescheduled', 'pending'].includes(b.status)) && new Date(b.start_time).getTime() > Date.now()) && (
           <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
             {b.status === 'confirmed' && b.reschedule_request?.status === 'pending' && (
               <span className="text-[10px] bg-warning/10 text-warning px-2.5 py-1 rounded-full border border-warning/20">
@@ -2368,7 +2399,7 @@ function BookingCardKeyed({ b, timezone, onSelect, onReschedule }: { b: Booking;
             )}
 
             <div className="flex gap-2">
-              {b.status === 'confirmed' && (
+              {['confirmed', 'booked', 'rescheduled'].includes(b.status) && (
                 <Button size="sm" variant="outline" onClick={() => onReschedule && onReschedule(b)} className="rounded-full text-xs h-8 border-gold/40 text-gold hover:bg-gold/10 bg-transparent">
                   Reschedule
                 </Button>

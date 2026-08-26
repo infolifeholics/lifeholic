@@ -273,6 +273,7 @@ function SomaticBookingFlowContent() {
           problems: survey?.problems || null,
           is_somatic_plan: true,
           somatic_plan_name: `Plan ${planName.charAt(0)} · ${planName}`,
+          activePkgId: activePackage?.id || null,
         }),
       });
 
@@ -281,8 +282,11 @@ function SomaticBookingFlowContent() {
         toast.error(data.error || 'Could not complete booking.');
         return;
       }
-      // Redirect to unified checkout details page
-      router.push(`/booking/payment?id=${data.id}`);
+      if (activePackage || data.payment_status === 'paid' || data.status === 'booked') {
+        router.push(`/booking/success?id=${data.id}`);
+      } else {
+        router.push(`/booking/payment?id=${data.id}`);
+      }
     } catch {
       toast.error('Something went wrong. Please try again.');
     } finally {
@@ -343,6 +347,12 @@ function SomaticBookingFlowContent() {
                 <h3 className="font-display text-lg font-medium text-foreground">Select Date &amp; Time</h3>
                 <p className="text-xs text-muted-foreground mt-1">Select a date to view available time slots.</p>
               </div>
+
+              {activePackage && (
+                <div className="p-3 bg-gold/10 border border-gold/20 rounded-2xl text-xs text-gold font-sans font-medium">
+                  📌 Program Package Window: You can only select slots between <strong>{new Date(activePackage.start_date).toLocaleDateString()}</strong> and <strong>{new Date(activePackage.expiry_date).toLocaleDateString()}</strong>.
+                </div>
+              )}
 
               {/* Timezone picker */}
               <div className="space-y-1.5">

@@ -19,6 +19,7 @@ export async function POST(req: Request) {
     const b = bookingSnap.data();
 
     // Block refund if one or more sessions in the package have been completed
+    let packageRefToUpdate: any = null;
     if (b.is_somatic_plan && b.user_id) {
       const { collection, query, where, getDocs } = await import('firebase/firestore');
       const pkgQuery = query(
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
       );
       const pkgSnap = await getDocs(pkgQuery);
       if (!pkgSnap.empty) {
+        packageRefToUpdate = pkgSnap.docs[0].ref;
         const pkgData = pkgSnap.docs[0].data();
         if ((pkgData.completed_sessions || 0) > 0) {
           return NextResponse.json({ error: 'Refunds are not allowed once one or more sessions in the package have been completed.' }, { status: 400 });
@@ -36,8 +38,16 @@ export async function POST(req: Request) {
 
     // Calculate maximum refundable amount
     const maxRefund = b.amount || 0;
-    if (amount > maxRefund) {
-      return NextResponse.json({ error: `Amount exceeds original paid amount of ${maxRefund}.` }, { status: 400 });
+    const refundHistory = b.refund_history || [];
+    const totalAlreadyRefunded = refundHistory.reduce((acc: number, r: any) => acc + (r.amount || 0), 0);
+    const maxRefundable = maxRefund - totalAlreadyRefunded;
+
+    if (amount <= 0) {
+      return NextResponse.json({ error: 'Refund amount must be greater than zero.' }, { status: 400 });
+    }
+
+    if (amount > maxRefundable) {
+      return NextResponse.json({ error: `Amount exceeds remaining refundable amount of ${maxRefundable} ${b.currency || 'INR'}.` }, { status: 400 });
     }
 
     // Simulate Razorpay refund transaction or update local status
@@ -55,7 +65,6 @@ export async function POST(req: Request) {
       }
     ];
 
-    const refundHistory = b.refund_history || [];
     const updatedRefundHistory = [
       ...refundHistory,
       {
@@ -89,6 +98,14 @@ export async function POST(req: Request) {
     };
 
     await setDoc(bookingRef, updatedBooking, { merge: true });
+
+    if (packageRefToUpdate) {
+      const { updateDoc } = await import('firebase/firestore');
+      await updateDoc(packageRefToUpdate, {
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      });
+    }
 
     // Trigger Notification
     try {
