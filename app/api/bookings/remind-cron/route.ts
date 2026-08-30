@@ -153,7 +153,7 @@ export async function GET(req: Request) {
               sessionDate: dateStr,
               sessionTime: timeStr,
               bookingId,
-              bookingStatus: 'confirmed',
+              bookingStatus: booking.status || 'confirmed',
               meetLink,
               window: window.label,
             },

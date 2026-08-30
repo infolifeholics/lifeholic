@@ -142,6 +142,8 @@ export async function triggerBookingNotification(
       bookingStatus: eventType === 'created' ? 'pending' : (eventType === 'meeting_updated' ? 'rescheduled' : eventType),
       actionDetails: `${service_title}${sessionSuffix}`,
       meetLink: bookingData.meeting_link || defaultMeetLink,
+      paymentStatus: bookingData.payment_status || '',
+      actualStatus: bookingData.status || '',
     };
 
     let templateType: any = 'booking_status_changed';
@@ -177,7 +179,7 @@ export async function triggerBookingNotification(
     // Admin Alert
     if (eventType === 'created' || eventType === 'confirmed' || eventType === 'cancelled') {
       await notifyAdmins(
-        eventType === 'created' ? 'Payment Pending Booking' : (eventType === 'confirmed' ? 'Booking Confirmed' : 'Booking Cancelled'),
+        eventType === 'created' ? 'Payment Pending Booking' : (eventType === 'confirmed' ? 'New Booking' : 'Booking Cancelled'),
         client_name,
         eventType === 'created'
           ? `Session for ${service_title} temporarily reserved (Payment Pending) on ${dateStr} at ${timeStr} IST.`

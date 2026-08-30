@@ -232,6 +232,15 @@ export function AccountDashboard() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submittingReschedule, setSubmittingReschedule] = useState(false);
 
+  const handleInitiateReschedule = (b: any) => {
+    const timeDiff = new Date(b.start_time).getTime() - Date.now();
+    if (timeDiff <= 48 * 60 * 60 * 1000) {
+      alert("Rescheduling is unavailable. Your session is within 48 hours of the scheduled time.");
+      return;
+    }
+    setRescheduleBooking(b);
+  };
+
   useEffect(() => {
     if (!rescheduleBooking || !rescheduleDate) return;
     const loadSlots = async () => {
@@ -552,11 +561,11 @@ export function AccountDashboard() {
   // Booking filtering
   const now = new Date();
   const upcomingBookings = bookings.filter(b =>
-    (b.status === 'confirmed' || b.status === 'pending') && new Date(b.start_time).getTime() > now.getTime()
+    (b.status === 'confirmed' || b.status === 'booked' || b.status === 'pending') && new Date(b.start_time).getTime() > now.getTime()
   );
   const completedBookings = bookings.filter(b =>
     b.status === 'completed' ||
-    ((b.status === 'confirmed' || b.status === 'pending') && new Date(b.start_time).getTime() <= now.getTime())
+    ((b.status === 'confirmed' || b.status === 'booked' || b.status === 'pending') && new Date(b.start_time).getTime() <= now.getTime())
   );
   const cancelledBookings = bookings.filter(b => b.status === 'cancelled' || b.status === 'rejected');
   const paidBookings = bookings.filter(b => b.payment_status === 'paid');
@@ -1308,7 +1317,7 @@ export function AccountDashboard() {
               ) : (
                 <div className="grid gap-4">
                   {upcomingBookings.map((b) => (
-                    <BookingCardKeyed key={b.id} b={b} timezone={timezone} onSelect={() => setSelectedBooking(b)} onReschedule={setRescheduleBooking} />
+                    <BookingCardKeyed key={b.id} b={b} timezone={timezone} onSelect={() => setSelectedBooking(b)} onReschedule={handleInitiateReschedule} />
                   ))}
                 </div>
               )}
@@ -1321,7 +1330,7 @@ export function AccountDashboard() {
               ) : (
                 <div className="grid gap-4">
                   {completedBookings.map((b) => (
-                    <BookingCardKeyed key={b.id} b={b} timezone={timezone} onSelect={() => setSelectedBooking(b)} onReschedule={setRescheduleBooking} />
+                    <BookingCardKeyed key={b.id} b={b} timezone={timezone} onSelect={() => setSelectedBooking(b)} onReschedule={handleInitiateReschedule} />
                   ))}
                 </div>
               )}
@@ -2112,7 +2121,7 @@ export function AccountDashboard() {
                   <div>
                     <span className="font-semibold text-foreground">Status: </span>
                     <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
-                      selectedBooking.status === 'confirmed' && 'bg-emerald-500/10 text-emerald-400',
+                      (selectedBooking.status === 'confirmed' || selectedBooking.status === 'booked') && 'bg-emerald-500/10 text-emerald-400',
                       selectedBooking.status === 'pending' && 'bg-warning/10 text-warning',
                       selectedBooking.status === 'completed' && 'bg-primary/10 text-primary',
                       (selectedBooking.status === 'cancelled' || selectedBooking.status === 'rejected') && 'bg-destructive/10 text-destructive'
@@ -2372,7 +2381,7 @@ function BookingCardKeyed({ b, timezone, onSelect, onReschedule }: { b: Booking;
         </div>
         <div className="flex gap-2">
           <span className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border',
-            b.status === 'confirmed' && 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+            (b.status === 'confirmed' || b.status === 'booked') && 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
             b.status === 'pending' && 'bg-warning/10 text-warning border-warning/20',
             b.status === 'completed' && 'bg-zinc-800 text-white border-zinc-700',
             (b.status === 'cancelled' || b.status === 'rejected') && 'bg-destructive/10 text-destructive border-destructive/20'
@@ -2410,14 +2419,14 @@ function BookingCardKeyed({ b, timezone, onSelect, onReschedule }: { b: Booking;
 
         {((['confirmed', 'booked', 'rescheduled', 'pending'].includes(b.status)) && new Date(b.start_time).getTime() > Date.now()) && (
           <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
-            {b.status === 'confirmed' && b.reschedule_request?.status === 'pending' && (
+            {(b.status === 'confirmed' || b.status === 'booked') && b.reschedule_request?.status === 'pending' && (
               <span className="text-[10px] bg-warning/10 text-warning px-2.5 py-1 rounded-full border border-warning/20">
                 Reschedule Requested
               </span>
             )}
 
             <div className="flex gap-2">
-              {['confirmed', 'booked', 'rescheduled'].includes(b.status) && (
+              {['confirmed', 'booked', 'rescheduled'].includes(b.status) && (new Date(b.start_time).getTime() - Date.now() > 48 * 60 * 60 * 1000) && (
                 <Button size="sm" variant="outline" onClick={() => onReschedule && onReschedule(b)} className="rounded-full text-xs h-8 border-gold/40 text-gold hover:bg-gold/10 bg-transparent">
                   Reschedule
                 </Button>

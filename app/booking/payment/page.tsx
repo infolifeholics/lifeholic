@@ -69,7 +69,7 @@ function PaymentPageContent() {
         setBookingData({ id: docSnap.id, ...data });
 
         // If booking is already paid or confirmed (e.g. subsequent package session), redirect directly to success
-        if (data && (data.payment_status === 'paid' || data.status === 'confirmed')) {
+        if (data && (data.payment_status === 'paid' || data.status === 'confirmed' || data.status === 'booked')) {
           router.push(`/booking/success?id=${docSnap.id}`);
           return;
         }
@@ -361,7 +361,7 @@ function PaymentPageContent() {
       try {
         const bookingRef = doc(db, 'bookings', bookingData.id);
         await updateDoc(bookingRef, {
-          status: 'confirmed',
+          status: 'booked',
           payment_status: 'paid',
         });
         toast.success('International payment completed via Stripe!');

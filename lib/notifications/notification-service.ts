@@ -45,12 +45,17 @@ export async function notifyAdmins(
     let sessionDate = '';
     let sessionTime = '';
 
+    let paymentStatus = '';
+    let actualStatus = '';
+
     if (bookingId) {
       const bookingDoc = await adminDb.collection('bookings').doc(bookingId).get();
       if (bookingDoc.exists) {
         const b = bookingDoc.data() || {};
         clientEmail = b.client_email || '';
         clientPhone = b.client_phone || '';
+        paymentStatus = b.payment_status || '';
+        actualStatus = b.status || '';
         
         let defaultMeetLink = '';
         try {
@@ -85,6 +90,8 @@ export async function notifyAdmins(
       meetLink,
       sessionDate,
       sessionTime,
+      paymentStatus,
+      actualStatus,
     };
 
     const ownerPhone = process.env.WASENDER_OWNER_PHONE || '917485001044';

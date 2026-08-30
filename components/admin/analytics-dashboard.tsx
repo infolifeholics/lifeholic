@@ -73,7 +73,7 @@ export function AdminAnalyticsDashboard() {
 
         bookingList.forEach((b) => {
           if (b.status === 'completed') completed++;
-          else if (b.status === 'confirmed' || b.status === 'pending') upcoming++;
+          else if (b.status === 'confirmed' || b.status === 'booked' || b.status === 'pending') upcoming++;
           else if (b.status === 'cancelled') cancelled++;
 
           if (b.payment_status === 'paid') {
@@ -92,7 +92,8 @@ export function AdminAnalyticsDashboard() {
             }
           }
 
-          const statusKey = b.status?.toLowerCase();
+          let statusKey = b.status?.toLowerCase();
+          if (statusKey === 'booked') statusKey = 'confirmed';
           if (statusKey in statusMap) {
             statusMap[statusKey]++;
           }

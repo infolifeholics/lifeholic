@@ -295,6 +295,7 @@ export function AdminTodaysBookings() {
 
   const statusColors: Record<string, string> = {
     confirmed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    booked: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     cancelled: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
     completed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -655,12 +656,7 @@ export function AdminTodaysBookings() {
                     </span>
                   ) : (
                     <>
-                      {selectedBooking.status !== 'confirmed' && (
-                        <Button onClick={() => updateStatus(selectedBooking.id, 'confirmed')} size="sm" className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white">
-                          Approve
-                        </Button>
-                      )}
-                      {selectedBooking.status === 'confirmed' && (
+                      {(selectedBooking.status === 'confirmed' || selectedBooking.status === 'booked') && (
                         <Button onClick={() => updateStatus(selectedBooking.id, 'completed')} size="sm" className="rounded-full bg-primary hover:bg-primary/95 text-white">
                           Complete
                         </Button>

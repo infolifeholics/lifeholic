@@ -47,6 +47,7 @@ type BookingRow = {
   user_id?: string | null;
   service_id?: string | null;
   session_number?: number | null;
+  package_id?: string | null;
 };
 
 export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (section: any) => void } = {}) {
@@ -168,7 +169,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
       }).length;
 
       const upcomingBookingsCount = bookingRows.filter((r) => {
-        return (r.status === 'confirmed' || r.status === 'pending') && new Date(r.start_time).getTime() > nowTime;
+        return (r.status === 'confirmed' || r.status === 'booked' || r.status === 'pending') && new Date(r.start_time).getTime() > nowTime;
       }).length;
 
       const completedBookingsCount = bookingRows.filter((r) => r.status === 'completed').length;
@@ -176,7 +177,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
 
       setStats({
         revenue,
-        confirmed: bookingRows.filter((r) => r.status === 'confirmed').length,
+        confirmed: bookingRows.filter((r) => r.status === 'confirmed' || r.status === 'booked').length,
         pending: bookingRows.filter((r) => r.status === 'pending').length,
         clients: new Set(bookingRows.map((r) => r.client_email)).size,
         todaysBookings: todaysBookingsCount,
@@ -733,7 +734,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                       ? b.status === 'completed'
                       : statusFilter === 'cancelled'
                       ? b.status === 'cancelled' || b.status === 'rejected'
-                      : b.status === 'confirmed' || b.status === 'pending';
+                      : b.status === 'confirmed' || b.status === 'booked' || b.status === 'pending';
 
                     const matchesHealer = healerFilter === 'all' || b.healer_id === healerFilter;
 
@@ -905,13 +906,56 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                   </div>
                 )}
 
+                {/* Somatic / Service Package Session Switcher */}
+                {(() => {
+                  if (!selectedBooking.package_id) return null;
+                  const packageSessions = bookings
+                    .filter(item => item.package_id === selectedBooking.package_id)
+                    .sort((a, b) => (a.session_number || 0) - (b.session_number || 0));
+                  
+                  if (packageSessions.length === 0) return null;
+                  return (
+                    <div className="pt-3 border-t border-border/20 space-y-2">
+                      <h4 className="text-xs font-semibold text-gold uppercase tracking-wider">Package Sessions Status</h4>
+                      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                        {packageSessions.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              setSelectedBooking(item);
+                              setInternalNotes(item.internal_notes || '');
+                              if (item.start_time) {
+                                const dt = new Date(item.start_time);
+                                setEditDate(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`);
+                                setEditTime(dt.toTimeString().slice(0, 5));
+                              }
+                            }}
+                            className={cn(
+                              "text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-all flex items-center gap-1.5",
+                              item.id === selectedBooking.id
+                                ? "bg-gold text-gold-foreground border-gold"
+                                : "bg-secondary text-muted-foreground border-border/40 hover:text-foreground"
+                            )}
+                          >
+                            <span>Session {item.session_number || 'N/A'}:</span>
+                            <span className="opacity-80 capitalize">{item.status}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Group Member Bookings switcher inside details modal */}
                 {(() => {
-                  const clientB = bookings.filter(item => item.client_email?.toLowerCase() === selectedBooking.client_email?.toLowerCase());
+                  const clientB = bookings.filter(item => 
+                    item.client_email?.toLowerCase() === selectedBooking.client_email?.toLowerCase() &&
+                    (!selectedBooking.package_id || item.package_id !== selectedBooking.package_id)
+                  );
                   if (clientB.length <= 1) return null;
                   return (
                     <div className="pt-3 border-t border-border/20 space-y-2">
-                      <h4 className="text-xs font-semibold text-gold uppercase tracking-wider">Other Sessions from Client ({clientB.length})</h4>
+                      <h4 className="text-xs font-semibold text-gold uppercase tracking-wider">Other Client Sessions ({clientB.length})</h4>
                       <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
                         {clientB.map((item, index) => (
                           <button
@@ -981,12 +1025,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                       </span>
                     ) : (
                       <>
-                        {selectedBooking.status !== 'confirmed' && (
-                          <Button onClick={() => updateStatus(selectedBooking, 'confirmed')} size="sm" className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white">
-                            Approve (Confirm)
-                          </Button>
-                        )}
-                        {selectedBooking.status === 'confirmed' && (
+                        {(selectedBooking.status === 'confirmed' || selectedBooking.status === 'booked') && (
                           <Button onClick={() => updateStatus(selectedBooking, 'completed')} size="sm" className="rounded-full bg-primary hover:bg-primary/95 text-white">
                             Complete Session
                           </Button>
@@ -1011,9 +1050,6 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                       </Button>
                     ) : (
                       <>
-                        <Button onClick={() => updatePaymentStatus(selectedBooking, 'unpaid')} size="sm" variant="outline" className="rounded-full">
-                          Mark as Unpaid (Pending)
-                        </Button>
                         <Button
                           onClick={async () => {
                             const amt = prompt('Enter refund amount (number only):', String(selectedBooking.amount));
@@ -1056,37 +1092,39 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
                 </div>
 
                 {/* Reschedule */}
-                <div className="space-y-3 pt-2 border-t border-border/40">
-                  <h4 className="text-xs font-semibold text-gold uppercase tracking-wider flex items-center gap-1">
-                    <Edit className="h-3.5 w-3.5" />
-                    <span>Reschedule Session</span>
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label htmlFor="resched-date" className="text-[10px]">Date</Label>
-                      <Input
-                        id="resched-date"
-                        type="date"
-                        value={editDate}
-                        onChange={(e) => setEditDate(e.target.value)}
-                        className="rounded-xl mt-1 text-xs"
-                      />
+                {new Date(selectedBooking.start_time).getTime() - Date.now() > 48 * 60 * 60 * 1000 && (
+                  <div className="space-y-3 pt-2 border-t border-border/40">
+                    <h4 className="text-xs font-semibold text-gold uppercase tracking-wider flex items-center gap-1">
+                      <Edit className="h-3.5 w-3.5" />
+                      <span>Reschedule Session</span>
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label htmlFor="resched-date" className="text-[10px]">Date</Label>
+                        <Input
+                          id="resched-date"
+                          type="date"
+                          value={editDate}
+                          onChange={(e) => setEditDate(e.target.value)}
+                          className="rounded-xl mt-1 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="resched-time" className="text-[10px]">Time</Label>
+                        <Input
+                          id="resched-time"
+                          type="time"
+                          value={editTime}
+                          onChange={(e) => setEditTime(e.target.value)}
+                          className="rounded-xl mt-1 text-xs"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="resched-time" className="text-[10px]">Time</Label>
-                      <Input
-                        id="resched-time"
-                        type="time"
-                        value={editTime}
-                        onChange={(e) => setEditTime(e.target.value)}
-                        className="rounded-xl mt-1 text-xs"
-                      />
-                    </div>
+                    <Button onClick={handleUpdateDateTime} size="sm" className="w-full rounded-full mt-1">
+                      Save New Date &amp; Time
+                    </Button>
                   </div>
-                  <Button onClick={handleUpdateDateTime} size="sm" className="w-full rounded-full mt-1">
-                    Save New Date &amp; Time
-                  </Button>
-                </div>
+                )}
 
                 {/* Internal Notes */}
                 <div className="space-y-2 pt-2 border-t border-border/40">
@@ -1282,6 +1320,7 @@ export function AdminDashboard({ onNavigateSection }: { onNavigateSection?: (sec
 function statusColor(s: string): string {
   return ({
     confirmed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    booked: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     pending: 'bg-warning/10 text-warning border-warning/20',
     cancelled: 'bg-destructive/10 text-destructive border-destructive/20',
     rejected: 'bg-destructive/10 text-destructive border-destructive/20',

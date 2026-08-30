@@ -34,6 +34,14 @@ export async function POST(req: Request) {
     }
 
     const oldStart = new Date(b.start_time);
+    
+    // 48-hour restriction check
+    const timeDiff = oldStart.getTime() - now.getTime();
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+    if (hoursDiff <= 48) {
+      return NextResponse.json({ error: 'Rescheduling is unavailable. Your session is within 48 hours of the scheduled time.' }, { status: 400 });
+    }
+
     const oldEnd = new Date(b.end_time || (oldStart.getTime() + 30 * 60_000));
     if (oldEnd.getTime() < now.getTime()) {
       return NextResponse.json({ error: 'Cannot reschedule an already completed or past session.' }, { status: 400 });

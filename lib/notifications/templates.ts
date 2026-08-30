@@ -17,6 +17,8 @@ export interface TemplateVars {
   window?: string; // reminder window label e.g. "24h", "2h", "30m"
   clientEmail?: string;
   clientPhone?: string;
+  paymentStatus?: string;
+  actualStatus?: string;
   // Order fields
   orderNumber?: string;
   orderItems?: any[];
@@ -175,6 +177,8 @@ export const EMAIL_TEMPLATES = {
         <div class="details-row"><span class="label">Session:</span><span class="value">${vars.actionDetails || 'Session'}</span></div>
         <div class="details-row"><span class="label">Date:</span><span class="value">${vars.sessionDate || 'N/A'}</span></div>
         <div class="details-row"><span class="label">Time:</span><span class="value">${vars.sessionTime || 'N/A'} (IST)</span></div>
+        <div class="details-row"><span class="label">Booking Status:</span><span class="value" style="font-weight: bold; color: #22c55e;">BOOKED</span></div>
+        <div class="details-row"><span class="label">Payment Status:</span><span class="value" style="font-weight: bold; color: #22c55e;">PAID</span></div>
         ${vars.meetLink ? `<div class="details-row"><span class="label">Meeting Link:</span><span class="value"><a href="${vars.meetLink}" style="color:#d4af37; text-decoration:underline;">${vars.meetLink}</a></span></div>` : ''}
       </div>
       <div style="background-color: #fdfaf6; border: 1px solid #f5ebd5; padding: 15px; border-radius: 8px; margin: 20px 0; font-size: 13px;">
@@ -277,7 +281,7 @@ export const EMAIL_TEMPLATES = {
         <div class="details-row"><span class="label">New Date:</span><span class="value">${vars.sessionDate || 'N/A'}</span></div>
         <div class="details-row"><span class="label">New Time:</span><span class="value">${vars.sessionTime || 'N/A'} (IST)</span></div>
         <div class="details-row"><span class="label">New Status:</span><span class="value" style="text-transform: capitalize; font-weight: bold; color: #22c55e;">${vars.bookingStatus || 'N/A'}</span></div>
-        ${(vars.bookingStatus === 'confirmed') && vars.meetLink ? `<div class="details-row"><span class="label">Meeting Link:</span><span class="value"><a href="${vars.meetLink}" style="color:#d4af37; text-decoration:underline;">${vars.meetLink}</a></span></div>` : ''}
+        ${(vars.bookingStatus === 'confirmed' || vars.bookingStatus === 'booked') && vars.meetLink ? `<div class="details-row"><span class="label">Meeting Link:</span><span class="value"><a href="${vars.meetLink}" style="color:#d4af37; text-decoration:underline;">${vars.meetLink}</a></span></div>` : ''}
       </div>
       <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/account" class="btn">View Booking Details</a>
     `;
@@ -330,7 +334,12 @@ export const EMAIL_TEMPLATES = {
         <div class="details-row"><span class="label">Performed By:</span><span class="value">${vars.memberName || 'N/A'}</span></div>
         ${vars.actionDetails ? `<div class="details-row"><span class="label">Details:</span><span class="value">${vars.actionDetails}</span></div>` : ''}
         ${vars.bookingId ? `<div class="details-row"><span class="label">Target ID:</span><span class="value">${vars.bookingId}</span></div>` : ''}
+        ${vars.actualStatus ? `<div class="details-row"><span class="label">Booking Status:</span><span class="value" style="text-transform: uppercase; font-weight: bold; color: ${vars.actualStatus === 'booked' || vars.actualStatus === 'confirmed' ? '#22c55e' : '#eab308'};">${vars.actualStatus}</span></div>` : ''}
+        ${vars.paymentStatus ? `<div class="details-row"><span class="label">Payment Status:</span><span class="value" style="text-transform: uppercase; font-weight: bold; color: ${vars.paymentStatus === 'paid' ? '#22c55e' : '#eab308'};">${vars.paymentStatus}</span></div>` : ''}
       </div>
+      ${(vars.actualStatus === 'booked' && vars.paymentStatus === 'paid') ? `<div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; margin: 15px 0; font-size: 13px; color: #166534; font-weight: 500;">
+        Note: This booking is paid and automatically confirmed. No administrative action/approval is required.
+      </div>` : ''}
       <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/admin" class="btn">Open Admin Portal</a>
     `;
     return getBaseHtml(headerTitle, content, vars);
@@ -487,7 +496,7 @@ export const WHATSAPP_TEMPLATES = {
     return `Reminder${windowLabel}: Hello ${vars.memberName}, you have an upcoming healing session (ID: ${vars.bookingId}) scheduled for ${vars.sessionDate} at ${vars.sessionTime} IST.${meetPart}`;
   },
   booking_status_changed: (vars: TemplateVars) => {
-    if (vars.bookingStatus === 'confirmed') {
+    if (vars.bookingStatus === 'confirmed' || vars.bookingStatus === 'booked') {
       return `Your session with Lifeholics is confirmed!\n\nHi ${vars.memberName},\n\nYour ${vars.actionDetails || 'session'} has been successfully booked.\n\n📅 Date: ${vars.sessionDate}\n🕒 Time: ${vars.sessionTime}\n\n🔗 Meeting Link:\n${vars.meetLink || 'Will be provided before the session'}\n\nKindly Note:\n• Please join a few minutes before your scheduled time.\n• Sessions are non-refundable.\n• If you’re unable to attend, you may reschedule at least 48 hours in advance.\n• Requests within 48 hours may not be accommodated.\n\nWe look forward to supporting you on your healing journey.\n\nTeam Lifeholics`;
     }
     const oldPart = vars.oldSessionDate ? `\n\nOld Date/Time: ${vars.oldSessionDate} at ${vars.oldSessionTime} IST\nNew Date/Time: ${vars.sessionDate} at ${vars.sessionTime} IST` : '';

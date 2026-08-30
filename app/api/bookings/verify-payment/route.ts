@@ -33,9 +33,9 @@ export async function POST(req: Request) {
     }
     const b = bookingSnap.data() || {};
 
-    // Idempotency: skip if already paid and confirmed
-    if (b.status === 'confirmed' && b.payment_status === 'paid') {
-      console.log(`[VerifyPayment] Booking ${booking_id} is already paid and confirmed. Skipping verification processing (Idempotency).`);
+    // Idempotency: skip if already paid and confirmed/booked
+    if ((b.status === 'confirmed' || b.status === 'booked') && b.payment_status === 'paid') {
+      console.log(`[VerifyPayment] Booking ${booking_id} is already paid and confirmed/booked. Skipping verification processing (Idempotency).`);
       return NextResponse.json({ ok: true, message: 'Already verified' });
     }
 
