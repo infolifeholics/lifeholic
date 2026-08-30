@@ -104,7 +104,8 @@ export async function GET(req: Request) {
         const endUTC = new Date(startUTC.getTime() + duration * 60_000);
         const sTime = startUTC.getTime();
         const eTime = endUTC.getTime();
-        const isBooked = bookedRanges.some(r => sTime < r.end && eTime > r.start);
+        const isLocked = slot.locked === true;
+        const isBooked = isLocked || bookedRanges.some(r => sTime < r.end && eTime > r.start);
         return {
           start: startUTC.toISOString(),
           end: endUTC.toISOString(),

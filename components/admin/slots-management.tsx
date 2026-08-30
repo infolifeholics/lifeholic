@@ -17,6 +17,7 @@ type Slot = {
   start_time: string;
   end_time: string;
   active: boolean;
+  locked?: boolean;
 };
 
 type Holiday = {
@@ -154,6 +155,33 @@ export function AdminSlotsManagement() {
       }
     } catch {
       toast.error('Network error updating slot.');
+    }
+  };
+
+  const handleToggleLock = async (slot: Slot) => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const nextLocked = !slot.locked;
+      const res = await fetch('/api/admin/slots', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action: 'edit',
+          id: slot.id,
+          slot: { locked: nextLocked }
+        })
+      });
+      if (res.ok) {
+        toast.success(`Slot ${nextLocked ? 'locked' : 'unlocked'}.`);
+        setSlots(prev => prev.map(s => s.id === slot.id ? { ...s, locked: nextLocked } : s));
+      } else {
+        toast.error('Failed to update slot lock.');
+      }
+    } catch {
+      toast.error('Network error updating slot lock.');
     }
   };
 
@@ -444,20 +472,34 @@ export function AdminSlotsManagement() {
                               {formatTimeTo12Hour(s.start_time)} – {formatTimeTo12Hour(s.end_time)}
                             </span>
                           </div>
-                          <button
-                            onClick={() => handleToggleActive(s)}
-                            className={cn(
-                              'rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border transition-colors',
-                              s.active
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                                : 'bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20'
+                          <div className="flex items-center gap-1.5">
+                            {s.locked && (
+                              <span className="rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider animate-pulse">
+                                Locked
+                              </span>
                             )}
-                          >
-                            {s.active ? 'Active' : 'Inactive'}
-                          </button>
+                            <button
+                              onClick={() => handleToggleActive(s)}
+                              className={cn(
+                                'rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border transition-colors',
+                                s.active
+                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20'
+                              )}
+                            >
+                              {s.active ? 'Active' : 'Inactive'}
+                            </button>
+                          </div>
                         </div>
 
-                        <div className="flex justify-end gap-1.5 mt-4 pt-2 border-t border-border/20">
+                        <div className="flex justify-end items-center gap-2 mt-4 pt-2 border-t border-border/20">
+                          <button
+                            onClick={() => handleToggleLock(s)}
+                            className="text-[10px] font-semibold flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors mr-auto"
+                            title={s.locked ? "Unlock Slot" : "Lock Slot"}
+                          >
+                            {s.locked ? '🔓 Unlock Slot' : '🔒 Lock Slot'}
+                          </button>
                           <button
                             onClick={() => handleStartEdit(s)}
                             className="p-1.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"

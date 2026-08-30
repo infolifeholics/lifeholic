@@ -95,6 +95,19 @@ export async function POST(req: Request) {
     const oldLockRef = adminDb.collection('session_locks').doc(oldLockId);
     const newLockRef = adminDb.collection('session_locks').doc(newLockId);
 
+    // Verify target slot is not locked in session_slots
+    const weekday = getIstWeekday(newDateStr);
+    const slotsSnap = await adminDb.collection('session_slots')
+      .where('day_of_week', '==', weekday)
+      .where('start_time', '==', newTimeStr)
+      .get();
+    if (!slotsSnap.empty) {
+      const slotData = slotsSnap.docs[0].data();
+      if (slotData && slotData.locked === true) {
+        return NextResponse.json({ error: 'This slot is currently unavailable.' }, { status: 400 });
+      }
+    }
+
     try {
       await adminDb.runTransaction(async (transaction) => {
         // Read lock document of new slot to ensure it is not booked

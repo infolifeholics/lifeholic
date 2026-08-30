@@ -344,8 +344,12 @@ export async function POST(req: Request) {
       await adminDb.runTransaction(async (transaction) => {
         // Read and verify Slot configuration inside the transaction
         const slotDoc = await transaction.get(slotDocRef);
-        if (!slotDoc.exists || !slotDoc.data()?.active) {
+        const slotData = slotDoc.data();
+        if (!slotDoc.exists || !slotData?.active) {
           throw new Error('SLOT_INACTIVE');
+        }
+        if (slotData?.locked === true) {
+          throw new Error('SLOT_LOCKED');
         }
 
         // Read and verify Holiday documents inside the transaction
@@ -578,6 +582,9 @@ export async function POST(req: Request) {
       }
       if (txError.message === 'SLOT_INACTIVE') {
         return NextResponse.json({ error: 'This session slot is inactive.' }, { status: 400 });
+      }
+      if (txError.message === 'SLOT_LOCKED') {
+        return NextResponse.json({ error: 'This slot is currently unavailable.' }, { status: 400 });
       }
       if (txError.message === 'HOLIDAY_BLOCK') {
         return NextResponse.json({ error: 'Cannot book: Marked as holiday.' }, { status: 400 });

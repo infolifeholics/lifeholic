@@ -52,6 +52,7 @@ export async function POST(req: Request) {
         start_time,
         end_time,
         active: active !== false,
+        locked: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
@@ -72,6 +73,7 @@ export async function POST(req: Request) {
       if (slot.start_time) updates.start_time = slot.start_time;
       if (slot.end_time) updates.end_time = slot.end_time;
       if (slot.active !== undefined) updates.active = slot.active;
+      if (slot.locked !== undefined) updates.locked = slot.locked;
       
       await updateDoc(docRef, updates);
       await writeAuditLog('Slot Edited', 'Admin', { id, updates: slot });
@@ -116,6 +118,7 @@ export async function POST(req: Request) {
           start_time: data.start_time,
           end_time: data.end_time,
           active: data.active !== false,
+          locked: data.locked || false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
@@ -153,6 +156,7 @@ export async function POST(req: Request) {
             start_time: data.start_time,
             end_time: data.end_time,
             active: data.active !== false,
+            locked: data.locked || false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -187,6 +191,7 @@ export async function POST(req: Request) {
             start_time: s.start_time,
             end_time: s.end_time,
             active: true,
+            locked: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
