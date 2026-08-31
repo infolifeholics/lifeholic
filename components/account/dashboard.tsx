@@ -38,6 +38,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
+import { getOptimizedCloudinaryUrl } from '@/lib/utils';
 import { CartView } from '@/components/shop/cart-view';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -641,7 +642,7 @@ export function AccountDashboard() {
             <div className="flex flex-col items-center text-center pb-6 border-b border-zinc-800 mb-6">
               <div className="h-16 w-16 rounded-full border border-gold overflow-hidden bg-zinc-900 shadow-soft p-0.5 mb-3 relative">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt={fullName} className="h-full w-full rounded-full object-cover" />
+                  <img src={getOptimizedCloudinaryUrl(avatarUrl, 'avatar')} alt={fullName} className="h-full w-full rounded-full object-cover" />
                 ) : (
                   <div className="h-full w-full rounded-full flex items-center justify-center text-white/60 bg-zinc-900 font-display text-lg uppercase font-bold">
                     {fullName ? fullName.charAt(0) : user.email?.charAt(0)}
@@ -784,7 +785,7 @@ export function AccountDashboard() {
                       <div className="h-16 w-16 rounded-full border border-gold overflow-hidden bg-zinc-900 relative shadow-soft p-0.5">
                         <div className="h-full w-full rounded-full overflow-hidden">
                           {avatarUrl ? (
-                            <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" />
+                            <img src={getOptimizedCloudinaryUrl(avatarUrl, 'avatar')} alt={fullName} className="h-full w-full object-cover" />
                           ) : (
                             <div className="h-full w-full flex items-center justify-center text-white/60 bg-zinc-900 font-display text-xl uppercase">
                               {fullName ? fullName.charAt(0) : user.email?.charAt(0)}
@@ -982,7 +983,7 @@ export function AccountDashboard() {
               <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full border-2 border-gold overflow-hidden bg-zinc-900 relative shadow-soft p-1">
                 <div className="h-full w-full rounded-full overflow-hidden">
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt={fullName} className="h-full w-full object-cover" />
+                    <img src={getOptimizedCloudinaryUrl(avatarUrl, 'avatar')} alt={fullName} className="h-full w-full object-cover" />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center text-white/60 bg-zinc-900 font-display text-2xl uppercase">
                       {fullName ? fullName.charAt(0) : user.email?.charAt(0)}
@@ -1751,7 +1752,7 @@ export function AccountDashboard() {
                               <li key={idx} className="flex py-3.5 gap-4 items-center justify-between">
                                 <div className="flex items-center gap-4">
                                   {item.image ? (
-                                    <img src={item.image} alt="" className="h-14 w-14 rounded-2xl object-cover border border-zinc-800 shadow-sm" />
+                                    <img src={getOptimizedCloudinaryUrl(item.image, 'thumbnail')} alt="" className="h-14 w-14 rounded-2xl object-cover border border-zinc-800 shadow-sm" />
                                   ) : (
                                     <div className="h-14 w-14 rounded-2xl bg-zinc-900 flex items-center justify-center border border-zinc-800">
                                       <Package className="h-6 w-6 text-white/40" />

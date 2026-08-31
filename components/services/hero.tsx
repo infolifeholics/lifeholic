@@ -10,6 +10,8 @@ import { formatPrice } from '@/lib/format';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { convertInrToCurrency } from '@/lib/currency';
 
+import { getOptimizedCloudinaryUrl } from '@/lib/utils';
+
 export function ServiceHero({ service }: { service: Service }) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
@@ -60,7 +62,7 @@ export function ServiceHero({ service }: { service: Service }) {
           <motion.div style={{ y }} className="relative">
             <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] border border-border/60 shadow-float">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={service.image} alt={service.title} className="h-full w-full object-cover" />
+              <img src={getOptimizedCloudinaryUrl(service.image, 'image')} alt={service.title} className="h-full w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-primary/25 to-transparent" />
             </div>
           </motion.div>

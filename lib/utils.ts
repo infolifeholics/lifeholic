@@ -34,3 +34,30 @@ export function isValidAmazonUrl(urlStr: string): boolean {
     return false;
   }
 }
+
+export function getOptimizedCloudinaryUrl(url: string | null | undefined, type: 'video' | 'image' | 'avatar' | 'thumbnail'): string {
+  if (!url) return '';
+  if (!url.includes('res.cloudinary.com')) return url;
+
+  // Avoid double optimization or if it already has transformations
+  if (url.includes('/image/upload/') && !url.includes('/image/upload/q_') && !url.includes('/image/upload/w_') && !url.includes('/image/upload/f_')) {
+    if (type === 'avatar') {
+      return url.replace('/image/upload/', '/image/upload/c_fill,g_face,w_150,h_150,q_auto,f_auto/');
+    }
+    if (type === 'thumbnail') {
+      return url.replace('/image/upload/', '/image/upload/w_400,c_limit,q_auto,f_auto/');
+    }
+    // For general large background image, limit to 1920 to save maximum bandwidth
+    if (url.includes('awrke3peqgig991aiual.png')) {
+      return url.replace('/image/upload/', '/image/upload/w_1920,c_limit,q_auto,f_auto/');
+    }
+    return url.replace('/image/upload/', '/image/upload/w_1200,c_limit,q_auto,f_auto/');
+  }
+
+  if (url.includes('/video/upload/') && !url.includes('/video/upload/q_') && !url.includes('/video/upload/w_') && !url.includes('/video/upload/f_')) {
+    // Decorative/background video: 720p resolution limit, auto quality, auto format
+    return url.replace('/video/upload/', '/video/upload/w_1280,c_limit,q_auto,f_auto/');
+  }
+
+  return url;
+}

@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 
+import { getOptimizedCloudinaryUrl } from '@/lib/utils';
+
 const DEFAULT_VIDEO = 'https://res.cloudinary.com/jue23qpn/video/upload/v1786041572/thelifeholics/iu4kulkcbxvmcyovhaad.mp4';
 
 export function CinematicVideoBg() {
@@ -136,12 +138,12 @@ export function CinematicVideoBg() {
             loop
             playsInline
             className="h-full w-full object-cover select-none pointer-events-none"
-            src={videoSrc}
+            src={getOptimizedCloudinaryUrl(videoSrc, 'video')}
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={fallbackImage || "https://res.cloudinary.com/jue23qpn/image/upload/v1786025367/thelifeholics/awrke3peqgig991aiual.png"}
+            src={getOptimizedCloudinaryUrl(fallbackImage || "https://res.cloudinary.com/jue23qpn/image/upload/v1786025367/thelifeholics/awrke3peqgig991aiual.png", 'image')}
             alt="Page background"
             className="h-full w-full object-cover select-none pointer-events-none brightness-[0.7] contrast-[1.02]"
           />

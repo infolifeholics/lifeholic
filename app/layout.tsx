@@ -59,14 +59,14 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://thelifeholics.com',
     siteName: 'LifeHolics',
-    title: 'The LifeHolics — Personal Healing & Spiritual Transformation',
+    title: 'The LifeHolics — Holistic Health Services',
     description:
       'A calm, safe space for spiritual psychology, therapy sessions, workshops, and community growth.',
     images: [{ url: '/og.svg', width: 1200, height: 630, alt: 'The LifeHolics' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'The LifeHolics — Personal Healing & Spiritual Transformation',
+    title: 'The LifeHolics — Holistic Health Services',
     description:
       'A calm, safe space for spiritual psychology, therapy sessions, workshops, and community growth.',
     images: ['/og.svg'],

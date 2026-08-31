@@ -12,6 +12,8 @@ import type { Service } from '@/lib/types';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { convertInrToCurrency } from '@/lib/currency';
 
+import { getOptimizedCloudinaryUrl } from '@/lib/utils';
+
 export function ServicesList({ initialServices }: { initialServices: Service[] }) {
   const [services, setServices] = useState<Service[]>(initialServices);
   const { currentCurrency, exchangeRate } = useCurrency();
@@ -37,7 +39,7 @@ export function ServicesList({ initialServices }: { initialServices: Service[] }
               <div className="relative w-full aspect-[4/3] overflow-hidden sm:w-[293px] sm:h-[220px] shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={s.image}
+                  src={getOptimizedCloudinaryUrl(s.image, 'thumbnail')}
                   alt={s.title}
                   className="w-full h-full object-cover transition-transform duration-1000 ease-soft group-hover:scale-105"
                 />

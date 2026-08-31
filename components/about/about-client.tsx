@@ -5,6 +5,8 @@ import { Reveal, RevealText } from '@/components/site/reveal';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
+import { getOptimizedCloudinaryUrl } from '@/lib/utils';
+
 const DEFAULT_FOUNDER_IMAGE = '/images/founder/photo.jpg';
 
 export function AboutClientPage() {
@@ -47,7 +49,7 @@ export function AboutClientPage() {
               <div className="aspect-[3/4] w-full overflow-hidden rounded-3xl border border-white/20 bg-white/20 backdrop-blur-md p-2 shadow-float">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={founderImage}
+                  src={getOptimizedCloudinaryUrl(founderImage, 'image')}
                   alt="TheLifeHolics founder"
                   className="h-full w-full object-cover object-top rounded-2xl"
                 />
@@ -57,7 +59,7 @@ export function AboutClientPage() {
               <div className="aspect-[3/4] w-full overflow-hidden rounded-3xl border border-white/20 bg-white/20 backdrop-blur-md p-2 shadow-soft">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={founderImage2}
+                  src={getOptimizedCloudinaryUrl(founderImage2, 'image')}
                   alt="Calm healing space"
                   className="h-full w-full object-cover rounded-2xl"
                 />
