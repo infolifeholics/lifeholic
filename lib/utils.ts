@@ -35,7 +35,10 @@ export function isValidAmazonUrl(urlStr: string): boolean {
   }
 }
 
-export function getOptimizedCloudinaryUrl(url: string | null | undefined, type: 'video' | 'image' | 'avatar' | 'thumbnail'): string {
+export function getOptimizedCloudinaryUrl(
+  url: string | null | undefined,
+  type: 'video' | 'video_mobile' | 'video_desktop' | 'image' | 'avatar' | 'thumbnail'
+): string {
   if (!url) return '';
   if (!url.includes('res.cloudinary.com')) return url;
 
@@ -55,7 +58,11 @@ export function getOptimizedCloudinaryUrl(url: string | null | undefined, type: 
   }
 
   if (url.includes('/video/upload/') && !url.includes('/video/upload/q_') && !url.includes('/video/upload/w_') && !url.includes('/video/upload/f_')) {
-    // Decorative/background video: 720p resolution limit, auto quality, auto format
+    if (type === 'video_mobile') {
+      // 480p equivalent width (854px) for mobile with eco settings
+      return url.replace('/video/upload/', '/video/upload/w_854,c_limit,q_auto:eco,f_auto/');
+    }
+    // Standard desktop video: 720p limit, auto quality, auto format
     return url.replace('/video/upload/', '/video/upload/w_1280,c_limit,q_auto,f_auto/');
   }
 
