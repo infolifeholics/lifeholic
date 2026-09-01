@@ -1,6 +1,6 @@
 // Currency + timezone helpers for Indian & international clients.
 
-export const CURRENCIES = {
+export const CURRENCIES: Record<string, { symbol: string; label: string }> = {
   INR: { symbol: '₹', label: 'INR' },
   USD: { symbol: '$', label: 'USD' },
   GBP: { symbol: '£', label: 'GBP' },
@@ -10,21 +10,63 @@ export const CURRENCIES = {
   AUD: { symbol: 'A$', label: 'AUD' },
   JPY: { symbol: '¥', label: 'JPY' },
   SGD: { symbol: 'S$', label: 'SGD' },
-} as const;
+  HKD: { symbol: 'HK$', label: 'HKD' },
+  NZD: { symbol: 'NZ$', label: 'NZD' },
+  CHF: { symbol: 'CHF ', label: 'CHF' },
+  SEK: { symbol: 'kr ', label: 'SEK' },
+  NOK: { symbol: 'kr ', label: 'NOK' },
+  DKK: { symbol: 'kr. ', label: 'DKK' },
+  PLN: { symbol: 'zł ', label: 'PLN' },
+  BRL: { symbol: 'R$ ', label: 'BRL' },
+  MXN: { symbol: 'Mex$ ', label: 'MXN' },
+  KRW: { symbol: '₩', label: 'KRW' },
+  THB: { symbol: '฿', label: 'THB' },
+  MYR: { symbol: 'RM ', label: 'MYR' },
+  IDR: { symbol: 'Rp ', label: 'IDR' },
+  PHP: { symbol: '₱', label: 'PHP' },
+  SAR: { symbol: 'SAR ', label: 'SAR' },
+  QAR: { symbol: 'QAR ', label: 'QAR' },
+  KWD: { symbol: 'KWD ', label: 'KWD' },
+  BHD: { symbol: 'BHD ', label: 'BHD' },
+  OMR: { symbol: 'OMR ', label: 'OMR' },
+  CNY: { symbol: '¥', label: 'CNY' },
+  VND: { symbol: '₫', label: 'VND' },
+  CZK: { symbol: 'Kč ', label: 'CZK' },
+  HUF: { symbol: 'Ft ', label: 'HUF' },
+  RON: { symbol: 'lei ', label: 'RON' },
+  ZAR: { symbol: 'R ', label: 'ZAR' },
+  TRY: { symbol: '₺', label: 'TRY' },
+  ILS: { symbol: '₪', label: 'ILS' },
+  EGP: { symbol: 'EGP ', label: 'EGP' },
+};
 
 export type CurrencyCode = keyof typeof CURRENCIES;
 
-export function formatPrice(amount: number, currency: string): string {
+export function formatPrice(amount: number, currency: string = 'INR'): string {
   const value = Number(amount || 0);
-  if (currency === 'INR') {
+  const curr = (currency || 'INR').toUpperCase();
+
+  if (curr === 'INR') {
     return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
   }
-  if (currency === 'JPY') {
-    return `¥${value.toLocaleString('ja-JP', { maximumFractionDigits: 0 })}`;
+  if (curr === 'IDR') {
+    return `Rp ${value.toLocaleString('id-ID', { maximumFractionDigits: 0 })}`;
   }
-  
-  const c = CURRENCIES[currency as CurrencyCode] || { symbol: '$', label: currency };
-  return `${c.symbol}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (curr === 'JPY' || curr === 'KRW' || curr === 'VND') {
+    const sym = CURRENCIES[curr]?.symbol || curr + ' ';
+    return `${sym}${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  }
+
+  const c = CURRENCIES[curr];
+  if (c) {
+    return `${c.symbol}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: curr }).format(value);
+  } catch (e) {
+    return `${curr} ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
 }
 
 export function currencyForTimezone(tz: string): string {

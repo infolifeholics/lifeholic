@@ -408,7 +408,9 @@ export async function POST(req: Request) {
         const clientCountry = profile?.country || req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
 
         let finalCurrency = 'INR';
-        if (profile && profile.country) {
+        if (body.currency && typeof body.currency === 'string' && body.currency.trim().length === 3) {
+          finalCurrency = body.currency.trim().toUpperCase();
+        } else if (profile && profile.country) {
           finalCurrency = getUserCurrency(profile, client_timezone || undefined);
         } else {
           // If no profile, use client country or timezone
