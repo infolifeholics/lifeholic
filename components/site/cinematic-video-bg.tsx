@@ -15,16 +15,6 @@ export function CinematicVideoBg() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoSrc, setVideoSrc] = useState(DEFAULT_VIDEO);
   const [fallbackImage, setFallbackImage] = useState('');
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Track scroll for zoom and slight translation parallax
   const { scrollYProgress } = useScroll();
@@ -141,7 +131,7 @@ export function CinematicVideoBg() {
       >
         {isVideoPage ? (
           <video
-            key={`${videoSrc}-${isMobile}`}
+            key={videoSrc}
             ref={videoRef}
             autoPlay
             muted
@@ -149,7 +139,7 @@ export function CinematicVideoBg() {
             playsInline
             preload="metadata"
             className="h-full w-full object-cover select-none pointer-events-none"
-            src={getOptimizedCloudinaryUrl(videoSrc, isMobile ? 'video_mobile' : 'video_desktop')}
+            src={getOptimizedCloudinaryUrl(videoSrc, 'video')}
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element

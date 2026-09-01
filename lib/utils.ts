@@ -37,12 +37,18 @@ export function isValidAmazonUrl(urlStr: string): boolean {
 
 export function getOptimizedCloudinaryUrl(
   url: string | null | undefined,
-  type: 'video' | 'video_mobile' | 'video_desktop' | 'image' | 'avatar' | 'thumbnail'
+  type: 'video' | 'image' | 'avatar' | 'thumbnail'
 ): string {
   if (!url) return '';
   if (!url.includes('res.cloudinary.com')) return url;
 
-  // Avoid double optimization or if it already has transformations
+  // Background HD Video: Preserve original stable Cloudinary URL directly to retain full HD quality
+  // and enable 30-day immutable browser cache reuse (Cloudinary sends 'cache-control: public, immutable, max-age=2592000').
+  if (type === 'video') {
+    return url;
+  }
+
+  // Image optimization with 30-day browser caching
   if (url.includes('/image/upload/') && !url.includes('/image/upload/q_') && !url.includes('/image/upload/w_') && !url.includes('/image/upload/f_')) {
     if (type === 'avatar') {
       return url.replace('/image/upload/', '/image/upload/c_fill,g_face,w_150,h_150,q_auto,f_auto/');
@@ -50,20 +56,11 @@ export function getOptimizedCloudinaryUrl(
     if (type === 'thumbnail') {
       return url.replace('/image/upload/', '/image/upload/w_400,c_limit,q_auto,f_auto/');
     }
-    // For general large background image, limit to 1920 to save maximum bandwidth
+    // For high-traffic background image (awrke3peqgig991aiual.png), deliver 1920p at ~142 KB with 30-day immutable caching
     if (url.includes('awrke3peqgig991aiual.png')) {
       return url.replace('/image/upload/', '/image/upload/w_1920,c_limit,q_auto,f_auto/');
     }
     return url.replace('/image/upload/', '/image/upload/w_1200,c_limit,q_auto,f_auto/');
-  }
-
-  if (url.includes('/video/upload/') && !url.includes('/video/upload/q_') && !url.includes('/video/upload/w_') && !url.includes('/video/upload/f_')) {
-    if (type === 'video_mobile') {
-      // 480p equivalent width (854px) for mobile with eco settings
-      return url.replace('/video/upload/', '/video/upload/w_854,c_limit,q_auto:eco,f_auto/');
-    }
-    // Standard desktop video: 720p limit, auto quality, auto format
-    return url.replace('/video/upload/', '/video/upload/w_1280,c_limit,q_auto,f_auto/');
   }
 
   return url;

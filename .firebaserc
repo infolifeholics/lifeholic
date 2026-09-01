@@ -1,0 +1,13 @@
+{
+  "projects": {},
+  "targets": {
+    "lifeholics-a12c2": {
+      "storage": {
+        "landing": [
+          "lifeholics-a12c2.appspot.com"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

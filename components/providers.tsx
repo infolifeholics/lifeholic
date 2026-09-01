@@ -44,10 +44,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <WishlistProvider>
               <SmoothScroll>
                 <ConfirmProvider>
+                  <CinematicVideoBg />
+                  <SoundToggle />
+                  <FloatingPetals />
                   <PageTransition>
-                    <CinematicVideoBg />
-                    <SoundToggle />
-                    <FloatingPetals />
                     {children}
                   </PageTransition>
                 </ConfirmProvider>
