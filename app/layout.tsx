@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { GlobalErrorBoundary } from '@/components/site/error-boundary';
 import { ClientHardening } from '@/components/site/client-hardening';
 import { DiscoveryCallModal } from '@/components/services/free-consultation-modal';
+import { LocationGateModal } from '@/components/site/location-gate-modal';
 import Script from 'next/script';
 
 const serif = Cormorant_Garamond({
@@ -96,6 +97,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <SiteFooter />
             <OfferPopup />
             <PwaInstall />
+            <LocationGateModal />
             <DiscoveryCallModal showButtonOnly={true} serviceId="general" serviceName="General Site Help" />
             <Script
               id="ld-json"

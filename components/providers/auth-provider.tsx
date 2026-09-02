@@ -5,6 +5,7 @@ import { auth, googleProvider, db } from '@/lib/firebase';
 import { collection, doc, getDoc, setDoc, getDocs, limit, orderBy, onSnapshot } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { COUNTRIES, detectCountryFromLocation, getTimezoneForCountryName } from '@/lib/countries';
+import { Loader2, Compass } from 'lucide-react';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -361,9 +362,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     type="button"
                     onClick={handleDetectCountry}
                     disabled={detecting}
-                    className="text-xs text-gold hover:underline flex items-center gap-1"
+                    className="flex items-center gap-1.5 rounded-lg border border-gold/40 bg-gold/10 hover:bg-gold/20 px-2.5 py-1 text-xs font-medium text-gold transition active:scale-95 disabled:opacity-50"
                   >
-                    {detecting ? 'Detecting...' : '📍 Use Current Location'}
+                    {detecting ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin text-gold" />
+                        <span>Detecting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Compass className="h-3 w-3 text-gold" />
+                        <span>📍 Auto-Detect Location</span>
+                      </>
+                    )}
                   </button>
                 </div>
                 <select

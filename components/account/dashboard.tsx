@@ -35,7 +35,8 @@ import {
   X,
   Search,
   ArrowLeft,
-  ChevronRight
+  ChevronRight,
+  Compass
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getOptimizedCloudinaryUrl } from '@/lib/utils';
@@ -1908,15 +1909,25 @@ export function AccountDashboard() {
                       <Input id="p-city" value={city} onChange={(e) => setCity(e.target.value)} className="mt-1.5 rounded-xl text-sm bg-zinc-900 border-zinc-800 text-white placeholder:text-white/40 focus-visible:ring-gold" placeholder="City" />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="p-country" className="text-xs font-semibold text-white/60">Country</Label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <Label htmlFor="p-country" className="text-xs font-semibold text-white/60">Country / Region</Label>
                         <button
                           type="button"
                           onClick={handleDetectCountry}
                           disabled={detecting}
-                          className="text-[10px] text-gold hover:underline flex items-center gap-0.5"
+                          className="flex items-center gap-1.5 rounded-lg border border-gold/40 bg-gold/10 hover:bg-gold/20 px-2.5 py-1 text-xs font-medium text-gold transition active:scale-95 disabled:opacity-50"
                         >
-                          {detecting ? 'Detecting...' : '📍 Geolocate'}
+                          {detecting ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin text-gold" />
+                              <span>Detecting...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Compass className="h-3 w-3 text-gold" />
+                              <span>📍 Auto-Detect Location</span>
+                            </>
+                          )}
                         </button>
                       </div>
                       <select

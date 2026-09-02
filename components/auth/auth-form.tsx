@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, Chrome, Phone } from 'lucide-react';
+import { Loader2, Chrome, Phone, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -149,15 +149,25 @@ export function AuthForm({ mode: initialMode }: { mode: 'login' | 'signup' }) {
               <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5" required />
             </div>
             <div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="country">Region / Country</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label htmlFor="country" className="text-sm font-medium">Region / Country</Label>
                 <button
                   type="button"
                   onClick={handleDetectCountry}
                   disabled={detecting}
-                  className="text-xs text-gold hover:underline flex items-center gap-1"
+                  className="flex items-center gap-1.5 rounded-lg border border-gold/40 bg-gold/10 hover:bg-gold/20 px-2.5 py-1 text-xs font-medium text-gold transition active:scale-95 disabled:opacity-50"
                 >
-                  {detecting ? 'Detecting...' : '📍 Use Current Location'}
+                  {detecting ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin text-gold" />
+                      <span>Detecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Compass className="h-3 w-3 text-gold" />
+                      <span>📍 Auto-Detect Location</span>
+                    </>
+                  )}
                 </button>
               </div>
               <select

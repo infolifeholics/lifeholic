@@ -80,7 +80,13 @@ export function BookingFlow({ services }: { services: Service[] }) {
   const [serviceSlug, setServiceSlug] = useState<string>(
     search.get('service') || servicesList[0]?.slug || services[0]?.slug || ''
   );
-  const [tz, setTz] = useState(detectTimezone());
+  const [tz, setTz] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('thelifeholics_user_timezone');
+      if (saved) return saved;
+    }
+    return detectTimezone();
+  });
   const [month, setMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
