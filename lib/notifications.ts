@@ -176,14 +176,12 @@ export async function triggerBookingNotification(
       created_at: serverTimestamp(),
     }).catch((err) => console.error('[Notifications] Failed to save DB notification:', err));
 
-    // Admin Alert
-    if (eventType === 'created' || eventType === 'confirmed' || eventType === 'cancelled') {
+    // Admin Alert: Only alert admin when a session is fully paid and confirmed
+    if (eventType === 'confirmed') {
       await notifyAdmins(
-        eventType === 'created' ? 'Payment Pending Booking' : (eventType === 'confirmed' ? 'New Booking' : 'Booking Cancelled'),
+        'New Confirmed Booking',
         client_name,
-        eventType === 'created'
-          ? `Session for ${service_title} temporarily reserved (Payment Pending) on ${dateStr} at ${timeStr} IST.`
-          : `Session for ${service_title} scheduled on ${dateStr} at ${timeStr} IST`,
+        `Session for ${service_title} scheduled on ${dateStr} at ${timeStr} IST. Payment confirmed.`,
         bookingId
       );
     }

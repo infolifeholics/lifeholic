@@ -8,7 +8,6 @@ import { ServiceHero } from '@/components/services/hero';
 import { ServiceBookingCta } from '@/components/services/booking-cta';
 import { getServiceRoute } from '@/lib/routes';
 import { ServicePriceBlock } from '@/components/services/service-price-block';
-import { DiscoveryCallModal } from '@/components/services/free-consultation-modal';
 
 export async function generateStaticParams() {
   const services = await getServices();
@@ -163,7 +162,6 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
       </section>
-      <DiscoveryCallModal showPopupOnly={true} serviceId={service.id} serviceName={service.title} />
     </div>
   );
 }

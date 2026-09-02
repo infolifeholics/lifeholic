@@ -54,25 +54,7 @@ export function DiscoveryCallModal({
     }
   }, [user, profile]);
 
-  // Auto-popup logic with 5-second delay if not dismissed or booked
-  useEffect(() => {
-    if (!mounted || showButtonOnly || loading) return;
 
-    const searchParams = new URLSearchParams(window.location.search);
-    const forcePopup = searchParams.get('force_popup') === 'true';
-
-    const isBooked = localStorage.getItem('free_call_booked') === 'true' ||
-      (user && localStorage.getItem(`free_call_booked_${user.uid}`) === 'true');
-    const isDismissed = sessionStorage.getItem('free_call_popup_dismissed') === 'true' ||
-      (user && localStorage.getItem(`free_call_popup_dismissed_${user.uid}`) === 'true');
-
-    if (forcePopup || (!isBooked && !isDismissed)) {
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [mounted, showButtonOnly, user, loading]);
 
   const handleClose = () => {
     setIsOpen(false);

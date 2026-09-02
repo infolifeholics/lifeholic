@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     const bookingsSnap = await adminDb.collection('bookings')
       .where('start_time', '>=', dayStartUTC.toISOString())
       .where('start_time', '<', dayEndUTC.toISOString())
-      .where('status', 'in', ['pending', 'confirmed'])
+      .where('status', 'in', ['confirmed', 'booked'])
       .get();
     const existingBookings = bookingsSnap.docs.map(d => d.data());
 

@@ -155,13 +155,13 @@ export async function POST(req: Request) {
         const healerClashSnap = await adminDb.collection('bookings')
           .where('healer_id', '==', h.id)
           .where('start_time', '==', start.toISOString())
-          .where('status', 'in', ['pending', 'confirmed'])
+          .where('status', 'in', ['confirmed', 'booked'])
           .get();
         if (!healerClashSnap.empty) continue;
 
         const dailySnap = await adminDb.collection('bookings')
           .where('healer_id', '==', h.id)
-          .where('status', 'in', ['pending', 'confirmed'])
+          .where('status', 'in', ['confirmed', 'booked'])
           .get();
         const dailyCount = dailySnap.docs.filter((d) => {
           const bDate = new Date(d.data().start_time);
@@ -371,7 +371,7 @@ export async function POST(req: Request) {
             const linkedBooking = await transaction.get(linkedBookingRef);
             if (linkedBooking.exists) {
               const bStatus = linkedBooking.data()?.status;
-              if (bStatus !== 'cancelled' && bStatus !== 'rejected') {
+              if (bStatus === 'confirmed' || bStatus === 'booked') {
                 throw new Error('SLOT_TAKEN');
               }
             }

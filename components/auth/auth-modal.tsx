@@ -2,13 +2,11 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Loader2, Chrome, Phone, Mail, Lock } from 'lucide-react';
+import { X, Loader2, Mail, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/components/providers/auth-provider';
-import { auth } from '@/lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { toast } from 'sonner';
 
 type AuthModalProps = {
@@ -29,12 +27,9 @@ const showAlert = (msg: string) => {
 export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthModalProps) {
   const { signIn, signInWithGoogle } = useAuth();
   
-  const [authMode, setAuthMode] = useState<'login' | 'otp' | 'forgot' | 'forgot_otp'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'forgot' | 'forgot_otp'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
   const [resetOtp, setResetOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -80,53 +75,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     }
   };
 
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phone || phone.length < 10) {
-      toast.error('Please enter a valid phone number.');
-      return;
-    }
-    setLoading(true);
-    setTimeout(() => {
-      setOtpSent(true);
-      setLoading(false);
-      toast.success('OTP sent successfully! For testing, use code: 123456');
-    }, 1200);
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otpCode !== '123456') {
-      toast.error('Invalid OTP code. Please use: 123456');
-      return;
-    }
-    setLoading(true);
-    try {
-      // Simulate/create a real Firebase user using a phone-based email to keep a persistent profile
-      const sanitizedPhone = phone.replace(/[^0-9]/g, '');
-      const simulatedEmail = `${sanitizedPhone}@thelifeholics.com`;
-      const defaultPassword = `lifeholics_${sanitizedPhone}`;
-      
-      try {
-        await signInWithEmailAndPassword(auth, simulatedEmail, defaultPassword);
-      } catch (err: any) {
-        // If user doesn't exist, create it
-        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-          await createUserWithEmailAndPassword(auth, simulatedEmail, defaultPassword);
-        } else {
-          throw err;
-        }
-      }
-      toast.success('Successfully logged in via OTP.');
-      onSuccess();
-    } catch (err) {
-      console.error(err);
-      toast.error('OTP verification failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
@@ -148,7 +96,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Failed to send OTP.');
-      showAlert(`Error: ${err.message || 'Failed to send OTP.'}`);
+      showAlert(`Password Reset Error: ${err?.message || 'Failed to send OTP.'}`);
     } finally {
       setLoading(false);
     }
@@ -156,14 +104,12 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
   const handleConfirmPasswordResetOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match.');
-      showAlert('Error: Passwords do not match.');
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters.');
       return;
     }
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters long.');
-      showAlert('Error: Password must be at least 6 characters long.');
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match.');
       return;
     }
     setLoading(true);
@@ -175,60 +121,63 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to reset password.');
-      toast.success('Password updated successfully! You can now log in.');
-      showAlert('Success: Password updated successfully! You can now log in.');
+      toast.success('Password reset successfully! You can now log in.');
+      showAlert('Success: Password reset successfully! You can now log in.');
       setAuthMode('login');
+      setPassword('');
       setResetOtp('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Failed to reset password.');
-      showAlert(`Error: ${err.message || 'Failed to reset password.'}`);
+      showAlert(`Reset Password Error: ${err?.message || 'Failed to reset password.'}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-card p-6 sm:p-8 shadow-glow"
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border/80 bg-card p-6 shadow-2xl sm:p-8"
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 rounded-full p-1.5 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </button>
 
         <div className="text-center">
-          <span className="text-xs font-semibold uppercase tracking-widest text-gold">Security</span>
-          <h2 className="mt-2 font-display text-2xl text-foreground font-medium">
-            {authMode === 'forgot' ? 'Reset Password' : 'Log in to Continue'}
+          <span className="text-xs font-semibold tracking-widest text-gold uppercase">Security</span>
+          <h2 className="mt-1 font-display text-2xl font-medium text-foreground">
+            {authMode === 'login' ? 'Log in to Continue' : 'Reset Password'}
           </h2>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {authMode === 'forgot'
-              ? 'Enter your registered email to receive a password reset link.'
-              : 'Please log in or sign up to finalize your slot booking and payment.'}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {authMode === 'login'
+              ? 'Please log in or sign up to finalize your booking and payment.'
+              : authMode === 'forgot'
+              ? 'Enter your registered email to receive a password reset code.'
+              : 'Enter the 6-digit OTP sent to your email along with your new password.'}
           </p>
         </div>
 
         {authMode === 'login' ? (
           <form onSubmit={handleEmailSignIn} className="mt-6 space-y-4">
             <div>
-              <Label htmlFor="modal-email">Email Address</Label>
+              <Label htmlFor="modal-email" className="text-xs font-semibold text-foreground">Email Address</Label>
               <div className="relative mt-1">
-                <Mail className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="modal-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 rounded-xl"
+                  className="pl-10 rounded-xl bg-background border-border/80 text-foreground text-sm"
                   placeholder="name@example.com"
                   required
                 />
@@ -236,75 +185,75 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </div>
 
             <div>
-              <div className="flex justify-between items-center">
-                <Label htmlFor="modal-password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="modal-password" className="text-xs font-semibold text-foreground">Password</Label>
                 <button
                   type="button"
                   onClick={() => setAuthMode('forgot')}
-                  className="text-xs text-gold hover:underline"
+                  className="text-xs font-semibold text-gold hover:underline"
                 >
                   Forgot password?
                 </button>
               </div>
               <div className="relative mt-1">
-                <Lock className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="modal-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 rounded-xl"
+                  className="pl-10 rounded-xl bg-background border-border/80 text-foreground text-sm"
                   placeholder="••••••••"
                   required
                 />
               </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2">
+            <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2 font-semibold">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log In'}
             </Button>
           </form>
         ) : authMode === 'forgot' ? (
           <form onSubmit={handleForgotPassword} className="mt-6 space-y-4">
             <div>
-              <Label htmlFor="forgot-email">Email Address</Label>
+              <Label htmlFor="forgot-email" className="text-xs font-semibold text-foreground">Email Address</Label>
               <div className="relative mt-1">
-                <Mail className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="forgot-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 rounded-xl"
+                  className="pl-10 rounded-xl bg-background border-border/80 text-foreground text-sm"
                   placeholder="name@example.com"
                   required
                 />
               </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2">
+            <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2 font-semibold">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send OTP Code'}
             </Button>
 
             <button
               type="button"
               onClick={() => setAuthMode('login')}
-              className="w-full text-center text-xs text-muted-foreground hover:underline"
+              className="w-full text-center text-xs font-semibold text-muted-foreground hover:underline mt-2 block"
             >
               Back to Login
             </button>
           </form>
-        ) : authMode === 'forgot_otp' ? (
+        ) : (
           <form onSubmit={handleConfirmPasswordResetOtp} className="mt-6 space-y-4">
             <div>
-              <Label htmlFor="forgot-otp">Enter 6-digit OTP</Label>
+              <Label htmlFor="forgot-otp" className="text-xs font-semibold text-foreground">Enter 6-digit OTP</Label>
               <div className="relative mt-1">
                 <Input
                   id="forgot-otp"
                   type="text"
                   value={resetOtp}
                   onChange={(e) => setResetOtp(e.target.value)}
-                  className="rounded-xl text-center tracking-widest text-lg font-bold"
+                  className="rounded-xl text-center tracking-widest text-lg font-bold bg-background border-border/80"
                   placeholder="123456"
                   maxLength={6}
                   required
@@ -313,15 +262,15 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </div>
 
             <div>
-              <Label htmlFor="new-password">New Password</Label>
+              <Label htmlFor="new-password" className="text-xs font-semibold text-foreground">New Password</Label>
               <div className="relative mt-1">
-                <Lock className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="pl-10 rounded-xl"
+                  className="pl-10 rounded-xl bg-background border-border/80 text-foreground text-sm"
                   placeholder="••••••••"
                   minLength={6}
                   required
@@ -330,15 +279,15 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </div>
 
             <div>
-              <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+              <Label htmlFor="confirm-new-password" className="text-xs font-semibold text-foreground">Confirm New Password</Label>
               <div className="relative mt-1">
-                <Lock className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="confirm-new-password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10 rounded-xl"
+                  className="pl-10 rounded-xl bg-background border-border/80 text-foreground text-sm"
                   placeholder="••••••••"
                   minLength={6}
                   required
@@ -346,69 +295,18 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
               </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2">
+            <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2 font-semibold">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reset Password'}
             </Button>
 
             <button
               type="button"
               onClick={() => { setAuthMode('forgot'); setResetOtp(''); setNewPassword(''); setConfirmPassword(''); }}
-              className="w-full text-center text-xs text-muted-foreground hover:underline"
+              className="w-full text-center text-xs font-semibold text-muted-foreground hover:underline mt-2 block"
             >
               Back to Request OTP
             </button>
           </form>
-        ) : (
-          <div className="mt-6">
-            {!otpSent ? (
-              <form onSubmit={handleSendOtp} className="space-y-4">
-                <div>
-                  <Label htmlFor="modal-phone">Phone Number</Label>
-                  <div className="relative mt-1">
-                    <Phone className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
-                    <Input
-                      id="modal-phone"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="pl-10 rounded-xl"
-                      placeholder="+91 9999999999"
-                      required
-                    />
-                  </div>
-                </div>
-                <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2">
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send OTP'}
-                </Button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <div>
-                  <Label htmlFor="modal-otp">Enter OTP</Label>
-                  <Input
-                    id="modal-otp"
-                    type="text"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
-                    className="rounded-xl tracking-[0.5em] text-center font-mono font-bold text-lg"
-                    placeholder="123456"
-                    maxLength={6}
-                    required
-                  />
-                </div>
-                <Button type="submit" disabled={loading} className="w-full rounded-full py-6 mt-2">
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify &amp; Continue'}
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => setOtpSent(false)}
-                  className="w-full text-center text-xs text-muted-foreground hover:underline"
-                >
-                  Change phone number
-                </button>
-              </form>
-            )}
-          </div>
         )}
 
         <div className="relative my-6">
@@ -416,37 +314,41 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             <span className="w-full border-t border-border/60" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-3 text-muted-foreground">Or connect via</span>
+            <span className="bg-card px-3 text-muted-foreground font-semibold tracking-wider">Or connect via</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Button
+        <div>
+          <button
             type="button"
-            variant="outline"
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="rounded-full flex items-center gap-2 py-5.5"
+            className="w-full flex items-center justify-center gap-3 rounded-full border border-border/80 bg-secondary/80 hover:bg-secondary hover:border-gold/50 px-4 py-3.5 text-sm font-semibold text-foreground transition-all duration-200 active:scale-[0.99] disabled:opacity-50 shadow-sm"
           >
-            <Chrome className="h-4 w-4 text-rose-500" />
-            <span>Google</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setAuthMode(authMode === 'login' ? 'otp' : 'login');
-              setOtpSent(false);
-            }}
-            disabled={loading}
-            className="rounded-full flex items-center gap-2 py-5.5"
-          >
-            {authMode === 'login' ? <Phone className="h-4 w-4 text-emerald-500" /> : <Mail className="h-4 w-4 text-gold" />}
-            <span>{authMode === 'login' ? 'OTP Login' : 'Email Login'}</span>
-          </Button>
+            <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24Z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15Z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"
+              />
+            </svg>
+            <span className="text-foreground font-semibold">Continue with Google</span>
+          </button>
         </div>
       </motion.div>
     </div>
   );
 }
+
+export default AuthModal;
