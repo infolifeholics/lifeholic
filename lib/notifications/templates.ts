@@ -169,31 +169,24 @@ export const EMAIL_TEMPLATES = {
 
   booking_confirmation: (vars: TemplateVars) => {
     const content = `
-      <h2>Your Session Booking with Lifeholics is Confirmed!</h2>
-      <p>Hello ${vars.memberName}, received with gratitude 🙏</p>
-      <p>Your session booking request has been successfully confirmed. Here are the details:</p>
+      <p>Hi ${vars.memberName},</p>
+      <p>Your session booking has been received with gratitude. 🤍</p>
       <div class="details-box">
-        <div class="details-row"><span class="label">Booking ID:</span><span class="value">${vars.bookingId || 'N/A'}</span></div>
-        <div class="details-row"><span class="label">Session:</span><span class="value">${vars.actionDetails || 'Session'}</span></div>
+        <div style="font-weight: bold; margin-bottom: 12px; color: #111111; font-size: 15px;">Booking Details:</div>
         <div class="details-row"><span class="label">Date:</span><span class="value">${vars.sessionDate || 'N/A'}</span></div>
-        <div class="details-row"><span class="label">Time:</span><span class="value">${vars.sessionTime || 'N/A'} (IST)</span></div>
-        <div class="details-row"><span class="label">Booking Status:</span><span class="value" style="font-weight: bold; color: #22c55e;">BOOKED</span></div>
-        <div class="details-row"><span class="label">Payment Status:</span><span class="value" style="font-weight: bold; color: #22c55e;">PAID</span></div>
-        ${vars.meetLink ? `<div class="details-row"><span class="label">Meeting Link:</span><span class="value"><a href="${vars.meetLink}" style="color:#d4af37; text-decoration:underline;">${vars.meetLink}</a></span></div>` : ''}
+        <div class="details-row"><span class="label">Time:</span><span class="value">${vars.sessionTime || 'N/A'}</span></div>
+        <div class="details-row"><span class="label">Slot:</span><span class="value">${vars.sessionDate || 'N/A'} at ${vars.sessionTime || 'N/A'}</span></div>
+        <div class="details-row"><span class="label">Session:</span><span class="value">${vars.actionDetails || 'Session'}</span></div>
+        <div class="details-row"><span class="label">Mode:</span><span class="value">Online</span></div>
+        ${vars.meetLink ? `<div class="details-row"><span class="label">link:</span><span class="value"><a href="${vars.meetLink}" style="color:#d4af37; text-decoration:underline;">${vars.meetLink}</a></span></div>` : ''}
       </div>
-      <div style="background-color: #fdfaf6; border: 1px solid #f5ebd5; padding: 15px; border-radius: 8px; margin: 20px 0; font-size: 13px;">
-        <strong style="color: #c5a880;">Kindly Note:</strong>
-        <ul style="margin: 5px 0 0 15px; padding: 0; color: #555;">
-          <li>Please join a few minutes before your scheduled time.</li>
-          <li>Sessions are non-refundable.</li>
-          <li>If you’re unable to attend, you may reschedule at least 48 hours in advance.</li>
-          <li>Requests within 48 hours may not be accommodated.</li>
-        </ul>
-      </div>
-      <p>We look forward to supporting you on your healing journey.</p>
-      <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://thelifeholics.com'}/account" class="btn">View Booking Details</a>
+      <p>We look forward to connecting with you.</p>
+      <p style="margin-top: 25px; line-height: 1.6;">
+        With Love,<br />
+        <strong>The LifeHolics ✨</strong>
+      </p>
     `;
-    return getBaseHtml('Booking Confirmed', content, vars);
+    return getBaseHtml('Session Booking Received', content, vars);
   },
 
   booking_pending_payment: (vars: TemplateVars) => {

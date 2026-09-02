@@ -62,31 +62,26 @@ export async function POST(req: Request) {
             <p style="color: #666; font-size: 14px; margin-top: 4px;">Holistic Health & Wellness</p>
           </div>
           
-          <h2 style="font-size: 20px; color: #111; margin-bottom: 12px;">Discovery Call Request Received 🎉</h2>
-          <p style="font-size: 15px; line-height: 1.6; color: #444;">
-            Hi <strong>${name}</strong>,
-          </p>
-          <p style="font-size: 15px; line-height: 1.6; color: #444;">
-            Thank you for reaching out! We have received your request for a complimentary <strong>10-Minute Discovery Call</strong> regarding <em>${service_name}</em>.
+          <p style="font-size: 15px; line-height: 1.6; color: #1a1a1a;">
+            Hi <strong>${name}</strong>, ✨
           </p>
           
-          <div style="background-color: #fdfaf6; border-left: 4px solid #c5a880; padding: 18px; margin: 24px 0; border-radius: 8px;">
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Service:</strong> ${service_name}</p>
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Preferred Timing:</strong> ${preferred_time}</p>
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Contact Phone:</strong> ${cleanPhone}</p>
-            ${note ? `<p style="margin: 4px 0; font-size: 14px;"><strong>Your Note:</strong> ${note}</p>` : ''}
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Fee:</strong> <span style="color: #10b981; font-weight: bold;">FREE (10 Minutes)</span></p>
+          <p style="font-size: 15px; line-height: 1.6; color: #333; margin-top: 16px;">
+            Thank you for booking your Free 10-Minute Discovery Call with LifeHolics. 🤍
+          </p>
+
+          <p style="font-size: 15px; line-height: 1.6; color: #333; margin-top: 16px;">
+            This call is a space for you to get a basic understanding of our healing sessions, workshops, products, or anything else you’d like to know about how we work.
+          </p>
+
+          <p style="font-size: 15px; line-height: 1.6; color: #333; margin-top: 16px;">
+            Since the call is only 10 minutes, it is not a space for detailed sharing of personal issues or for addressing specific life situations. It is simply an opportunity to ask your questions, understand the process, and see what may be right for you.
+          </p>
+
+          <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; font-size: 15px; line-height: 1.6; color: #1a1a1a;">
+            With Love,<br />
+            <strong>The LifeHolics 🌿</strong>
           </div>
-
-          <p style="font-size: 14px; line-height: 1.6; color: #555;">
-            Our team will reach out to you on your phone number <strong>${cleanPhone}</strong> or WhatsApp at the earliest during your preferred hours.
-          </p>
-
-          <p style="font-size: 14px; color: #777; margin-top: 30px; border-top: 1px solid #eee; padding-top: 16px;">
-            Warm regards,<br />
-            <strong>The LifeHolics Team</strong><br />
-            <a href="https://thelifeholics.com" style="color: #c5a880; text-decoration: none;">thelifeholics.com</a>
-          </p>
         </div>
       `;
 
