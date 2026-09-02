@@ -55,23 +55,10 @@ export async function GET(req: Request) {
       .get();
     const existingBookings = bookingsSnap.docs.map(d => d.data());
 
-    // Fetch existing free call bookings for the day (non-cancelled)
-    const freeCallsSnap = await adminDb.collection('free_call_bookings')
-      .where('start_time', '>=', dayStartUTC.toISOString())
-      .where('start_time', '<', dayEndUTC.toISOString())
-      .get();
-    const existingFreeCalls = freeCallsSnap.docs.map(d => d.data()).filter((f: any) => f.status !== 'cancelled');
-
-    const bookedRanges = [
-      ...existingBookings.map(b => ({
-        start: new Date(b.start_time).getTime(),
-        end: new Date(b.end_time).getTime()
-      })),
-      ...existingFreeCalls.map(f => ({
-        start: new Date(f.start_time).getTime(),
-        end: new Date(f.end_time).getTime()
-      }))
-    ];
+    const bookedRanges = existingBookings.map(b => ({
+      start: new Date(b.start_time).getTime(),
+      end: new Date(b.end_time).getTime()
+    }));
 
     // Fetch service duration
     let duration = 30;
