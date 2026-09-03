@@ -57,7 +57,13 @@ export function getOptimizedCloudinaryUrl(
     if (url.includes('svjzpngf2kqdo3dupjum')) return '/images/founder/megha-garden.jpg';
     if (url.includes('awrke3peqgig991aiual')) return '/images/bg-fallback.jpg';
 
-    return '/images/services/personal-healing-clarity.png';
+    // Landing feed fallbacks
+    if (url.includes('kcz5qslgszo9ixfpsopw')) return '/images/feed/feed-1.png';
+    if (url.includes('c6p1jmazvyuekqm5vxlu')) return '/images/feed/feed-2.png';
+    if (url.includes('e95zdnpfwearnywg2ukh')) return '/images/feed/feed-3.png';
+    if (url.includes('sr9xroopikaymjgij8v5')) return '/images/feed/feed-4.png';
+
+    return '/images/bg-fallback.jpg';
   }
   if (!url.includes('res.cloudinary.com')) return url;
 
