@@ -7,7 +7,7 @@ import { RevealText, Reveal } from '@/components/site/reveal';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn, getOptimizedCloudinaryUrl } from '@/lib/utils';
 import { toast } from 'sonner';
 
 function LazyVideo({ src, className, onLoadedMetadata }: { src: string; className?: string; onLoadedMetadata?: (e: any) => void }) {
@@ -250,13 +250,13 @@ export function HomeInstagram() {
                     >
                       {item.type === 'video' ? (
                         <LazyVideo
-                          src={item.url}
+                          src={getOptimizedCloudinaryUrl(item.url, 'video')}
                           className="h-full w-full object-cover"
                           onLoadedMetadata={(e) => handleVideoMetadata(item.id, e)}
                         />
                       ) : (
                         <img
-                          src={item.url}
+                          src={getOptimizedCloudinaryUrl(item.url, 'thumbnail')}
                           alt="Feed post"
                           className="h-full w-full object-cover transition-transform duration-700 ease-soft group-hover:scale-105"
                           onLoad={(e) => handleImageLoad(item.id, e)}
