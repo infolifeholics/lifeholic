@@ -7,7 +7,7 @@ import { RevealText, Reveal } from '@/components/site/reveal';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn, getOptimizedCloudinaryUrl } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 function LazyVideo({ src, className, onLoadedMetadata }: { src: string; className?: string; onLoadedMetadata?: (e: any) => void }) {
@@ -74,10 +74,10 @@ export function HomeInstagram() {
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map((d) => d.data());
       const defaultPosts = [
-        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=500',
-        'https://images.pexels.com/photos/3823039/pexels-photo-3823039.jpeg?auto=compress&cs=tinysrgb&w=500',
-        'https://images.pexels.com/photos/4202325/pexels-photo-4202325.jpeg?auto=compress&cs=tinysrgb&w=500',
-        'https://images.pexels.com/photos/3771115/pexels-photo-3771115.jpeg?auto=compress&cs=tinysrgb&w=500',
+        '/images/feed/feed-1.png',
+        '/images/feed/feed-2.png',
+        '/images/feed/feed-3.png',
+        '/images/feed/feed-4.png',
       ];
       const defaultLikes = [1240, 5120, 8430, 4310];
       const items = Array.from({ length: 4 }, (_, i) => {
@@ -250,13 +250,13 @@ export function HomeInstagram() {
                     >
                       {item.type === 'video' ? (
                         <LazyVideo
-                          src={getOptimizedCloudinaryUrl(item.url, 'video')}
+                          src={item.url}
                           className="h-full w-full object-cover"
                           onLoadedMetadata={(e) => handleVideoMetadata(item.id, e)}
                         />
                       ) : (
                         <img
-                          src={getOptimizedCloudinaryUrl(item.url, 'thumbnail')}
+                          src={item.url}
                           alt="Feed post"
                           className="h-full w-full object-cover transition-transform duration-700 ease-soft group-hover:scale-105"
                           onLoad={(e) => handleImageLoad(item.id, e)}

@@ -59,10 +59,10 @@ export function AdminLandingPage() {
       const feedDocs = await getDocs(collection(db, 'landing_feed'));
       const feedData = feedDocs.docs.map(doc => doc.data());
       const defaultPosts = [
-        'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=500',
-        'https://images.pexels.com/photos/3823039/pexels-photo-3823039.jpeg?auto=compress&cs=tinysrgb&w=500',
-        'https://images.pexels.com/photos/4202325/pexels-photo-4202325.jpeg?auto=compress&cs=tinysrgb&w=500',
-        'https://images.pexels.com/photos/3771115/pexels-photo-3771115.jpeg?auto=compress&cs=tinysrgb&w=500',
+        '/images/feed/feed-1.png',
+        '/images/feed/feed-2.png',
+        '/images/feed/feed-3.png',
+        '/images/feed/feed-4.png',
       ];
       const items = Array.from({ length: 4 }, (_, i) => {
         const id = `slot_${i + 1}`;

@@ -7,7 +7,6 @@ import { Reveal, RevealText, ScrollStory } from '@/components/site/reveal';
 import { FounderImage } from '@/components/site/founder-image';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { getOptimizedCloudinaryUrl } from '@/lib/utils';
 
 const DEFAULT_FOUNDER_IMAGE = '/images/founder/megha-standing.jpg';
 const DEFAULT_FOUNDER_IMAGE_2 = '/images/founder/megha-garden.jpg';
@@ -47,7 +46,7 @@ export function HomeAboutPreview() {
                   {/* First Image */}
                   <div className="aspect-[3/4] overflow-hidden rounded-3xl border border-border/60 shadow-float">
                     <FounderImage
-                      src={getOptimizedCloudinaryUrl(founderImage, 'image')}
+                      src={founderImage}
                       alt="TheLifeHolics founder"
                       className="h-full w-full object-cover object-top"
                     />
@@ -69,7 +68,7 @@ export function HomeAboutPreview() {
                   <div className="flex-1 overflow-hidden rounded-3xl border border-border/60 shadow-soft">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={getOptimizedCloudinaryUrl(founderImage2, 'image')}
+                      src={founderImage2}
                       alt="Calm healing space"
                       className="h-full w-full object-cover"
                     />
