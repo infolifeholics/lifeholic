@@ -8,13 +8,15 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 
 import { getOptimizedCloudinaryUrl } from '@/lib/utils';
 
-const DEFAULT_VIDEO = 'https://res.cloudinary.com/jue23qpn/video/upload/v1786041572/thelifeholics/iu4kulkcbxvmcyovhaad.mp4';
+const DEFAULT_VIDEO = '/videos/hero-bg.mp4';
+const DEFAULT_BG_IMAGE = '/images/bg-fallback.jpg';
 
 export function CinematicVideoBg() {
   const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoSrc, setVideoSrc] = useState(DEFAULT_VIDEO);
   const [fallbackImage, setFallbackImage] = useState('');
+  const [videoError, setVideoError] = useState(false);
 
   // Track scroll for zoom and slight translation parallax
   const { scrollYProgress } = useScroll();
@@ -35,6 +37,7 @@ export function CinematicVideoBg() {
     const unsubscribe = onSnapshot(docRef, (snap) => {
       if (snap.exists() && snap.data().url) {
         setVideoSrc(snap.data().url);
+        setVideoError(false);
       }
     }, (err) => console.warn('Could not fetch custom bg video:', err));
     return () => unsubscribe();
@@ -129,7 +132,7 @@ export function CinematicVideoBg() {
           scale: scaleParallax,
         }}
       >
-        {isVideoPage ? (
+        {isVideoPage && !videoError ? (
           <video
             key={videoSrc}
             ref={videoRef}
@@ -138,13 +141,14 @@ export function CinematicVideoBg() {
             loop
             playsInline
             preload="metadata"
+            onError={() => setVideoError(true)}
             className="h-full w-full object-cover select-none pointer-events-none"
             src={getOptimizedCloudinaryUrl(videoSrc, 'video')}
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={getOptimizedCloudinaryUrl(fallbackImage || "https://res.cloudinary.com/jue23qpn/image/upload/v1786025367/thelifeholics/awrke3peqgig991aiual.png", 'image')}
+            src={getOptimizedCloudinaryUrl(fallbackImage || DEFAULT_BG_IMAGE, 'image')}
             alt="Page background"
             className="h-full w-full object-cover select-none pointer-events-none brightness-[0.7] contrast-[1.02]"
           />

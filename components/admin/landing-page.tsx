@@ -7,11 +7,11 @@ import { toast } from 'sonner';
 import { Loader2, UploadCloud, Video, X, Image as ImageIcon, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const DEFAULT_VIDEO = 'https://res.cloudinary.com/jue23qpn/video/upload/v1786041572/thelifeholics/iu4kulkcbxvmcyovhaad.mp4';
+const DEFAULT_VIDEO = '/videos/hero-bg.mp4';
 const DEFAULT_AUDIO = '/liecio-calming-rain-257596.mp3';
 const DEFAULT_FOUNDER_IMAGE = '/images/founder/photo.jpg';
 const DEFAULT_FOUNDER_IMAGE_2 = 'https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=800';
-const DEFAULT_BG_IMAGE = 'https://res.cloudinary.com/jue23qpn/image/upload/v1786025367/thelifeholics/awrke3peqgig991aiual.png';
+const DEFAULT_BG_IMAGE = '/images/bg-fallback.jpg';
 
 export function AdminLandingPage() {
   const [videoUrl, setVideoUrl] = useState('');
@@ -88,36 +88,22 @@ export function AdminLandingPage() {
   }, []);
 
   const uploadToCloudinaryDirect = async (file: File, isVideoOrAudio: boolean) => {
-    const signRes = await fetch('/api/upload/sign', { method: 'POST' });
-    if (!signRes.ok) {
-      const err = await signRes.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to generate upload signature');
-    }
-    const { signature, timestamp, cloudName, apiKey, folder } = await signRes.json();
-
-    const resourceType = isVideoOrAudio ? 'video' : 'image';
-    const url = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
-
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('api_key', apiKey);
-    formData.append('timestamp', String(timestamp));
-    formData.append('signature', signature);
-    formData.append('folder', folder);
 
-    const uploadRes = await fetch(url, {
+    const res = await fetch('/api/upload', {
       method: 'POST',
       body: formData,
     });
 
-    if (!uploadRes.ok) {
-      const err = await uploadRes.json().catch(() => ({}));
-      throw new Error(err.error?.message || 'Direct Cloudinary upload failed');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Upload failed');
     }
 
-    const data = await uploadRes.json();
+    const data = await res.json();
     return {
-      url: data.secure_url,
+      url: data.url,
       public_id: data.public_id,
     };
   };

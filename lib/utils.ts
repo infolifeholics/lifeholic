@@ -39,14 +39,27 @@ export function getOptimizedCloudinaryUrl(
   url: string | null | undefined,
   type: 'video' | 'image' | 'avatar' | 'thumbnail'
 ): string {
-  if (!url) return '';
-  if (!url.includes('res.cloudinary.com')) return url;
-
-  // Background HD Video: Preserve original stable Cloudinary URL directly to retain full HD quality
-  // and enable 30-day immutable browser cache reuse (Cloudinary sends 'cache-control: public, immutable, max-age=2592000').
   if (type === 'video') {
-    return url;
+    return '/videos/hero-bg.mp4';
   }
+  if (!url) return '';
+  // If URL points to disabled Cloudinary account jue23qpn, return fallback
+  if (url.includes('jue23qpn')) {
+    if (type === 'avatar') return '/images/founder/megha-standing.jpg';
+    
+    // Services fallbacks
+    if (url.includes('steblqvi5mirnb9asdvx')) return '/images/services/personal-healing-clarity.png';
+    if (url.includes('tfn6f1ugc8mzztkzctml')) return '/images/services/deep-transformation.jpg';
+    if (url.includes('ri6j3yzwk4ds7xrltsvn')) return '/images/services/ancestral-healing.jpg';
+    
+    // About CMS fallbacks
+    if (url.includes('p0xmmhhd8sxinwnhrrs7')) return '/images/founder/megha-standing.jpg';
+    if (url.includes('svjzpngf2kqdo3dupjum')) return '/images/founder/megha-garden.jpg';
+    if (url.includes('awrke3peqgig991aiual')) return '/images/bg-fallback.jpg';
+
+    return '/images/services/personal-healing-clarity.png';
+  }
+  if (!url.includes('res.cloudinary.com')) return url;
 
   // Image optimization with 30-day browser caching
   if (url.includes('/image/upload/') && !url.includes('/image/upload/q_') && !url.includes('/image/upload/w_') && !url.includes('/image/upload/f_')) {
@@ -56,7 +69,6 @@ export function getOptimizedCloudinaryUrl(
     if (type === 'thumbnail') {
       return url.replace('/image/upload/', '/image/upload/w_400,c_limit,q_auto,f_auto/');
     }
-    // For high-traffic background image (awrke3peqgig991aiual.png), deliver 1920p at ~142 KB with 30-day immutable caching
     if (url.includes('awrke3peqgig991aiual.png')) {
       return url.replace('/image/upload/', '/image/upload/w_1920,c_limit,q_auto,f_auto/');
     }

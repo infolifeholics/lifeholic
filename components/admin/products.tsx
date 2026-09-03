@@ -328,8 +328,8 @@ export function AdminProducts() {
 
   // Unique categories for filtering
   const categories = useMemo(() => {
-    const set = new Set(products.map((p) => p.category));
-    return ['All', ...Array.from(set)];
+    const cats = products.map((p) => p.category).filter(Boolean);
+    return ['All', ...Array.from(new Set(cats))];
   }, [products]);
 
   // Filtered and sorted products
@@ -729,7 +729,7 @@ export function AdminProducts() {
                 onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
                 className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground"
               >
-                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                {categories.map((c, idx) => <option key={`${c}-${idx}`} value={c}>{c}</option>)}
               </select>
 
               <select

@@ -7,11 +7,12 @@ import { doc, onSnapshot } from 'firebase/firestore';
 
 import { getOptimizedCloudinaryUrl } from '@/lib/utils';
 
-const DEFAULT_FOUNDER_IMAGE = '/images/founder/photo.jpg';
+const DEFAULT_FOUNDER_IMAGE = '/images/founder/megha-standing.jpg';
+const DEFAULT_FOUNDER_IMAGE_2 = '/images/founder/megha-garden.jpg';
 
 export function AboutClientPage() {
   const [founderImage, setFounderImage] = useState(DEFAULT_FOUNDER_IMAGE);
-  const [founderImage2, setFounderImage2] = useState('https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=800');
+  const [founderImage2, setFounderImage2] = useState(DEFAULT_FOUNDER_IMAGE_2);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
