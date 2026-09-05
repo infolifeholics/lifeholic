@@ -143,12 +143,12 @@ export function CinematicVideoBg() {
             preload="metadata"
             onError={() => setVideoError(true)}
             className="h-full w-full object-cover select-none pointer-events-none"
-            src={getOptimizedCloudinaryUrl(videoSrc, 'video')}
+            src={DEFAULT_VIDEO}
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={getOptimizedCloudinaryUrl(fallbackImage || DEFAULT_BG_IMAGE, 'image')}
+            src={DEFAULT_BG_IMAGE}
             alt="Page background"
             className="h-full w-full object-cover select-none pointer-events-none brightness-[0.7] contrast-[1.02]"
           />
