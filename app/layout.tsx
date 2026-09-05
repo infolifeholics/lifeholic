@@ -59,26 +59,18 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://thelifeholics.com',
-    siteName: 'The LifeHolics',
+    siteName: 'LifeHolics',
     title: 'The LifeHolics — Holistic Health Services',
     description:
-      'The LifeHolics — Holistic Health Services. A calm, safe space for therapy, inner healing, workshops, and holistic transformation.',
-    images: [
-      {
-        url: '/og.png',
-        width: 1200,
-        height: 630,
-        alt: 'The LifeHolics — Holistic Health Services',
-        type: 'image/png',
-      },
-    ],
+      'A calm, safe space for spiritual psychology, therapy sessions, workshops, and community growth.',
+    images: [{ url: '/og.svg', width: 1200, height: 630, alt: 'The LifeHolics' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'The LifeHolics — Holistic Health Services',
     description:
-      'The LifeHolics — Holistic Health Services. A calm, safe space for therapy, inner healing, workshops, and holistic transformation.',
-    images: ['/og.png'],
+      'A calm, safe space for spiritual psychology, therapy sessions, workshops, and community growth.',
+    images: ['/og.svg'],
   },
   alternates: { canonical: 'https://thelifeholics.com' },
   manifest: '/manifest.json',
