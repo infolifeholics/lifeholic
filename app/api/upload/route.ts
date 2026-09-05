@@ -21,23 +21,26 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    await fs.mkdir(uploadsDir, { recursive: true });
-
-    const ext = file.name ? path.extname(file.name) : '';
-    const safeName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
-    const filePath = path.join(uploadsDir, safeName);
-
-    await fs.writeFile(filePath, buffer);
-
-    const fileUrl = `/uploads/${safeName}`;
+    const result = await new Promise<any>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'thelifeholics',
+          resource_type: 'auto',
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(buffer);
+    });
 
     return NextResponse.json({
-      url: fileUrl,
-      public_id: safeName,
+      url: result.secure_url,
+      public_id: result.public_id,
     });
   } catch (error: any) {
-    console.error('Local upload error:', error);
+    console.error('Cloudinary upload error:', error);
     return NextResponse.json({ error: error.message || 'Upload failed' }, { status: 500 });
   }
 }
