@@ -40,7 +40,8 @@ export function CheckoutView() {
   const [placing, setPlacing] = useState(false);
   const [razorpayReady, setRazorpayReady] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [shippingChargeSetting, setShippingChargeSetting] = useState<number | null>(null);
+  const [shippingIndia, setShippingIndia] = useState<number>(200);
+  const [shippingInternational, setShippingInternational] = useState<number>(2500);
   const paymentMethod = 'razorpay';
 
   useEffect(() => {
@@ -82,7 +83,9 @@ export function CheckoutView() {
     getDoc(doc(db, 'settings', 'global')).then((snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        if (typeof data.shipping_charge === 'number') setShippingChargeSetting(data.shipping_charge);
+        if (typeof data.shipping_charge_india === 'number') setShippingIndia(data.shipping_charge_india);
+        else if (typeof data.shipping_charge === 'number') setShippingIndia(data.shipping_charge);
+        if (typeof data.shipping_charge_international === 'number') setShippingInternational(data.shipping_charge_international);
       }
     }).catch(console.error);
   }, []);
@@ -101,7 +104,11 @@ export function CheckoutView() {
   const discount = applied?.discount || 0;
   const convertedDiscount = isInternational ? convertInrToCurrency(discount, exchangeRate || 0, currentCurrency) : discount;
 
-  const baseShippingInr = shippingChargeSetting || 0;
+  const isDeliveryIndia = (form.country || '').trim().toLowerCase() === 'india' || (form.country || '').trim().toUpperCase() === 'IN';
+  const baseShippingInr = hasPhysical
+    ? (isDeliveryIndia ? shippingIndia : shippingInternational)
+    : 0;
+
   const convertedShipping = baseShippingInr > 0
     ? (isInternational ? convertInrToCurrency(baseShippingInr, exchangeRate || 0, currentCurrency) : baseShippingInr)
     : 0;

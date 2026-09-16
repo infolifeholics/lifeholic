@@ -21,25 +21,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Your bag is empty.' }, { status: 400 });
     }
 
-    // Fetch user profile from Firestore to determine currency
+    // Determine customer delivery country and currency
+    const deliveryCountry = address?.country ? String(address.country).trim() : '';
+    let isIndia = false;
     let currency = 'INR';
-    if (user_id) {
+
+    if (deliveryCountry) {
+      const norm = deliveryCountry.toLowerCase();
+      isIndia = norm === 'india' || norm === 'in';
+      if (isIndia) {
+        currency = 'INR';
+      } else {
+        currency = getUserCurrency({ country: deliveryCountry });
+      }
+    } else if (user_id) {
       const profileSnap = await adminDb.collection('profiles').doc(user_id).get();
       if (profileSnap.exists) {
         const profile = profileSnap.data() || {};
         currency = getUserCurrency(profile);
+        const norm = (profile.country || '').trim().toLowerCase();
+        isIndia = norm === 'india' || norm === 'in';
       } else {
         const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
+        isIndia = clientCountry.toUpperCase() === 'IN';
         currency = getCurrencyForCountryCode(clientCountry);
       }
     } else {
       const clientCountry = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || 'IN';
+      isIndia = clientCountry.toUpperCase() === 'IN';
       currency = getCurrencyForCountryCode(clientCountry);
     }
 
     // Fetch global settings and exchange rates
     let rates: Record<string, number> = {};
-    let shippingChargeSetting = 0;
+    let shippingChargeIndia = 200;
+    let shippingChargeInternational = 2500;
+
     try {
       const ratesData = await getExchangeRates();
       rates = ratesData.rates || {};
@@ -47,8 +64,14 @@ export async function POST(req: Request) {
       const globalSnap = await adminDb.collection('settings').doc('global').get();
       if (globalSnap.exists) {
         const gData = globalSnap.data() || {};
-        if (typeof gData.shipping_charge === 'number') {
-          shippingChargeSetting = gData.shipping_charge;
+        if (typeof gData.shipping_charge_india === 'number') {
+          shippingChargeIndia = gData.shipping_charge_india;
+        } else if (typeof gData.shipping_charge === 'number') {
+          shippingChargeIndia = gData.shipping_charge;
+        }
+
+        if (typeof gData.shipping_charge_international === 'number') {
+          shippingChargeInternational = gData.shipping_charge_international;
         }
       }
     } catch (err) {
@@ -61,9 +84,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'International payments are currently unavailable. Dynamic exchange rates failed to resolve.' }, { status: 400 });
     }
 
-    // 1. Validate prices of all products on the server side using adminDb
-    let calculatedSubtotal = 0;
+    // 1. Validate prices of all products on the server side in INR using adminDb
+    let calculatedSubtotalInr = 0;
     const validatedItems = [];
+    let hasPhysical = false;
 
     for (const item of items) {
       const productSnap = await adminDb.collection('products').doc(item.id).get();
@@ -71,22 +95,32 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `Product not found.` }, { status: 404 });
       }
       const product = productSnap.data() || {};
-      const price = currency !== 'INR' ? convertInrToCurrency(product.price_inr || 0, targetRate || 0) : (product.price_inr || 0);
-      calculatedSubtotal += price * item.quantity;
+      const itemType = item.type || product.type || 'digital';
+      if (itemType === 'physical') hasPhysical = true;
+
+      const priceInr = product.price_inr || 0;
+      const convertedPrice = currency !== 'INR' ? convertInrToCurrency(priceInr, targetRate || 0, currency) : priceInr;
+      
+      calculatedSubtotalInr += priceInr * item.quantity;
       
       validatedItems.push({
         id: item.id,
         slug: item.slug || product.slug,
         name: item.name || product.name,
-        price: price,
+        price: convertedPrice,
+        price_inr: priceInr,
         quantity: item.quantity,
         image: item.image || product.image || '',
-        type: item.type || product.type || 'digital',
+        type: itemType,
       });
     }
 
+    const calculatedSubtotal = currency !== 'INR'
+      ? convertInrToCurrency(calculatedSubtotalInr, targetRate || 0, currency)
+      : calculatedSubtotalInr;
+
     // 2. Validate and apply coupon code discount using adminDb
-    let calculatedDiscount = 0;
+    let calculatedDiscountInr = 0;
     if (coupon_code) {
       try {
         const couponSnap = await adminDb.collection('coupons').doc(coupon_code.toUpperCase()).get();
@@ -96,17 +130,16 @@ export async function POST(req: Request) {
           const isExpired = coupon.expiry_date && now > new Date(coupon.expiry_date);
           const limitReached = coupon.usage_limit && (coupon.usage_count || 0) >= coupon.usage_limit;
           const isContextValid = !coupon.applicable_to || coupon.applicable_to === 'all' || coupon.applicable_to === 'shop';
-          const isMinAmountValid = !coupon.min_amount || calculatedSubtotal >= coupon.min_amount;
+          const isMinAmountValid = !coupon.min_amount || calculatedSubtotalInr >= coupon.min_amount;
 
           if (coupon.active !== false && !isExpired && !limitReached && isContextValid && isMinAmountValid) {
             if (coupon.type === 'percent') {
-              calculatedDiscount = (calculatedSubtotal * coupon.value) / 100;
-              if (coupon.max_discount && calculatedDiscount > coupon.max_discount) {
-                calculatedDiscount = coupon.max_discount;
+              calculatedDiscountInr = (calculatedSubtotalInr * coupon.value) / 100;
+              if (coupon.max_discount && calculatedDiscountInr > coupon.max_discount) {
+                calculatedDiscountInr = coupon.max_discount;
               }
             } else {
-              // Convert coupon flat value (entered in INR) to target currency
-              calculatedDiscount = currency !== 'INR' ? convertInrToCurrency(coupon.value, targetRate || 0) : coupon.value;
+              calculatedDiscountInr = coupon.value;
             }
           }
         }
@@ -115,14 +148,21 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Calculate shipping
-    const baseShippingInr = shippingChargeSetting || 0;
-    const finalShipping = baseShippingInr > 0
-      ? (currency !== 'INR' ? convertInrToCurrency(baseShippingInr, targetRate || 0) : baseShippingInr)
+    const calculatedDiscount = currency !== 'INR'
+      ? convertInrToCurrency(calculatedDiscountInr, targetRate || 0, currency)
+      : calculatedDiscountInr;
+
+    // 3. Calculate per-order shipping based on physical item presence & delivery region
+    const baseShippingInr = hasPhysical
+      ? (isIndia ? shippingChargeIndia : shippingChargeInternational)
       : 0;
 
-    const baseAmount = Math.max(0, calculatedSubtotal - calculatedDiscount + finalShipping);
-    let finalTotal = baseAmount;
+    const finalShipping = baseShippingInr > 0
+      ? (currency !== 'INR' ? convertInrToCurrency(baseShippingInr, targetRate || 0, currency) : baseShippingInr)
+      : 0;
+
+    const totalInr = Math.max(0, calculatedSubtotalInr - calculatedDiscountInr + baseShippingInr);
+    const finalTotal = Math.max(0, calculatedSubtotal - calculatedDiscount + finalShipping);
     let chargeCurrency = currency;
 
     const number = orderNumber();
@@ -149,7 +189,7 @@ export async function POST(req: Request) {
               full_name: full_name || '',
               phone: phone || '',
               address: address ? JSON.stringify(address) : '',
-              items: JSON.stringify(validatedItems.map(i => ({ id: i.id, q: i.quantity, p: i.price }))),
+              items: JSON.stringify(validatedItems.map(i => ({ id: i.id, q: i.quantity, p: i.price, p_inr: i.price_inr }))),
               coupon_code: coupon_code || '',
               user_id: user_id || '',
             }
@@ -175,13 +215,16 @@ export async function POST(req: Request) {
       address: address || null,
       items: validatedItems,
       subtotal: calculatedSubtotal,
-      subtotal_inr: currency === 'INR' ? calculatedSubtotal : 0,
-      base_amount_inr: currency === 'INR' ? baseAmount : 0,
+      subtotal_inr: calculatedSubtotalInr,
       discount: calculatedDiscount,
+      discount_inr: calculatedDiscountInr,
       shipping: finalShipping,
+      shipping_inr: baseShippingInr,
       total: finalTotal,
+      total_inr: totalInr,
+      base_amount_inr: totalInr,
       currency: chargeCurrency,
-      base_amount: baseAmount,
+      base_amount: finalTotal,
       base_currency: currency,
       exchange_rate: targetRate,
       charged_amount: finalTotal,

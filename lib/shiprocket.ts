@@ -303,6 +303,13 @@ export function buildShiprocketPayload(
   paymentMethod: 'PREPAID' | 'COD'
 ): ShiprocketOrderPayload {
   const address = order.address || {};
+  const calculatedTotalInr =
+    order.total_inr ??
+    order.base_amount_inr ??
+    (order.subtotal_inr !== undefined && order.subtotal_inr !== null
+      ? (order.subtotal_inr - (order.discount_inr || 0) + (order.shipping_inr || 0))
+      : (order.currency === 'INR' ? order.total : 0));
+
   return {
     orderNumber: order.number,
     orderDate: order.created_at || new Date().toISOString(),
@@ -320,13 +327,11 @@ export function buildShiprocketPayload(
       name: item.name || `Product ${idx + 1}`,
       sku: item.id || `SKU-${idx + 1}`,
       units: item.quantity || 1,
-      sellingPrice: item.price_inr || item.price || 0,
+      sellingPrice: typeof item.price_inr === 'number' ? item.price_inr : (order.currency === 'INR' ? item.price : 0),
       discount: 0,
       tax: 0,
     })),
-    totalAmountInr:
-      order.base_amount_inr ||
-      (order.currency === 'INR' ? order.total : order.subtotal_inr || 0),
+    totalAmountInr: calculatedTotalInr,
     paymentMethod,
   };
 }

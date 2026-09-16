@@ -18,14 +18,20 @@ export function CartView() {
   const { items, setQuantity, remove, clear, count } = useCart();
   const { user } = useAuth();
   const { currentCurrency, exchangeRate, isLoading, rates } = useCurrency();
-  const [shippingChargeSetting, setShippingChargeSetting] = useState<number | null>(null);
+  const [shippingIndia, setShippingIndia] = useState<number>(200);
+  const [shippingInternational, setShippingInternational] = useState<number>(2500);
 
   useEffect(() => {
     getDoc(doc(db, 'settings', 'global')).then((snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        if (typeof data.shipping_charge === 'number') {
-          setShippingChargeSetting(data.shipping_charge);
+        if (typeof data.shipping_charge_india === 'number') {
+          setShippingIndia(data.shipping_charge_india);
+        } else if (typeof data.shipping_charge === 'number') {
+          setShippingIndia(data.shipping_charge);
+        }
+        if (typeof data.shipping_charge_international === 'number') {
+          setShippingInternational(data.shipping_charge_international);
         }
       }
     }).catch((err) => console.error(err));
@@ -33,6 +39,7 @@ export function CartView() {
 
   const isInternational = currentCurrency !== 'INR';
   const hasError = isInternational && Object.keys(rates).length === 0;
+  const hasPhysical = items.some((i) => i.type === 'physical');
 
   const convertedSubtotal = items.reduce((acc, item) => {
     const itemPrice = isInternational
@@ -41,7 +48,10 @@ export function CartView() {
     return acc + itemPrice * item.quantity;
   }, 0);
 
-  const baseShippingInr = shippingChargeSetting || 0;
+  const baseShippingInr = hasPhysical
+    ? (isInternational ? shippingInternational : shippingIndia)
+    : 0;
+
   const convertedShipping = baseShippingInr > 0
     ? (isInternational ? convertInrToCurrency(baseShippingInr, exchangeRate || 0, currentCurrency) : baseShippingInr)
     : 0;

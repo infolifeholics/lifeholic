@@ -30,6 +30,8 @@ type AdminSettings = {
   google_meet_link?: string;
   usd_to_inr_rate?: number;
   shipping_charge?: number;
+  shipping_charge_india?: number;
+  shipping_charge_international?: number;
   gst_percentage?: number;
 };
 
@@ -483,20 +485,37 @@ export function AdminSettingsPanel() {
                     </div>
                   </div>
                 </div>
-                <div>
-                  <Label>Product Shipping Charge (₹)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Enter shipping charge in INR"
-                    value={globalSettings.shipping_charge !== undefined && globalSettings.shipping_charge !== null ? globalSettings.shipping_charge : ''}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      setGlobalSettings({ ...globalSettings, shipping_charge: isNaN(val) ? undefined : val });
-                    }}
-                    className="mt-1.5 rounded-xl"
-                  />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label>India Product Shipping — Per Order (₹)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Default: 200"
+                      value={globalSettings.shipping_charge_india !== undefined && globalSettings.shipping_charge_india !== null ? globalSettings.shipping_charge_india : (globalSettings.shipping_charge ?? 200)}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setGlobalSettings({ ...globalSettings, shipping_charge_india: isNaN(val) ? undefined : val });
+                      }}
+                      className="mt-1.5 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <Label>International Product Shipping — Per Order (₹)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Default: 2500"
+                      value={globalSettings.shipping_charge_international !== undefined && globalSettings.shipping_charge_international !== null ? globalSettings.shipping_charge_international : 2500}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setGlobalSettings({ ...globalSettings, shipping_charge_international: isNaN(val) ? undefined : val });
+                      }}
+                      className="mt-1.5 rounded-xl"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

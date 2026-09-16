@@ -234,9 +234,13 @@ export type Order = {
     type?: 'digital' | 'physical';
   }>;
   subtotal: number;
+  subtotal_inr?: number;
   discount: number;
   shipping: number;
+  shipping_inr?: number;
   total: number;
+  total_inr?: number;
+  base_amount_inr?: number;
   currency: string;
   status: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'refunded';
   payment_provider: string | null;
