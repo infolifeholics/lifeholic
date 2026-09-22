@@ -149,6 +149,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               } catch (err) {
                 console.error('Failed to trigger welcome notification via API:', err);
               }
+              try {
+                fetch('/api/sync/user', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(newProfile),
+                });
+              } catch (err) {
+                console.error('Failed to trigger user Google Sheets sync via API:', err);
+              }
             } else {
               const data = docSnap.data() as Profile;
               if (!data.member_id) {
@@ -241,6 +250,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
             await setDoc(docRef, newProfile);
             setProfile(newProfile);
+            try {
+              fetch('/api/sync/user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newProfile),
+              });
+            } catch (err) {
+              console.error('Failed to trigger user Google Sheets sync on signup:', err);
+            }
             try {
               fetch('/api/auth/welcome', {
                 method: 'POST',

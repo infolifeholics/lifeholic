@@ -178,6 +178,33 @@ export async function POST(req: Request) {
       console.error('[Shop Notification Trigger Error]:', err);
     }
 
+    // Trigger Google Sheets Order Sync asynchronously
+    try {
+      const { syncOrderToGoogleSheet } = await import('@/lib/google-sheets');
+      await syncOrderToGoogleSheet({
+        id: order_id,
+        number: mergedOrder.number,
+        user_id: mergedOrder.user_id,
+        full_name: mergedOrder.full_name,
+        email: mergedOrder.email,
+        phone: mergedOrder.phone,
+        items: mergedOrder.items,
+        subtotal: mergedOrder.subtotal,
+        shipping: mergedOrder.shipping,
+        total: mergedOrder.total,
+        currency: mergedOrder.currency,
+        payment_status: mergedOrder.payment_status,
+        status: mergedOrder.status,
+        order_status: mergedOrder.order_status,
+        payment_ref: mergedOrder.payment_ref,
+        created_at: mergedOrder.created_at,
+        updated_at: mergedOrder.updated_at,
+        address: mergedOrder.address,
+      });
+    } catch (gsErr) {
+      console.error('[VerifyPayment] Google Sheets sync error (non-fatal):', gsErr);
+    }
+
     // Increment coupon usage if a code was used
     if (o.coupon_code) {
       try {

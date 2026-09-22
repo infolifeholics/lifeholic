@@ -485,6 +485,25 @@ export function AccountDashboard() {
         { merge: true }
       );
       await refreshProfile();
+      try {
+        fetch('/api/sync/user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: user!.id,
+            full_name: fullName,
+            email: user!.email,
+            phone,
+            country,
+            city,
+            address,
+            bio,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to sync updated profile to Google Sheets:', err);
+      }
       toast.success('Personal Information updated.');
       setShowSettingsModal(false);
       setIsEditingProfile(false);
