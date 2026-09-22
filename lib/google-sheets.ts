@@ -13,10 +13,15 @@ function getGoogleSheetsClient() {
     return null;
   }
 
-  // Handle escaped newlines in private key
-  if (privateKey.includes('\\n')) {
-    privateKey = privateKey.replace(/\\n/g, '\n');
+  // Safely clean and format private key
+  privateKey = privateKey.trim();
+  if (
+    (privateKey.startsWith('"') && privateKey.endsWith('"')) ||
+    (privateKey.startsWith("'") && privateKey.endsWith("'"))
+  ) {
+    privateKey = privateKey.slice(1, -1);
   }
+  privateKey = privateKey.replace(/\\n/g, '\n');
 
   const auth = new google.auth.JWT({
     email: clientEmail,
@@ -63,23 +68,76 @@ function formatDate(dateInput?: string | Date | number | null): { dateStr: strin
   return { dateStr, timeStr, fullFormatted };
 }
 
-// Check and initialize headers for the sheets if empty
+// Check and initialize headers/tabs for the sheets if missing
 let initializedSheets = false;
 async function ensureHeaders(sheets: any) {
   if (initializedSheets) return;
   try {
     const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
-    const sheetTitles = (meta.data.sheets || []).map((s: any) => s.properties?.title);
+    const existingSheets = meta.data.sheets || [];
+    const sheetTitles = existingSheets.map((s: any) => s.properties?.title);
 
-    // If first 3 sheet names differ, we work with tab index or sheet names
+    const batchRequests: any[] = [];
+
+    // 1. Rename Sheet1 to USERS_SHEET if USERS_SHEET doesn't exist and Sheet1 exists
+    const hasUsersSheet = sheetTitles.includes(USERS_SHEET);
+    const sheet1Obj = existingSheets.find((s: any) => s.properties?.title === 'Sheet1');
+
+    if (!hasUsersSheet && sheet1Obj) {
+      batchRequests.push({
+        updateSheetProperties: {
+          properties: {
+            sheetId: sheet1Obj.properties.sheetId,
+            title: USERS_SHEET,
+          },
+          fields: 'title',
+        },
+      });
+      sheetTitles[sheetTitles.indexOf('Sheet1')] = USERS_SHEET;
+    } else if (!hasUsersSheet) {
+      batchRequests.push({
+        addSheet: {
+          properties: { title: USERS_SHEET },
+        },
+      });
+      sheetTitles.push(USERS_SHEET);
+    }
+
+    // 2. Ensure ORDERS_SHEET exists
+    if (!sheetTitles.includes(ORDERS_SHEET)) {
+      batchRequests.push({
+        addSheet: {
+          properties: { title: ORDERS_SHEET },
+        },
+      });
+      sheetTitles.push(ORDERS_SHEET);
+    }
+
+    // 3. Ensure CART_SHEET exists
+    if (!sheetTitles.includes(CART_SHEET)) {
+      batchRequests.push({
+        addSheet: {
+          properties: { title: CART_SHEET },
+        },
+      });
+      sheetTitles.push(CART_SHEET);
+    }
+
+    if (batchRequests.length > 0) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: { requests: batchRequests },
+      });
+    }
+
+    // 4. Ensure headers for each tab
     const targetSheets = [
-      { name: sheetTitles[0] || USERS_SHEET, headers: ['User ID', 'Name', 'Email', 'Phone', 'Country', 'Currency', 'Profile Data', 'Created At', 'Updated At', 'Location', 'Last Activity'] },
-      { name: sheetTitles[1] || ORDERS_SHEET, headers: ['Order ID', 'User ID', 'Customer Name', 'Email', 'Phone', 'Product(s)', 'Quantity', 'Subtotal', 'Shipping', 'Total', 'Currency', 'Payment Status', 'Order Status', 'Razorpay Payment ID', 'Created At', 'Updated At', 'Location'] },
-      { name: sheetTitles[2] || CART_SHEET, headers: ['User ID', 'Customer Name', 'Email', 'Product ID', 'Product Name', 'Quantity', 'Unit Price', 'Currency', 'Cart Total', 'Added At', 'Updated At', 'Location'] },
+      { name: USERS_SHEET, headers: ['User ID', 'Name', 'Email', 'Phone', 'Country', 'Currency', 'Profile Data', 'Created At', 'Updated At', 'Location', 'Last Activity'] },
+      { name: ORDERS_SHEET, headers: ['Order ID', 'User ID', 'Customer Name', 'Email', 'Phone', 'Product(s)', 'Quantity', 'Subtotal', 'Shipping', 'Total', 'Currency', 'Payment Status', 'Order Status', 'Razorpay Payment ID', 'Created At', 'Updated At', 'Location'] },
+      { name: CART_SHEET, headers: ['User ID', 'Customer Name', 'Email', 'Product ID', 'Product Name', 'Quantity', 'Unit Price', 'Currency', 'Cart Total', 'Added At', 'Updated At', 'Location'] },
     ];
 
     for (const sheetDef of targetSheets) {
-      if (!sheetDef.name) continue;
       const res = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: `'${sheetDef.name}'!A1:Z1`,
@@ -96,7 +154,7 @@ async function ensureHeaders(sheets: any) {
     }
     initializedSheets = true;
   } catch (err) {
-    console.error('[GoogleSheets] Error ensuring headers:', err);
+    console.error('[GoogleSheets] Error ensuring headers and tabs:', err);
   }
 }
 
