@@ -588,3 +588,57 @@ div.admin-theme-wrapper {
   color: #ffffff !important;
   border-color: rgba(255, 255, 255, 0.15) !important;
 }
+
+/* Workshop Description HTML Formatting */
+.workshop-description-container p {
+  margin-bottom: 1rem;
+  line-height: 1.7;
+}
+
+.workshop-description-container p:last-child {
+  margin-bottom: 0;
+}
+
+.workshop-description-container h1,
+.workshop-description-container h2,
+.workshop-description-container h3,
+.workshop-description-container h4 {
+  font-weight: 600;
+  color: #ffffff;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.workshop-description-container h1 { font-size: 1.5rem; }
+.workshop-description-container h2 { font-size: 1.35rem; }
+.workshop-description-container h3 { font-size: 1.2rem; }
+.workshop-description-container h4 { font-size: 1.05rem; }
+
+.workshop-description-container ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.workshop-description-container ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.workshop-description-container li {
+  margin-bottom: 0.35rem;
+  line-height: 1.6;
+}
+
+.workshop-description-container strong {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.workshop-description-container em {
+  font-style: italic;
+}

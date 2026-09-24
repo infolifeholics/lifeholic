@@ -143,7 +143,7 @@ export default function WorkshopDetailsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: couponCode,
-          amount: ws?.offer_expiry && new Date().toISOString() <= ws.offer_expiry && ws.early_bird_price_inr ? ws.early_bird_price_inr : (ws?.price_inr || 0),
+          amount: ws?.offer_expiry && new Date().toISOString() <= ws.offer_expiry && ws.early_bird_price_inr && ws.early_bird_price_inr > 0 ? ws.early_bird_price_inr : (ws?.price_inr || 0),
           context: 'workshops',
         }),
       });
@@ -215,12 +215,18 @@ export default function WorkshopDetailsPage() {
   }
 
   const left = Math.max(0, (ws.seats_total || 0) - (ws.seats_booked || 0));
+  const hasSeatsConfigured = typeof ws.seats_total === 'number' && ws.seats_total > 0;
   const todayStr = new Date().toLocaleDateString('en-CA');
   const isCompleted = ws.status === 'completed' || ws.status === 'cancelled' || (ws.date && (ws.end_date || ws.date) < todayStr);
   const isUpcoming = !isCompleted;
 
   const nowStr = new Date().toISOString();
-  const isEarlyBirdActive = !!(ws.offer_expiry && nowStr <= ws.offer_expiry);
+  const isEarlyBirdActive = !!(
+    ws.offer_expiry &&
+    nowStr <= ws.offer_expiry &&
+    ws.early_bird_price_inr !== undefined &&
+    ws.early_bird_price_inr > 0
+  );
 
   const isInternational = currency !== 'INR';
   const isLoadingRates = isInternational && Object.keys(rates).length === 0 && currencyLoading;
@@ -661,10 +667,12 @@ export default function WorkshopDetailsPage() {
 
               {isUpcoming ? (
                 <>
-                  <div className="border-t border-border/40 pt-4 flex justify-between items-center text-xs">
-                    <span className="text-muted-foreground">Availability</span>
-                    <span className="font-semibold text-foreground">{left} seats left</span>
-                  </div>
+                  {hasSeatsConfigured && (
+                    <div className="border-t border-border/40 pt-4 flex justify-between items-center text-xs">
+                      <span className="text-muted-foreground">Availability</span>
+                      <span className="font-semibold text-foreground">{left} seats left</span>
+                    </div>
+                  )}
 
                   {isRegistered && registrationId ? (
                     <div className="bg-gold/10 border border-gold/30 rounded-2xl p-4 text-center space-y-3">
