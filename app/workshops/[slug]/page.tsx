@@ -785,7 +785,7 @@ export default function WorkshopDetailsPage() {
                         )}
                         <div className="flex justify-between border-t border-border/20 pt-1.5 font-bold text-xs">
                           <span>Total Payable:</span>
-                          <span className="text-gold">
+                          <span className="text-black">
                             {formatPrice(
                               displayBasePrice - (isInternational ? convertInrToCurrency(discount, exchangeRate || 0, currency) : discount),
                               currency
