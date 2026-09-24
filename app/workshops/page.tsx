@@ -78,7 +78,7 @@ export default function WorkshopsPage() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
 
         {/* Header */}
-        <div 
+        <div
           className="text-center max-w-3xl mx-auto space-y-4 rounded-[2rem] border border-white/10 backdrop-blur-md p-8 text-white/95"
           style={{ backgroundColor: 'rgba(18, 15, 14, 0.75)' }}
         >
@@ -93,7 +93,7 @@ export default function WorkshopsPage() {
 
         {/* Tab selection */}
         <div className="flex justify-center border-b border-white/10 pb-px">
-          <div 
+          <div
             className="flex flex-wrap p-1 rounded-full border border-white/10 items-center justify-center gap-1.5 backdrop-blur-md"
             style={{ backgroundColor: 'rgba(18, 15, 14, 0.75)' }}
           >
@@ -219,7 +219,7 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
 
         <div className="flex justify-between items-center pt-1">
           <div>
-            <p className="text-[9px] text-muted-foreground uppercase">Exchange</p>
+            <p className="text-[9px] text-muted-foreground uppercase">Energy Exchange </p>
             <p className="text-sm font-bold text-foreground">{formatPrice(w.price_inr, 'INR')}</p>
           </div>
           <Link href={`/workshops/${w.slug}`}>

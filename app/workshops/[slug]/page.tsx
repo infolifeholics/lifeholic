@@ -12,8 +12,8 @@ import { convertInrToCurrency, getCurrencyForCountryCode, toRazorpayAmount } fro
 import { getCountryByName } from '@/lib/countries';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { toast } from 'sonner';
-import { 
-  Loader2, CalendarDays, Clock, MapPin, Sparkles, CheckCircle2, 
+import {
+  Loader2, CalendarDays, Clock, MapPin, Sparkles, CheckCircle2,
   ChevronRight, User, HelpCircle, FileText, Lock, Download, Star, Play, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkshopFaq } from '@/components/shop/workshop-faq';
 
+import { formatWorkshopDescription } from '@/lib/markdown';
 import { useParams } from 'next/navigation';
 import Script from 'next/script';
 
@@ -42,7 +43,7 @@ export default function WorkshopDetailsPage() {
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('India');
   const [notes, setNotes] = useState('');
-  
+
   const [paying, setPaying] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
@@ -79,7 +80,7 @@ export default function WorkshopDetailsPage() {
         getDocs(collection(db, 'workshops')).then((wsSnap) => {
           const allList = wsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Workshop);
           const nowStr = new Date().toISOString().split('T')[0];
-          
+
           const eligible = allList.filter(item => {
             if (item.id === docData.id) return false;
             if (item.status !== 'published') return false;
@@ -238,8 +239,8 @@ export default function WorkshopDetailsPage() {
 
   const earlyBirdPrice = isEarlyBirdActive
     ? (isInternational
-        ? convertInrToCurrency(ws.early_bird_price_inr || 0, exchangeRate || 0, currency)
-        : (ws.early_bird_price_inr || 0))
+      ? convertInrToCurrency(ws.early_bird_price_inr || 0, exchangeRate || 0, currency)
+      : (ws.early_bird_price_inr || 0))
     : null;
 
   const displayBasePrice = earlyBirdPrice !== null ? earlyBirdPrice : originalPrice;
@@ -367,7 +368,7 @@ export default function WorkshopDetailsPage() {
     <div className="min-h-screen bg-background-2/30 pt-32 sm:pt-40 pb-16 sm:pb-24 text-left">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
-        
+
         {/* Hero banner — 4:3 ratio */}
         <div className="relative rounded-3xl overflow-hidden aspect-[4/3] max-w-2xl mx-auto border border-border/40 shadow-soft">
           <img src={ws.image} alt={ws.title} className="h-full w-full object-cover" />
@@ -381,7 +382,7 @@ export default function WorkshopDetailsPage() {
             </div>
             {!isCompleted && (
               <div className="bg-card/90 backdrop-blur px-4 py-3 rounded-2xl border border-border/40 text-xs shadow-soft shrink-0">
-                <p className="text-muted-foreground">{isEarlyBirdActive ? '⏳ Early Bird Price' : 'Exchange'}</p>
+                <p className="text-muted-foreground">{isEarlyBirdActive ? '⏳ Early Bird Price' : 'Energy Exchange'}</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <p className="text-lg font-bold text-foreground">
                     {formatPrice(displayBasePrice || 0, currency)}
@@ -399,19 +400,19 @@ export default function WorkshopDetailsPage() {
 
         {/* Content Columns */}
         <div className="grid gap-12 lg:grid-cols-12">
-          
+
           {/* Details */}
           <div className="lg:col-span-8 space-y-10">
-            
+
             {/* Description */}
-            <div 
+            <div
               className="space-y-4 rounded-[2rem] border border-white/10 backdrop-blur-md p-6 sm:p-8 text-white/95"
               style={{ backgroundColor: 'rgba(18, 15, 14, 0.75)' }}
             >
               <h2 className="font-display text-xl font-semibold text-white">About this Experience</h2>
-              <div 
+              <div
                 className="text-sm leading-relaxed text-white/90 font-medium space-y-4 workshop-description-container"
-                dangerouslySetInnerHTML={{ __html: ws.description }}
+                dangerouslySetInnerHTML={{ __html: formatWorkshopDescription(ws.description || '') }}
               />
             </div>
 
@@ -426,8 +427,8 @@ export default function WorkshopDetailsPage() {
                     const url = typeof item === 'string' ? item : (item as any).url;
                     const caption = typeof item === 'string' ? '' : (item as any).caption || '';
                     return (
-                      <div 
-                        key={idx} 
+                      <div
+                        key={idx}
                         onClick={() => setActivePhotoIndex(idx)}
                         className="break-inside-avoid rounded-2xl overflow-hidden border border-border cursor-pointer relative group"
                       >
@@ -456,10 +457,10 @@ export default function WorkshopDetailsPage() {
                     return (
                       <div key={idx} className="aspect-video rounded-3xl overflow-hidden border border-border bg-card">
                         {isEmbed ? (
-                          <iframe 
-                            src={vidUrl.replace('watch?v=', 'embed/')} 
-                            className="h-full w-full" 
-                            allowFullScreen 
+                          <iframe
+                            src={vidUrl.replace('watch?v=', 'embed/')}
+                            className="h-full w-full"
+                            allowFullScreen
                           />
                         ) : (
                           <video src={vidUrl} controls className="h-full w-full object-cover" />
@@ -677,7 +678,7 @@ export default function WorkshopDetailsPage() {
                       </Link>
                     </div>
                   ) : !registering ? (
-                    <Button 
+                    <Button
                       onClick={handleRegisterNowClick}
                       disabled={left === 0}
                       className="w-full rounded-full py-6 text-base font-semibold bg-gold hover:bg-gold-hover text-gold-foreground"
@@ -725,26 +726,26 @@ export default function WorkshopDetailsPage() {
                       <div className="pt-2 border-t border-border/40">
                         <Label className="text-xs">Promo Coupon</Label>
                         <div className="flex gap-2 mt-1">
-                          <Input 
-                            placeholder="e.g. EARLY10" 
-                            value={couponCode} 
-                            onChange={(e) => setCouponCode(e.target.value)} 
+                          <Input
+                            placeholder="e.g. EARLY10"
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value)}
                             disabled={!!appliedCoupon || applying}
-                            className="h-9 rounded-xl uppercase font-mono font-semibold" 
+                            className="h-9 rounded-xl uppercase font-mono font-semibold"
                           />
                           {appliedCoupon ? (
-                            <Button 
-                              type="button" 
-                              variant="outline" 
+                            <Button
+                              type="button"
+                              variant="outline"
                               onClick={handleRemoveCoupon}
                               className="h-9 rounded-xl text-xs px-3 hover:text-destructive hover:bg-destructive/10"
                             >
                               Remove
                             </Button>
                           ) : (
-                            <Button 
-                              type="button" 
-                              disabled={applying || !couponCode} 
+                            <Button
+                              type="button"
+                              disabled={applying || !couponCode}
                               onClick={handleApplyCoupon}
                               className="h-9 rounded-xl text-xs px-3 bg-gold hover:bg-gold-hover text-gold-foreground font-semibold"
                             >
@@ -774,9 +775,9 @@ export default function WorkshopDetailsPage() {
                             <span>Promo Discount:</span>
                             <span>
                               -{formatPrice(
-                                isInternational 
-                                  ? convertInrToCurrency(discount, exchangeRate || 0, currency) 
-                                  : discount, 
+                                isInternational
+                                  ? convertInrToCurrency(discount, exchangeRate || 0, currency)
+                                  : discount,
                                 currency
                               )}
                             </span>
@@ -786,7 +787,7 @@ export default function WorkshopDetailsPage() {
                           <span>Total Payable:</span>
                           <span className="text-gold">
                             {formatPrice(
-                              displayBasePrice - (isInternational ? convertInrToCurrency(discount, exchangeRate || 0, currency) : discount), 
+                              displayBasePrice - (isInternational ? convertInrToCurrency(discount, exchangeRate || 0, currency) : discount),
                               currency
                             )}
                           </span>
@@ -804,12 +805,12 @@ export default function WorkshopDetailsPage() {
                         </div>
                       )}
 
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         disabled={paying || isLoadingRates || hasError}
                         className="w-full rounded-full py-6 bg-gold hover:bg-gold-hover text-gold-foreground font-semibold mt-2"
                       >
-                        {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Confirm &amp; Pay'}
+                        {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Confirm & Pay'}
                       </Button>
                     </form>
                   )}
@@ -829,27 +830,27 @@ export default function WorkshopDetailsPage() {
         </div>
       </div>
       <WorkshopFaq />
-      <AuthModal 
-        isOpen={authOpen} 
-        onClose={() => setAuthOpen(false)} 
+      <AuthModal
+        isOpen={authOpen}
+        onClose={() => setAuthOpen(false)}
         onSuccess={() => {
           setAuthOpen(false);
           setRegistering(true);
-        }} 
+        }}
       />
 
       {activePhotoIndex !== null && ws.gallery && (
         <div className="fixed inset-0 z-50 bg-black/95 flex flex-col justify-center items-center p-4">
-          <button 
+          <button
             onClick={() => setActivePhotoIndex(null)}
             className="absolute top-4 right-4 text-white hover:text-gold p-2 transition-colors duration-200"
           >
             <X className="h-6 w-6" />
           </button>
-          
+
           <div className="relative max-w-4xl max-h-[80vh] flex items-center justify-center">
             {activePhotoIndex > 0 && (
-              <button 
+              <button
                 onClick={() => setActivePhotoIndex(activePhotoIndex - 1)}
                 className="absolute -left-12 bg-black/50 text-white hover:text-gold p-3 rounded-full z-10 text-xl font-bold font-mono transition-all duration-200"
               >
@@ -870,7 +871,7 @@ export default function WorkshopDetailsPage() {
             })()}
 
             {activePhotoIndex < ws.gallery.length - 1 && (
-              <button 
+              <button
                 onClick={() => setActivePhotoIndex(activePhotoIndex + 1)}
                 className="absolute -right-12 bg-black/50 text-white hover:text-gold p-3 rounded-full z-10 text-xl font-bold font-mono transition-all duration-200"
               >

@@ -102,3 +102,103 @@ export function renderMarkdown(md: string): string {
   closeList();
   return out.join('\n');
 }
+
+/**
+ * Smart formatter for workshop descriptions.
+ * - Preserves existing HTML content as-is (if HTML tags like <p>, <ul>, <li>, <h3> exist).
+ * - For plain text / Markdown-like input:
+ *   - Safely escapes HTML special characters to prevent XSS.
+ *   - Converts headings (#, ##, ###, ####).
+ *   - Converts bullet lists (*, -, •).
+ *   - Converts numbered lists (1., 2., etc.).
+ *   - Converts **bold** and *italic* emphasis.
+ *   - Wraps text paragraphs in <p> tags with proper spacing.
+ */
+export function formatWorkshopDescription(input: string): string {
+  if (!input) return '';
+
+  // 1. If content contains actual HTML tags, preserve as trusted HTML
+  const hasHtmlTags = /<\/?(p|div|ul|ol|li|h[1-6]|br|blockquote|strong|em|span|a)\b[^>]*>/i.test(input);
+  if (hasHtmlTags) {
+    return input;
+  }
+
+  // 2. Escape HTML special characters for safety before parsing plain text
+  const escapeText = (s: string): string => {
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
+  const inlineFormat = (s: string): string => {
+    return escapeText(s)
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
+      .replace(/_([^_]+)_/g, '<em>$1</em>');
+  };
+
+  const lines = input.split(/\r?\n/);
+  const out: string[] = [];
+  let inList: 'ul' | 'ol' | null = null;
+
+  const closeList = () => {
+    if (inList) {
+      out.push(inList === 'ul' ? '</ul>' : '</ol>');
+      inList = null;
+    }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      closeList();
+      continue;
+    }
+
+    // Unordered list item: starts with *, -, or •
+    const ulMatch = /^[*-•]\s+(.*)$/.exec(trimmed);
+    if (ulMatch) {
+      if (inList !== 'ul') {
+        closeList();
+        out.push('<ul>');
+        inList = 'ul';
+      }
+      out.push(`<li>${inlineFormat(ulMatch[1])}</li>`);
+      continue;
+    }
+
+    // Ordered list item: starts with 1., 2., 1), 2)
+    const olMatch = /^\d+[\.\)]\s+(.*)$/.exec(trimmed);
+    if (olMatch) {
+      if (inList !== 'ol') {
+        closeList();
+        out.push('<ol>');
+        inList = 'ol';
+      }
+      out.push(`<li>${inlineFormat(olMatch[1])}</li>`);
+      continue;
+    }
+
+    closeList();
+
+    // Headings: starts with #, ##, ###, or ####
+    const hMatch = /^(#{1,4})\s+(.*)$/.exec(trimmed);
+    if (hMatch) {
+      const level = hMatch[1].length;
+      out.push(`<h${level}>${inlineFormat(hMatch[2])}</h${level}>`);
+      continue;
+    }
+
+    // Paragraph
+    out.push(`<p>${inlineFormat(trimmed)}</p>`);
+  }
+
+  closeList();
+  return out.join('\n');
+}
+
