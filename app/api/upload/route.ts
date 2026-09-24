@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
-import { promises as fs } from 'fs';
-import path from 'path';
-import os from 'os';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -18,57 +15,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error('Cloudinary environment variables are missing');
+      return NextResponse.json({ error: 'Cloudinary storage is not configured properly' }, { status: 500 });
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Save to public/uploads directory (stored in Git repository)
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    await fs.mkdir(uploadsDir, { recursive: true });
-
-    const ext = file.name ? path.extname(file.name) : '';
-    const safeName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
-    const filePath = path.join(uploadsDir, safeName);
-
-    await fs.writeFile(filePath, buffer);
-    const gitHubLocalUrl = `/uploads/${safeName}`;
-
-    // Try uploading to Cloudinary if account active
-    try {
-      if (process.env.CLOUDINARY_CLOUD_NAME) {
-        const result = await new Promise<any>((resolve, reject) => {
-          const uploadStream = cloudinary.uploader.upload_stream(
-            {
-              folder: 'thelifeholics',
-              resource_type: 'auto',
-            },
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            }
-          );
-          uploadStream.end(buffer);
-        });
-
-        if (result && result.secure_url) {
-          return NextResponse.json({
-            url: result.secure_url,
-            public_id: result.public_id,
-            fallbackUrl: gitHubLocalUrl,
-          });
+    // Stream upload directly from memory buffer to Cloudinary
+    const result = await new Promise<any>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'thelifeholics',
+          resource_type: 'auto',
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
         }
-      }
-    } catch (cloudinaryError: any) {
-      console.warn('Cloudinary upload limit reached or failed, falling back to GitHub/Local path:', cloudinaryError.message || cloudinaryError);
+      );
+      uploadStream.end(buffer);
+    });
+
+    if (result && result.secure_url) {
+      return NextResponse.json({
+        url: result.secure_url,
+        public_id: result.public_id,
+      });
     }
 
-    // Return GitHub repo local URL if Cloudinary limit reached
-    return NextResponse.json({
-      url: gitHubLocalUrl,
-      public_id: safeName,
-    });
+    return NextResponse.json({ error: 'Failed to retrieve uploaded image URL' }, { status: 500 });
   } catch (error: any) {
-    console.error('Upload error:', error);
+    console.error('Cloudinary Upload error:', error);
     return NextResponse.json({ error: error.message || 'Upload failed' }, { status: 500 });
   }
 }
-
