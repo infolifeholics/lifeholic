@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { sendWhatsAppMessage } from '@/lib/notifications/whatsapp';
 
 // Setup dynamic SMTP Transporter
@@ -278,42 +278,79 @@ export async function triggerWorkshopNotification(
   protocol: string
 ) {
   try {
+    // Check Idempotency on workshopRegistrations document to prevent duplicate notifications
+    const regRef = doc(db, 'workshopRegistrations', registrationId);
+    const regSnap = await getDoc(regRef);
+    if (regSnap.exists() && regSnap.data().notified_email) {
+      console.log(`[Notifications] Workshop registration ${registrationId} already notified. Skipping duplicate notification.`);
+      return;
+    }
+
     const wsRef = doc(db, 'workshops', regData.workshop_id);
     const wsSnap = await getDoc(wsRef);
     const ws = wsSnap.exists() ? wsSnap.data() : {};
 
     const ticketUrl = `${protocol}://${host}/workshops/${registrationId}/ticket?name=${encodeURIComponent(regData.client_name || '')}&email=${encodeURIComponent(regData.client_email || '')}&phone=${encodeURIComponent(regData.client_phone || '')}&workshop=${encodeURIComponent(regData.workshop_title || '')}`;
 
-    const emailSubject = `Workshop Registration Confirmed: ${regData.workshop_title}`;
-    const emailBody = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px;">
+    // 1. USER EMAIL TEMPLATE
+    const userEmailSubject = `Workshop Registration Confirmed: ${regData.workshop_title}`;
+    const userEmailBody = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px; background-color: #ffffff;">
         <h2 style="color: #c5a880; margin-bottom: 20px;">Workshop Registration Confirmed!</h2>
-        <p>Hello ${regData.client_name},</p>
+        <p>Hello ${regData.client_name || 'Participant'},</p>
         <p>Your registration for the workshop <strong>${regData.workshop_title}</strong> is confirmed. Here are the details:</p>
         <div style="background-color: #fdfaf6; border-left: 4px solid #c5a880; padding: 15px; margin: 20px 0; border-radius: 4px;">
-          <p><strong>Registration ID:</strong> ${regData.id || registrationId}</p>
-          <p><strong>Date:</strong> ${ws.date || 'N/A'}</p>
-          <p><strong>Time:</strong> ${ws.start_time || 'N/A'} - ${ws.end_time || 'N/A'} (${ws.timezone || 'IST'})</p>
-          ${ws.meeting_link ? `<p><strong>Meeting Link:</strong> <a href="${ws.meeting_link}" style="color: #c5a880;">${ws.meeting_link}</a></p>` : ''}
+          <p style="margin: 4px 0;"><strong>Registration ID:</strong> ${regData.id || registrationId}</p>
+          <p style="margin: 4px 0;"><strong>Date:</strong> ${ws.date || 'N/A'}</p>
+          <p style="margin: 4px 0;"><strong>Time:</strong> ${ws.start_time || 'N/A'} - ${ws.end_time || 'N/A'} (${ws.timezone || 'IST'})</p>
+          ${ws.meeting_link ? `<p style="margin: 4px 0;"><strong>Meeting Link:</strong> <a href="${ws.meeting_link}" style="color: #c5a880;">${ws.meeting_link}</a></p>` : ''}
         </div>
         <p>You can view and download your entry ticket here:</p>
         <a href="${ticketUrl}" style="background-color: #c5a880; color: white; padding: 10px 20px; text-decoration: none; border-radius: 30px; font-weight: bold; display: inline-block; margin-top: 10px;">Download Ticket</a>
       </div>
     `;
 
-    // 1. Send Customer Email
-    await sendEmailNotification({
-      to: regData.client_email,
-      subject: emailSubject,
-      html: emailBody,
-    });
+    // Send Customer Email (EMAIL #1)
+    if (regData.client_email) {
+      await sendEmailNotification({
+        to: regData.client_email,
+        subject: userEmailSubject,
+        html: userEmailBody,
+      });
+    }
 
-    // 2. Send Admin/Owner Email
+    // 2. ADMIN EMAIL TEMPLATE
     const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || 'support@thelifeholics.com';
+    const adminEmailSubject = `New Workshop Registration - ${regData.workshop_title}`;
+    const adminEmailBody = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #c5a880; margin-bottom: 6px;">New Workshop Registration</h2>
+        <p style="color: #666; font-size: 14px; margin-top: 0;">A new participant has registered for a workshop.</p>
+
+        <div style="background-color: #fdfaf6; border-left: 4px solid #c5a880; padding: 16px; margin: 20px 0; border-radius: 6px;">
+          <h3 style="margin-top: 0; color: #333; font-size: 15px;">Workshop Details</h3>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Workshop:</strong> ${regData.workshop_title}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Date:</strong> ${ws.date || 'N/A'}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Time:</strong> ${ws.start_time || 'N/A'} - ${ws.end_time || 'N/A'} (${ws.timezone || 'IST'})</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Meeting Link:</strong> ${ws.meeting_link ? `<a href="${ws.meeting_link}" style="color: #c5a880;">${ws.meeting_link}</a>` : 'N/A'}</p>
+        </div>
+
+        <div style="background-color: #f8f9fa; border-left: 4px solid #4a5568; padding: 16px; margin: 20px 0; border-radius: 6px;">
+          <h3 style="margin-top: 0; color: #333; font-size: 15px;">Participant Details</h3>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Participant Name:</strong> ${regData.client_name || 'N/A'}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Participant Email:</strong> ${regData.client_email || 'N/A'}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Participant Phone:</strong> ${regData.client_phone || 'N/A'}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Booking / Registration ID:</strong> ${regData.id || registrationId}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Payment Status:</strong> ${regData.payment_status || 'Paid / Confirmed'}</p>
+        </div>
+      </div>
+    `;
+
+    // Send Admin Email (EMAIL #2)
     await sendEmailNotification({
       to: adminEmail,
-      subject: `[ADMIN] ${emailSubject}`,
-      html: emailBody,
+      subject: adminEmailSubject,
+      html: adminEmailBody,
     });
 
     // 3. Send Customer WhatsApp Notification
@@ -326,6 +363,9 @@ export async function triggerWorkshopNotification(
     const ownerPhone = process.env.WASENDER_OWNER_PHONE || '917485001044';
     const ownerMsg = `📌 New Workshop Registration\n\nName: ${regData.client_name}\nPhone: ${regData.client_phone}\nEmail: ${regData.client_email}\nWorkshop: ${regData.workshop_title}\nDate: ${ws.date || 'N/A'}\nTime: ${ws.start_time || 'N/A'} - ${ws.end_time || 'N/A'} (${ws.timezone || 'IST'})\nMeeting Link: ${ws.meeting_link || 'N/A'}\nPayment Status: ${regData.payment_status || 'Paid'}\nBooking/Registration ID: ${regData.id || registrationId}`;
     await sendWhatsAppNotification(ownerPhone, ownerMsg);
+
+    // Mark registration document as notified in Firestore for idempotency
+    await updateDoc(regRef, { notified_email: true }).catch((err) => console.error('[Notifications] Failed to update notified_email flag:', err));
   } catch (err) {
     console.error('[Notifications] Failed to run triggerWorkshopNotification:', err);
   }

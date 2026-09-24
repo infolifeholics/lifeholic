@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { Loader2, Ticket, Printer, Download, Mail, Calendar, Clock, MapPin, User } from 'lucide-react';
+import { Loader2, Ticket, Printer, Download, Mail, Calendar, Clock, MapPin, User, Video, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -138,6 +138,46 @@ export default function TicketPage() {
                 <span>{ws?.address}</span>
               </div>
             </div>
+          </div>
+
+          {/* Online Workshop Access / Google Meet Link */}
+          <div className="py-6 border-b border-border/40 space-y-3">
+            <h4 className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-1.5">
+              <Video className="h-3.5 w-3.5 text-gold" /> Online Workshop Access
+            </h4>
+
+            {ws?.meeting_link ? (
+              <div className="bg-muted/30 p-4 rounded-2xl border border-gold/20 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-medium text-foreground">Meeting Link</p>
+                    <a
+                      href={ws.meeting_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-gold hover:underline break-all block"
+                    >
+                      {ws.meeting_link}
+                    </a>
+                  </div>
+                  <a
+                    href={ws.meeting_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gold hover:bg-gold-hover text-gold-foreground font-semibold text-xs transition-all shadow-soft shrink-0"
+                  >
+                    <span>Join Google Meet</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-xl bg-muted/20 border border-border/40 text-center">
+                <p className="text-xs text-muted-foreground italic">
+                  Meeting link will be shared soon.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="pt-6 space-y-3">
