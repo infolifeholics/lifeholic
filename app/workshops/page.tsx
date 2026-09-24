@@ -217,15 +217,6 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
           </span>
         </div>
 
-        {typeof w.seats_total === 'number' && w.seats_total > 0 && (
-          <div className="space-y-1">
-            <div className="h-1 w-full rounded-full bg-secondary overflow-hidden">
-              <div className="h-full bg-gold" style={{ width: `${pct}%` }} />
-            </div>
-            <p className="text-[10px] text-muted-foreground text-right">{left} seats left</p>
-          </div>
-        )}
-
         <div className="flex justify-between items-center pt-1">
           <div>
             <p className="text-[9px] text-muted-foreground uppercase">Exchange</p>

@@ -667,13 +667,6 @@ export default function WorkshopDetailsPage() {
 
               {isUpcoming ? (
                 <>
-                  {hasSeatsConfigured && (
-                    <div className="border-t border-border/40 pt-4 flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground">Availability</span>
-                      <span className="font-semibold text-foreground">{left} seats left</span>
-                    </div>
-                  )}
-
                   {isRegistered && registrationId ? (
                     <div className="bg-gold/10 border border-gold/30 rounded-2xl p-4 text-center space-y-3">
                       <p className="text-xs font-semibold text-foreground">You are registered for this workshop!</p>
