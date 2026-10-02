@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
-import { convertInrToCurrency, toRazorpayAmount } from '@/lib/currency';
+import { convertInrToCurrency, getEffectivePriceInr, toRazorpayAmount } from '@/lib/currency';
 import { getCountryByName } from '@/lib/countries';
 import { useCurrency } from '@/components/providers/currency-provider';
 import Script from 'next/script';
@@ -95,9 +95,13 @@ export function CheckoutView() {
   const hasError = isInternational && Object.keys(rates).length === 0;
 
   const convertedSubtotal = items.reduce((acc, item) => {
+    const { effectivePrice } = getEffectivePriceInr({
+      price_inr: item.price_inr || item.price,
+      compare_at_inr: item.compare_at_inr,
+    });
     const price = isInternational
-      ? convertInrToCurrency(item.price_inr || item.price, exchangeRate || 0, currentCurrency)
-      : (item.price_inr || item.price);
+      ? convertInrToCurrency(effectivePrice, exchangeRate || 0, currentCurrency)
+      : effectivePrice;
     return acc + price * item.quantity;
   }, 0);
 
@@ -146,11 +150,26 @@ export function CheckoutView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: form.email, full_name: form.full_name, phone: form.phone, address,
-          items: items.map((i) => ({
-            id: i.id, slug: i.slug, name: i.name,
-            price: isInternational ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency) : (i.price_inr || i.price),
-            quantity: i.quantity, image: i.image, type: i.type,
-          })),
+          items: items.map((i) => {
+            const { effectivePrice } = getEffectivePriceInr({
+              price_inr: i.price_inr || i.price,
+              compare_at_inr: i.compare_at_inr,
+            });
+            const unitPrice = isInternational
+              ? convertInrToCurrency(effectivePrice, exchangeRate || 0, currentCurrency)
+              : effectivePrice;
+            return {
+              id: i.id,
+              slug: i.slug,
+              name: i.name,
+              price: unitPrice,
+              price_inr: i.price_inr || i.price,
+              compare_at_inr: i.compare_at_inr || null,
+              quantity: i.quantity,
+              image: i.image,
+              type: i.type,
+            };
+          }),
           subtotal: convertedSubtotal, discount: convertedDiscount, shipping: convertedShipping,
           total, currency: currentCurrency, coupon_code: applied?.code || null, user_id: user?.id || null,
         }),
@@ -316,24 +335,42 @@ export function CheckoutView() {
         <aside className="h-fit rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft lg:sticky lg:top-28">
           <h2 className="font-display text-xl font-medium text-foreground">Order summary</h2>
           <ul className="mt-5 space-y-3">
-            {items.map((i) => (
-              <li key={i.id} className="flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={i.image} alt="" className="h-12 w-12 rounded-xl object-cover" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{i.name}</p>
-                  <p className="text-xs text-muted-foreground">Qty {i.quantity}</p>
-                </div>
-                <span className="text-sm font-medium text-foreground">
-                  {formatPrice(
-                    (isInternational
-                      ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency)
-                      : (i.price_inr || i.price)) * i.quantity,
-                    displayCurrency
-                  )}
-                </span>
-              </li>
-            ))}
+            {items.map((i) => {
+              const { actualPrice, effectivePrice, isOnSale } = getEffectivePriceInr({
+                price_inr: i.price_inr || i.price,
+                compare_at_inr: i.compare_at_inr,
+              });
+              const unitPrimary = isInternational ? convertInrToCurrency(effectivePrice, exchangeRate || 0, currentCurrency) : effectivePrice;
+              const unitActual = isOnSale ? (isInternational ? convertInrToCurrency(actualPrice, exchangeRate || 0, currentCurrency) : actualPrice) : null;
+
+              return (
+                <li key={i.id} className="flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={i.image} alt="" className="h-12 w-12 rounded-xl object-cover" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-sm font-medium text-foreground truncate">{i.name}</p>
+                      {isOnSale && (
+                        <span className="rounded bg-gold/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-gold">
+                          Discounted
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Qty {i.quantity}</p>
+                  </div>
+                  <div className="text-right flex flex-col items-end">
+                    {isOnSale && (
+                      <span className="text-[10px] text-muted-foreground line-through">
+                        {formatPrice((unitActual as number) * i.quantity, displayCurrency)}
+                      </span>
+                    )}
+                    <span className="text-sm font-medium text-foreground">
+                      {formatPrice(unitPrimary * i.quantity, displayCurrency)}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
 
           <div className="mt-5 flex gap-2">

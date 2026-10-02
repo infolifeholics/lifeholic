@@ -7,6 +7,7 @@ import { StarRating } from '@/components/site/star-rating';
 import { formatPrice } from '@/lib/format';
 import { getProductRoute } from '@/lib/routes';
 import { ProductWishlistButton } from '@/components/shop/product-wishlist-button';
+import { getEffectivePriceInr } from '@/lib/currency';
 
 export function HomeProducts({ products }: { products: Product[] }) {
   const list = products.slice(0, 4);
@@ -32,7 +33,7 @@ export function HomeProducts({ products }: { products: Product[] }) {
 
         <Stagger className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4" gap={0.06}>
           {list.map((p) => {
-            const onSale = p.compare_at_inr && p.compare_at_inr > p.price_inr;
+            const { actualPrice, discountedPrice, effectivePrice, isOnSale } = getEffectivePriceInr(p);
             return (
               <StaggerItem key={p.id}>
                 <Link href={getProductRoute(p.slug)} className="group block h-full">
@@ -47,9 +48,9 @@ export function HomeProducts({ products }: { products: Product[] }) {
                       <div className="absolute right-3 top-3">
                         <ProductWishlistButton productId={p.id} />
                       </div>
-                      {onSale && (
+                      {isOnSale && (
                         <span className="absolute left-3 top-3 rounded-full bg-gold px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gold-foreground">
-                          Sale
+                          Discounted
                         </span>
                       )}
                       <span className="absolute bottom-3 left-3 rounded-full glass px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-foreground">
@@ -61,12 +62,18 @@ export function HomeProducts({ products }: { products: Product[] }) {
                         {p.name}
                       </h3>
                       <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{p.tagline}</p>
-                      <div className="mt-4 flex items-center gap-2">
-                        <span className="font-medium text-foreground">{formatPrice(p.price_inr, 'INR')}</span>
-                        {onSale && (
-                          <span className="text-xs text-muted-foreground line-through">
-                            {formatPrice(p.compare_at_inr as number, 'INR')}
-                          </span>
+                      <div className="mt-4 flex items-center gap-2 flex-wrap">
+                        {isOnSale ? (
+                          <>
+                            <span className="text-xs text-muted-foreground line-through">
+                              {formatPrice(actualPrice, 'INR')}
+                            </span>
+                            <span className="font-semibold text-foreground">
+                              {formatPrice(effectivePrice, 'INR')}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="font-medium text-foreground">{formatPrice(actualPrice, 'INR')}</span>
                         )}
                       </div>
                     </div>

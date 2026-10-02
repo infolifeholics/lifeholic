@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ProductWishlistButton } from '@/components/shop/product-wishlist-button';
 import { formatPrice } from '@/lib/format';
-import { convertInrToCurrency } from '@/lib/currency';
+import { convertInrToCurrency, getEffectivePriceInr } from '@/lib/currency';
 import { doc, getDoc } from 'firebase/firestore';
 import { getProductRoute } from '@/lib/routes';
 import { cn } from '@/lib/utils';
@@ -183,13 +183,16 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
               );
             }
 
-            const displayPrice = isInternational
-              ? convertInrToCurrency(p.price_inr, exchangeRate || 0, currentCurrency)
-              : p.price_inr;
-            const displayComparePrice = p.compare_at_inr
-              ? (isInternational ? convertInrToCurrency(p.compare_at_inr, exchangeRate || 0, currentCurrency) : p.compare_at_inr)
+            const { actualPrice, discountedPrice, effectivePrice, isOnSale } = getEffectivePriceInr(p);
+
+            const displayPrimaryPrice = isInternational
+              ? convertInrToCurrency(effectivePrice, exchangeRate || 0, currentCurrency)
+              : effectivePrice;
+
+            const displayActualPrice = isOnSale
+              ? (isInternational ? convertInrToCurrency(actualPrice, exchangeRate || 0, currentCurrency) : actualPrice)
               : null;
-            const onSale = displayComparePrice && displayComparePrice > displayPrice;
+
             return (
               <Link key={p.id} href={getProductRoute(p.slug)} className="group block h-full">
                 <article className="group relative h-full overflow-hidden rounded-3xl border border-border/60 bg-card/60 shadow-soft transition-all duration-500 ease-soft hover:-translate-y-1.5 hover:shadow-float">
@@ -204,9 +207,9 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                       <div className="absolute right-3 top-3">
                         <ProductWishlistButton productId={p.id} />
                       </div>
-                      {onSale && (
-                        <span className="absolute left-3 top-3 rounded-full bg-gold px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gold-foreground">
-                          Sale
+                      {isOnSale && (
+                        <span className="absolute left-3 top-3 rounded-full bg-black px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+                          Discounted
                         </span>
                       )}
                       <span className="absolute bottom-3 left-3 rounded-full glass px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-foreground">
@@ -219,11 +222,20 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
                     <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{p.tagline}</p>
                     <div className="mt-4 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-medium text-foreground">{formatPrice(displayPrice, currentCurrency)}</span>
-                        {onSale && (
-                          <span className="text-xs text-muted-foreground line-through">
-                            {formatPrice(displayComparePrice as number, currentCurrency)}
-                          </span>
+                        {isOnSale ? (
+                          <>
+                            <span className="text-xs text-muted-foreground line-through">
+                              {formatPrice(displayActualPrice as number, currentCurrency)}
+                            </span>
+                            <span className="font-semibold text-foreground">
+                              {formatPrice(displayPrimaryPrice, currentCurrency)}
+                            </span>
+                            <span className="rounded bg-black px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                              Discounted
+                            </span>
+                          </>
+                        ) : (
+                          <span className="font-medium text-foreground">{formatPrice(displayPrimaryPrice, currentCurrency)}</span>
                         )}
                         <span className="text-[10px] text-muted-foreground ml-1">(incl. GST)</span>
                       </div>

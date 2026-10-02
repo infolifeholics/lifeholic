@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/format';
 
 import { toast } from 'sonner';
-import { convertInrToCurrency } from '@/lib/currency';
+import { convertInrToCurrency, getEffectivePriceInr } from '@/lib/currency';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -42,9 +42,13 @@ export function CartView() {
   const hasPhysical = items.some((i) => i.type === 'physical');
 
   const convertedSubtotal = items.reduce((acc, item) => {
+    const { effectivePrice } = getEffectivePriceInr({
+      price_inr: item.price_inr || item.price,
+      compare_at_inr: item.compare_at_inr,
+    });
     const itemPrice = isInternational
-      ? convertInrToCurrency(item.price_inr || item.price, exchangeRate || 0, currentCurrency)
-      : (item.price_inr || item.price);
+      ? convertInrToCurrency(effectivePrice, exchangeRate || 0, currentCurrency)
+      : effectivePrice;
     return acc + itemPrice * item.quantity;
   }, 0);
 
@@ -89,72 +93,90 @@ export function CartView() {
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-4">
-          {items.map((i) => (
-            <div key={i.id} className="flex gap-4 rounded-3xl border border-border/60 bg-card/60 p-4 shadow-soft">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={i.image} alt={i.name} className="h-24 w-24 rounded-2xl object-cover" />
-              <div className="flex flex-1 flex-col">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium text-foreground">{i.name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{i.type}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      remove(i.id);
-                      toast.success(`${i.name} removed from cart`);
-                    }}
-                    aria-label="Remove"
-                    className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="mt-auto flex items-center justify-between">
-                  {i.type === 'physical' ? (
-                    <div className="inline-flex items-center rounded-full border border-border bg-card">
-                      <button
-                        onClick={() => {
-                          if (i.quantity <= 1) {
-                            remove(i.id);
-                            toast.success(`${i.name} removed from cart`);
-                          } else {
-                            setQuantity(i.id, i.quantity - 1);
-                            toast.success(`${i.name} quantity updated`);
-                          }
-                        }}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-l-full hover:bg-secondary"
-                        aria-label="Decrease"
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="w-8 text-center text-sm font-semibold">{i.quantity}</span>
-                      <button
-                        onClick={() => {
-                          setQuantity(i.id, i.quantity + 1);
-                          toast.success(`${i.name} quantity updated`);
-                        }}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-r-full hover:bg-secondary"
-                        aria-label="Increase"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
+          {items.map((i) => {
+            const { actualPrice, effectivePrice, isOnSale } = getEffectivePriceInr({
+              price_inr: i.price_inr || i.price,
+              compare_at_inr: i.compare_at_inr,
+            });
+            const unitPrimary = isInternational ? convertInrToCurrency(effectivePrice, exchangeRate || 0, currentCurrency) : effectivePrice;
+            const unitActual = isOnSale ? (isInternational ? convertInrToCurrency(actualPrice, exchangeRate || 0, currentCurrency) : actualPrice) : null;
+
+            return (
+              <div key={i.id} className="flex gap-4 rounded-3xl border border-border/60 bg-card/60 p-4 shadow-soft">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={i.image} alt={i.name} className="h-24 w-24 rounded-2xl object-cover" />
+                <div className="flex flex-1 flex-col">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-foreground">{i.name}</p>
+                        {isOnSale && (
+                          <span className="rounded bg-gold/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gold">
+                            Discounted
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground capitalize">{i.type}</p>
                     </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Digital · {i.quantity} ×</span>
-                  )}
-                  <span className="font-medium text-foreground">
-                    {formatPrice(
-                      (isInternational
-                        ? convertInrToCurrency(i.price_inr || i.price, exchangeRate || 0, currentCurrency)
-                        : (i.price_inr || i.price)) * i.quantity,
-                      currentCurrency
+                    <button
+                      onClick={() => {
+                        remove(i.id);
+                        toast.success(`${i.name} removed from cart`);
+                      }}
+                      aria-label="Remove"
+                      className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="mt-auto flex items-center justify-between">
+                    {i.type === 'physical' ? (
+                      <div className="inline-flex items-center rounded-full border border-border bg-card">
+                        <button
+                          onClick={() => {
+                            if (i.quantity <= 1) {
+                              remove(i.id);
+                              toast.success(`${i.name} removed from cart`);
+                            } else {
+                              setQuantity(i.id, i.quantity - 1);
+                              toast.success(`${i.name} quantity updated`);
+                            }
+                          }}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-l-full hover:bg-secondary"
+                          aria-label="Decrease"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-semibold">{i.quantity}</span>
+                        <button
+                          onClick={() => {
+                            setQuantity(i.id, i.quantity + 1);
+                            toast.success(`${i.name} quantity updated`);
+                          }}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-r-full hover:bg-secondary"
+                          aria-label="Increase"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Digital · {i.quantity} ×</span>
                     )}
-                  </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {isOnSale && (
+                        <span className="text-xs text-muted-foreground line-through">
+                          {formatPrice((unitActual as number) * i.quantity, currentCurrency)}
+                        </span>
+                      )}
+                      <span className="font-medium text-foreground">
+                        {formatPrice(unitPrimary * i.quantity, currentCurrency)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div className="flex justify-between rounded-2xl px-2 py-1" style={{ backgroundColor: 'rgba(10, 8, 6, 0.75)' }}>
             <Button variant="ghost" onClick={clear} className="rounded-full text-white/80 hover:text-white hover:bg-white/10">
               <Trash2 className="mr-1 h-4 w-4" /> Clear bag

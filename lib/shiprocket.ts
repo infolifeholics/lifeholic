@@ -327,7 +327,9 @@ export function buildShiprocketPayload(
       name: item.name || `Product ${idx + 1}`,
       sku: item.id || `SKU-${idx + 1}`,
       units: item.quantity || 1,
-      sellingPrice: typeof item.price_inr === 'number' ? item.price_inr : (order.currency === 'INR' ? item.price : 0),
+      sellingPrice: typeof item.effective_price_inr === 'number'
+        ? item.effective_price_inr
+        : (typeof item.price_inr === 'number' ? item.price_inr : (order.currency === 'INR' ? item.price : 0)),
       discount: 0,
       tax: 0,
     })),

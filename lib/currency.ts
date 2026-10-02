@@ -86,6 +86,37 @@ export function getCurrencyForCountryCode(code: string): string {
 }
 
 /**
+ * Determines the effective price, actual price, discounted price, and sale status of a product in INR.
+ * Validation rule: 0 < discounted_price < actual_price
+ */
+export function getEffectivePriceInr(product: {
+  price_inr: number;
+  compare_at_inr?: number | null;
+  discounted_price_inr?: number | null;
+}): {
+  actualPrice: number;
+  discountedPrice: number | null;
+  effectivePrice: number;
+  isOnSale: boolean;
+} {
+  const actualPrice = product.price_inr || 0;
+  
+  // Accept compare_at_inr or discounted_price_inr field
+  const rawDiscount = typeof product.compare_at_inr === 'number'
+    ? product.compare_at_inr
+    : (typeof product.discounted_price_inr === 'number' ? product.discounted_price_inr : null);
+
+  const isValidDiscount = rawDiscount !== null && !isNaN(rawDiscount) && rawDiscount > 0 && rawDiscount < actualPrice;
+
+  return {
+    actualPrice,
+    discountedPrice: isValidDiscount ? rawDiscount : null,
+    effectivePrice: isValidDiscount ? rawDiscount : actualPrice,
+    isOnSale: isValidDiscount,
+  };
+}
+
+/**
  * Detects user country server-side using Vercel/Cloudflare headers, with query param testing fallback.
  */
 export function getUserCountryCode(reqHeaders: Headers | Record<string, string>, urlString?: string): string {

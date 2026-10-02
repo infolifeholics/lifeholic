@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { showAppleCartNotification } from '@/components/shop/cart-notification';
-import { convertInrToCurrency } from '@/lib/currency';
+import { convertInrToCurrency, getEffectivePriceInr } from '@/lib/currency';
 import { useCurrency } from '@/components/providers/currency-provider';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -40,15 +40,16 @@ export function AddToCart({
   const isInternational = currentCurrency !== 'INR';
   const hasError = isInternational && Object.keys(rates).length === 0;
 
-  const displayPrice = isInternational
-    ? convertInrToCurrency(product.price_inr, exchangeRate || 0, currentCurrency)
-    : product.price_inr;
+  const { actualPrice, discountedPrice, effectivePrice, isOnSale } = getEffectivePriceInr(product);
 
-  const displayComparePrice = product.compare_at_inr
-    ? (isInternational ? convertInrToCurrency(product.compare_at_inr, exchangeRate || 0, currentCurrency) : product.compare_at_inr)
+  const displayPrimaryPrice = isInternational
+    ? convertInrToCurrency(effectivePrice, exchangeRate || 0, currentCurrency)
+    : effectivePrice;
+
+  const displayActualPrice = isOnSale
+    ? (isInternational ? convertInrToCurrency(actualPrice, exchangeRate || 0, currentCurrency) : actualPrice)
     : null;
 
-  const onSale = displayComparePrice && displayComparePrice > displayPrice;
   const outOfStock = product.stock !== null && product.stock <= 0;
   const cartItem = items.find((item) => item.id === product.id);
 
@@ -69,8 +70,9 @@ export function AddToCart({
           id: product.id,
           slug: product.slug,
           name: product.name,
-          price: product.price_inr, // Save INR price in local cart
+          price: effectivePrice, // Effective INR price for local cart
           price_inr: product.price_inr,
+          compare_at_inr: product.compare_at_inr,
           image: product.image,
           type: product.type,
         },
@@ -87,10 +89,13 @@ export function AddToCart({
   if (cartItem) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrice, currentCurrency)}</span>
-          {onSale && (
-            <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, currentCurrency)}</span>
+        <div className="flex items-center gap-3 flex-wrap">
+          {isOnSale && (
+            <span className="text-lg text-white/50 line-through">{formatPrice(displayActualPrice as number, currentCurrency)}</span>
+          )}
+          <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrimaryPrice, currentCurrency)}</span>
+          {isOnSale && (
+            <span className="rounded bg-gold/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-gold">Discounted</span>
           )}
           <span className="text-xs text-white/50 font-normal self-end mb-1">(incl. GST)</span>
         </div>
@@ -135,16 +140,19 @@ export function AddToCart({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         {isLoading ? (
           <span className="text-sm text-white/50 animate-pulse">Loading regional price...</span>
         ) : hasError ? (
           <span className="text-sm text-rose-400">Pricing unavailable in your region</span>
         ) : (
           <>
-            <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrice, currentCurrency)}</span>
-            {onSale && (
-              <span className="text-lg text-white/50 line-through">{formatPrice(displayComparePrice as number, currentCurrency)}</span>
+            {isOnSale && (
+              <span className="text-lg text-white/50 line-through">{formatPrice(displayActualPrice as number, currentCurrency)}</span>
+            )}
+            <span className="font-display text-3xl font-medium text-gold">{formatPrice(displayPrimaryPrice, currentCurrency)}</span>
+            {isOnSale && (
+              <span className="rounded bg-gold/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-gold">Discounted</span>
             )}
             <span className="text-xs text-white/50 font-normal self-end mb-1">(incl. GST)</span>
           </>
@@ -193,7 +201,7 @@ export function AddToCart({
           ) : hasError ? (
             'Pricing temporarily unavailable'
           ) : (
-            `Add to bag (${qty}) · ${formatPrice(displayPrice * qty, currentCurrency)}`
+            `Add to bag (${qty}) · ${formatPrice(displayPrimaryPrice * qty, currentCurrency)}`
           )}
         </Button>
       </div>

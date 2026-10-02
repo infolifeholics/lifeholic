@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getExchangeRates } from '@/lib/exchange-rates';
-import { convertInrToCurrency, getUserCurrency, getCurrencyForCountryCode, toRazorpayAmount } from '@/lib/currency';
+import { convertInrToCurrency, getUserCurrency, getCurrencyForCountryCode, toRazorpayAmount, getEffectivePriceInr } from '@/lib/currency';
 
 function orderNumber() {
   const t = Date.now().toString(36).toUpperCase();
@@ -98,17 +98,25 @@ export async function POST(req: Request) {
       const itemType = item.type || product.type || 'digital';
       if (itemType === 'physical') hasPhysical = true;
 
-      const priceInr = product.price_inr || 0;
-      const convertedPrice = currency !== 'INR' ? convertInrToCurrency(priceInr, targetRate || 0, currency) : priceInr;
+      const actualPriceInr = product.price_inr || 0;
+      const compareAtInr = typeof product.compare_at_inr === 'number' ? product.compare_at_inr : null;
+      const { effectivePrice: effectivePriceInr, discountedPrice: discountedPriceInr } = getEffectivePriceInr({
+        price_inr: actualPriceInr,
+        compare_at_inr: compareAtInr,
+      });
+
+      const convertedPrice = currency !== 'INR' ? convertInrToCurrency(effectivePriceInr, targetRate || 0, currency) : effectivePriceInr;
       
-      calculatedSubtotalInr += priceInr * item.quantity;
+      calculatedSubtotalInr += effectivePriceInr * item.quantity;
       
       validatedItems.push({
         id: item.id,
         slug: item.slug || product.slug,
         name: item.name || product.name,
         price: convertedPrice,
-        price_inr: priceInr,
+        price_inr: actualPriceInr,
+        discounted_price_inr: discountedPriceInr,
+        effective_price_inr: effectivePriceInr,
         quantity: item.quantity,
         image: item.image || product.image || '',
         type: itemType,

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { getEffectivePriceInr } from '@/lib/currency';
 
 export type CartItem = {
   id: string;
@@ -10,6 +11,7 @@ export type CartItem = {
   name: string;
   price: number;
   price_inr?: number;
+  compare_at_inr?: number | null;
   price_usd?: number;
   image: string;
   quantity: number;
@@ -96,13 +98,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             const snap = await getDoc(docRef);
             if (snap.exists()) {
               const data = snap.data();
+              const priceInr = data.price_inr || item.price_inr || 0;
+              const compareAtInr = data.compare_at_inr !== undefined ? data.compare_at_inr : item.compare_at_inr;
+              const { effectivePrice } = getEffectivePriceInr({ price_inr: priceInr, compare_at_inr: compareAtInr });
               return {
                 ...item,
                 name: data.name || item.name,
                 image: data.image || item.image,
                 type: data.type || item.type,
-                price: data.price_inr || data.price || item.price,
-                price_inr: data.price_inr || item.price_inr,
+                price: effectivePrice,
+                price_inr: priceInr,
+                compare_at_inr: compareAtInr,
                 price_usd: data.price_usd || item.price_usd,
               };
             }

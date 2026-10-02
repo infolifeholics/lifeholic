@@ -63,7 +63,7 @@ npm run typecheck
 Use these commands to upload or sync your latest changes to GitHub:
 ```bash
 git add .
-git commit -m "fix: remove user-facing seat availability display while preserving admin capacity and meet link logic"
+git commit -m "fix: product discount price"
 git push
 
 

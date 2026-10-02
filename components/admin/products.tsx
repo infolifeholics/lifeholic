@@ -13,6 +13,7 @@ import { cn, isValidAmazonUrl } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 import seedData from '@/lib/seed-data.json';
 import { ImageCropperModal } from './image-cropper-modal';
+import { getEffectivePriceInr } from '@/lib/currency';
 
 const ITEMS_PER_PAGE = 8;
 
@@ -238,8 +239,15 @@ export function AdminProducts() {
     }
 
     if (price_inr === undefined || price_inr <= 0) {
-      toast.error('Price must be a positive number.');
+      toast.error('Actual Price must be a positive number.');
       return false;
+    }
+
+    if (editingProduct.compare_at_inr !== null && editingProduct.compare_at_inr !== undefined && !isNaN(editingProduct.compare_at_inr)) {
+      if (editingProduct.compare_at_inr <= 0 || editingProduct.compare_at_inr >= price_inr) {
+        toast.error('Discounted price must be greater than 0 and less than the actual price.');
+        return false;
+      }
     }
 
     if (editingProduct.amazonUrl && !isValidAmazonUrl(editingProduct.amazonUrl)) {
@@ -522,26 +530,26 @@ export function AdminProducts() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4 p-4 rounded-2xl bg-secondary/30 border border-border/40">
                 <div>
-                  <Label htmlFor="price-inr">Price (INR) *</Label>
+                  <Label htmlFor="price-inr">Actual Price (INR) *</Label>
                   <Input
                     id="price-inr"
                     type="number"
                     value={editingProduct.price_inr || ''}
                     onChange={(e) => setEditingProduct({ ...editingProduct, price_inr: parseFloat(e.target.value) || 0 })}
                     className="mt-1.5 rounded-xl"
-                    placeholder="899"
+                    placeholder="2000"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="compare-inr">Discount Compare Price (INR)</Label>
+                  <Label htmlFor="compare-inr">Discounted Price (INR)</Label>
                   <Input
                     id="compare-inr"
                     type="number"
                     value={editingProduct.compare_at_inr || ''}
                     onChange={(e) => setEditingProduct({ ...editingProduct, compare_at_inr: parseFloat(e.target.value) || null })}
                     className="mt-1.5 rounded-xl"
-                    placeholder="1499"
+                    placeholder="1500"
                   />
                 </div>
               </div>
@@ -757,7 +765,7 @@ export function AdminProducts() {
           {/* List display */}
           <div className="grid gap-4 sm:grid-cols-2">
             {paginatedProducts.map((p) => {
-              const onSale = p.compare_at_inr && p.compare_at_inr > p.price_inr;
+              const { actualPrice, discountedPrice, isOnSale } = getEffectivePriceInr(p);
               return (
                 <div key={p.id} className="rounded-3xl border border-border bg-card p-4 hover:border-gold/30 hover:shadow-soft transition-all duration-300 flex flex-col justify-between text-left space-y-4 shadow-soft">
                   <div className="flex items-start gap-4 pb-3 border-b border-border/40">
@@ -775,6 +783,11 @@ export function AdminProducts() {
                         )}>
                           {p.is_active ? "Active" : "Inactive"}
                         </span>
+                        {isOnSale && (
+                          <span className="text-[9px] font-semibold uppercase px-2 py-0.5 rounded-full bg-gold/20 text-gold">
+                            Discounted
+                          </span>
+                        )}
                         {p.featured && (
                           <span className="text-[9px] font-medium uppercase px-2 py-0.5 rounded-full bg-gold/10 text-gold">
                             Featured
@@ -795,9 +808,13 @@ export function AdminProducts() {
                     <div>
                       <p className="text-[9px] text-muted-foreground uppercase">Pricing</p>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-medium text-foreground">₹{p.price_inr}</span>
-                        {onSale && (
-                          <span className="text-[10px] text-muted-foreground line-through">₹{p.compare_at_inr}</span>
+                        {isOnSale ? (
+                          <>
+                            <span className="text-[10px] text-muted-foreground line-through">₹{actualPrice}</span>
+                            <span className="font-semibold text-gold">₹{discountedPrice}</span>
+                          </>
+                        ) : (
+                          <span className="font-medium text-foreground">₹{actualPrice}</span>
                         )}
                         <span className="text-[10px] text-muted-foreground">/ ${p.price_usd}</span>
                       </div>
