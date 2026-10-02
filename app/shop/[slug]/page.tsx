@@ -11,6 +11,7 @@ import { ProductWishlistButton } from '@/components/shop/product-wishlist-button
 import { formatPrice } from '@/lib/format';
 import { getProductRoute } from '@/lib/routes';
 import { SectionHeading } from '@/components/site/section-heading';
+import { getEffectivePriceInr } from '@/lib/currency';
 
 import { ProductGallery } from '@/components/shop/product-gallery';
 import { buttonVariants } from '@/components/ui/button';
@@ -43,14 +44,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-
-
   const all = await getProducts();
   const related = all.filter((p) => p.slug !== product.slug && p.category === product.category).slice(0, 4);
   const fallback = all.filter((p) => p.slug !== product.slug).slice(0, 4);
   const relatedFinal = related.length ? related : fallback;
 
-  const onSale = product.compare_at_inr && product.compare_at_inr > product.price_inr;
+  const { isOnSale } = getEffectivePriceInr(product);
   const gallery = product.gallery && product.gallery.length ? product.gallery : [product.image];
 
   return (
@@ -75,9 +74,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-white/90">
                 {product.category}
               </span>
-              {onSale && (
+              {isOnSale && (
                 <span className="rounded-full bg-gold px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gold-foreground">
-                  Sale
+                  Discounted
                 </span>
               )}
             </div>
@@ -90,13 +89,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
             <p className="mt-6 text-pretty text-base leading-relaxed text-white/90 font-medium">{product.description}</p>
 
-            <ul className="mt-6 grid gap-2 sm:grid-cols-2">
-              {product.highlights.map((h) => (
-                <li key={h} className="flex items-start gap-2 text-sm text-white/90">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /> {h}
-                </li>
-              ))}
-            </ul>
+            {product.highlights && product.highlights.length > 0 && (
+              <ul className="mt-6 grid gap-2 sm:grid-cols-2">
+                {(product.highlights || []).map((h) => (
+                  <li key={h} className="flex items-start gap-2 text-sm text-white/90">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /> {h}
+                  </li>
+                ))}
+              </ul>
+            )}
 
             <div className="mt-8">
               {product.amazonUrl ? (
