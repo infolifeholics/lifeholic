@@ -161,9 +161,9 @@ export function HomeTestimonials({ items }: { items: Testimonial[] }) {
                     )}
                     <div>
                       <p className="font-medium text-foreground">{t.name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      {/* <p className="text-xs text-muted-foreground">
                         {t.role}{t.role && t.location ? ' · ' : ''}{t.location}
-                      </p>
+                      </p> */}
                     </div>
                     <StarRating rating={t.rating} className="ml-auto" />
                   </figcaption>
@@ -182,7 +182,7 @@ export function HomeTestimonials({ items }: { items: Testimonial[] }) {
             <ChevronLeft className="h-4 w-4" />
           </button>
           <div className="flex items-center gap-1.5">
-             {itemsList.map((_, i) => (
+            {itemsList.map((_, i) => (
               <span
                 key={i}
                 className={cn(
@@ -228,7 +228,7 @@ export function HomeTestimonials({ items }: { items: Testimonial[] }) {
               <p className="text-xs text-white/70">
                 Share your journey and support others in finding their path. Testimonials are reviewed by admin before publishing.
               </p>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4 pt-2">
                 <div>
                   <label className="block text-xs font-semibold text-white/80 uppercase tracking-wider mb-1.5">Rating</label>
