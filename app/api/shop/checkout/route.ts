@@ -242,6 +242,7 @@ export async function POST(req: Request) {
       payment_status: 'unpaid',
       payment_method: 'razorpay',
       payment_provider: 'razorpay',
+      razorpay_order_id: pgOrderId,
       payment_ref: pgOrderId || `order-${number}`,
       shipping_status: null,
       shiprocket_order_id: null,

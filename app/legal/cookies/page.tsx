@@ -24,8 +24,9 @@ export default function CookiesPage() {
           heading: 'What we use',
           body: [
             'Essential cookies keep the site working — your session, your cart, your auth state. These cannot be disabled.',
-            'We do not use advertising or cross-site tracking cookies.',
-            'Analytics, if enabled, uses privacy-respecting cookies to understand how the site is used so we can improve it.',
+            'Meta advertising measurement cookies and events are used only after you explicitly choose “Allow advertising cookies”. If you choose “Essential only”, Meta Pixel is not loaded and Meta events are not sent. You can change your choice using Privacy settings at any time.',
+            'When enabled, Meta may use browser identifiers such as _fbp and _fbc to measure product views, cart activity, checkout starts, and completed purchases. See our Privacy Policy for the data shared with Meta.',
+            'Google Analytics may use analytics technologies to understand how the site is used so we can improve it.',
           ],
         },
         {

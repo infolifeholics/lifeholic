@@ -11,6 +11,7 @@ import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { CartProvider } from '@/components/providers/cart-provider';
 import { WishlistProvider } from '@/components/providers/wishlist-provider';
 import dynamic from 'next/dynamic';
+import { MetaTrackingProvider } from '@/components/providers/meta-tracking-provider';
 
 const CinematicVideoBg = dynamic(
   () => import('@/components/site/cinematic-video-bg'),
@@ -34,30 +35,32 @@ const FloatingPetals = dynamic(
 
 import { ConfirmProvider } from '@/components/providers/confirm-provider';
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children, pixelId }: { children: React.ReactNode; pixelId: string }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
-      <PageLoader />
-      <AuthProvider>
-        <CurrencyProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <SmoothScroll>
-                <ConfirmProvider>
-                  <CinematicVideoBg />
-                  <SoundToggle />
-                  <FloatingPetals />
-                  <PageTransition>
-                    {children}
-                  </PageTransition>
-                </ConfirmProvider>
-              </SmoothScroll>
-              <Toaster />
-              <SonnerToaster />
-            </WishlistProvider>
-          </CartProvider>
-        </CurrencyProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <MetaTrackingProvider pixelId={pixelId}>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+        <PageLoader />
+        <AuthProvider>
+          <CurrencyProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <SmoothScroll>
+                  <ConfirmProvider>
+                    <CinematicVideoBg />
+                    <SoundToggle />
+                    <FloatingPetals />
+                    <PageTransition>
+                      {children}
+                    </PageTransition>
+                  </ConfirmProvider>
+                </SmoothScroll>
+                <Toaster />
+                <SonnerToaster />
+              </WishlistProvider>
+            </CartProvider>
+          </CurrencyProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </MetaTrackingProvider>
   );
 }

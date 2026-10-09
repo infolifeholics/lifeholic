@@ -20,12 +20,14 @@ import { useCurrency } from '@/components/providers/currency-provider';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { showAppleCartNotification } from '@/components/shop/cart-notification';
+import { useMetaTracking } from '@/components/providers/meta-tracking-provider';
 
 export function ShopGrid({ products: initialProducts }: { products: Product[] }) {
   const { items, add, setQuantity, remove } = useCart();
   const { user } = useAuth();
   const { currentCurrency, exchangeRate, isLoading, rates } = useCurrency();
   const router = useRouter();
+  const { track } = useMetaTracking();
 
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [query, setQuery] = useState('');
@@ -59,11 +61,37 @@ export function ShopGrid({ products: initialProducts }: { products: Product[] })
       image: product.image,
       type: product.type,
     }, 1);
+    const { effectivePrice } = getEffectivePriceInr(product);
+    const value = currentCurrency === 'INR'
+      ? effectivePrice
+      : convertInrToCurrency(effectivePrice, exchangeRate || 0, currentCurrency);
+    track('AddToCart', {
+      content_ids: [product.id],
+      content_name: product.name,
+      content_type: 'product',
+      value,
+      currency: currentCurrency,
+      num_items: 1,
+    });
     showAppleCartNotification(product.name, product.image, 1);
   };
 
   const handleIncrement = (id: string, currentQty: number) => {
     setQuantity(id, currentQty + 1);
+    const product = products.find((item) => item.id === id);
+    if (!product) return;
+    const { effectivePrice } = getEffectivePriceInr(product);
+    const value = currentCurrency === 'INR'
+      ? effectivePrice
+      : convertInrToCurrency(effectivePrice, exchangeRate || 0, currentCurrency);
+    track('AddToCart', {
+      content_ids: [product.id],
+      content_name: product.name,
+      content_type: 'product',
+      value,
+      currency: currentCurrency,
+      num_items: 1,
+    });
   };
 
   const handleDecrement = (id: string, currentQty: number) => {

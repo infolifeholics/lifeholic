@@ -63,7 +63,7 @@ npm run typecheck
 Use these commands to upload or sync your latest changes to GitHub:
 ```bash
 git add .
-git commit -m "fix: product discount price"
+git commit -m "fix: meta ads and meta pixel tracking"
 git push
 
 

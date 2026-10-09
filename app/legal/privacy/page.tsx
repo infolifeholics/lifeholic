@@ -51,6 +51,14 @@ export default function PrivacyPage() {
           ],
         },
         {
+          heading: 'Advertising Measurement',
+          body: [
+            'If you explicitly allow advertising cookies, we use Meta Pixel and the Meta Conversions API to measure product views, cart additions, checkout starts, and completed shop purchases. These events may include product identifiers, purchase value and currency, your IP address, browser and device information, and Meta advertising cookie identifiers.',
+            'We do not send your name, email address, phone number, payment credentials, or shipping address to Meta through these events. Purchase events are sent only after Razorpay payment is verified and only when advertising measurement consent is present. You can decline or change your choice using Privacy settings on this site.',
+            'If you do not allow advertising cookies, Meta tracking is not activated and these events are not sent.',
+          ],
+        },
+        {
           heading: 'How We Protect Your Information',
           body: [
             'We take reasonable steps to keep your information safe.',

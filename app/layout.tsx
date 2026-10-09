@@ -86,7 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn(sans.variable, serif.variable, 'font-sans antialiased relative min-h-screen')}>
-        <Providers>
+        <Providers pixelId={process.env.META_PIXEL_ID || ''}>
           <GlobalErrorBoundary>
             <ClientHardening />
             <SiteHeader />

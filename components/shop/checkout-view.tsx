@@ -1,6 +1,6 @@
 'use client';
+import { useState, useEffect, useRef } from 'react';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Loader2, Lock, Tag, X, Package, CreditCard } from 'lucide-react';
@@ -17,12 +17,15 @@ import { useCurrency } from '@/components/providers/currency-provider';
 import Script from 'next/script';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { useMetaTracking } from '@/components/providers/meta-tracking-provider';
 
 export function CheckoutView() {
   const { items, subtotal, clear } = useCart();
   const { user, profile, loading } = useAuth();
   const { currentCountry, currentCurrency, exchangeRate, isLoading, rates, setOverrideCountry } = useCurrency();
   const router = useRouter();
+  const { track } = useMetaTracking();
+  const checkoutTracked = useRef(false);
 
   const [form, setForm] = useState({
     email: user?.email || '',
@@ -121,6 +124,19 @@ export function CheckoutView() {
   const displayCurrency = currentCurrency;
   const displayTotal = total;
 
+  useEffect(() => {
+    if (loading || !user || items.length === 0 || checkoutTracked.current) return;
+    const eventId = track('InitiateCheckout', {
+      content_ids: items.map((item) => item.id),
+      contents: items.map((item) => ({ id: item.id, quantity: item.quantity })),
+      content_type: 'product',
+      num_items: items.reduce((count, item) => count + item.quantity, 0),
+      value: total,
+      currency: currentCurrency,
+    });
+    if (eventId) checkoutTracked.current = true;
+  }, [currentCurrency, items, loading, total, track, user]);
+
   const applyCoupon = async () => {
     if (!coupon) return;
     setCouponLoading(true);
@@ -187,6 +203,12 @@ export function CheckoutView() {
               body: JSON.stringify({ razorpay_payment_id: 'pay_mock_' + data.id, razorpay_order_id: 'order_mock_' + data.id, razorpay_signature: 'sig_mock_' + data.id, order_id: data.id }),
             });
             if (!verifyRes.ok) throw new Error('Verification failed.');
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error('Verification failed.');
+            if (verifyData.purchase) {
+              const { eventId, ...purchaseParams } = verifyData.purchase;
+              track('Purchase', purchaseParams, eventId);
+            }
             toast.success('Test payment verified & order confirmed!');
             clear();
             router.push(`/shop/thank-you?order=${data.number}`);
@@ -210,6 +232,12 @@ export function CheckoutView() {
               body: JSON.stringify({ razorpay_payment_id: response.razorpay_payment_id, razorpay_order_id: response.razorpay_order_id, razorpay_signature: response.razorpay_signature, order_id: data.id }),
             });
             if (!verifyRes.ok) throw new Error('Verification failed.');
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error('Verification failed.');
+            if (verifyData.purchase) {
+              const { eventId, ...purchaseParams } = verifyData.purchase;
+              track('Purchase', purchaseParams, eventId);
+            }
             toast.success('Payment verified & order confirmed!');
             clear();
             router.push(`/shop/thank-you?order=${data.number}`);

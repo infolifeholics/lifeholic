@@ -14,6 +14,7 @@ import { SectionHeading } from '@/components/site/section-heading';
 import { getEffectivePriceInr } from '@/lib/currency';
 
 import { ProductGallery } from '@/components/shop/product-gallery';
+import { ProductViewTracker } from '@/components/shop/product-view-tracker';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +55,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="relative bg-background/30 backdrop-blur-[2px] z-10 min-h-screen pt-28">
+      <ProductViewTracker product={{
+        id: product.id,
+        name: product.name,
+        price_inr: product.price_inr,
+        compare_at_inr: product.compare_at_inr,
+      }} />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <nav className="flex items-center gap-2 text-xs text-white/60" aria-label="Breadcrumb">
           <Link href="/shop" className="hover:text-white">Shop</Link>

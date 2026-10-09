@@ -1,5 +1,6 @@
 'use client';
 
+import { useMetaTracking } from '@/components/providers/meta-tracking-provider';
 import { useState, useEffect } from 'react';
 import { Minus, Plus, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ export function AddToCart({
   const { user } = useAuth();
   const { currentCurrency, exchangeRate, isLoading, rates } = useCurrency();
   const router = useRouter();
+    const { track } = useMetaTracking();
   const [qty, setQty] = useState(1);
   const [adding, setAdding] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -52,6 +54,18 @@ export function AddToCart({
 
   const outOfStock = product.stock !== null && product.stock <= 0;
   const cartItem = items.find((item) => item.id === product.id);
+  const handleIncrement = () => {
+    if (!cartItem) return;
+    setQuantity(product.id, cartItem.quantity + 1);
+    track('AddToCart', {
+      content_ids: [product.id],
+      content_name: product.name,
+      content_type: 'product',
+      value: displayPrimaryPrice,
+      currency: currentCurrency,
+      num_items: 1,
+    });
+  };
 
   const handleAdd = () => {
     if (!user) {
@@ -78,6 +92,14 @@ export function AddToCart({
         },
         qty
       );
+      track('AddToCart', {
+        content_ids: [product.id],
+        content_name: product.name,
+        content_type: 'product',
+        value: displayPrimaryPrice * qty,
+        currency: currentCurrency,
+        num_items: qty,
+      });
       setAdding(false);
       setSuccess(true);
       showAppleCartNotification(product.name, product.image, qty);
@@ -117,9 +139,7 @@ export function AddToCart({
             </button>
             <span className="w-10 text-center text-sm font-semibold text-neutral-900">{cartItem.quantity}</span>
             <button
-              onClick={() => {
-                setQuantity(product.id, cartItem.quantity + 1);
-              }}
+              onClick={handleIncrement}
               className="inline-flex h-11 w-11 items-center justify-center rounded-r-full text-foreground hover:bg-secondary"
               aria-label="Increase quantity"
             >
