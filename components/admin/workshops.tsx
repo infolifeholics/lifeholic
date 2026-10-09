@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { 
   Loader2, Plus, Edit2, Trash2, Check, X, Calendar, Clock, MapPin, 
   Users, Ticket, Copy, Eye, FileSpreadsheet, Send, ShieldAlert, 
-  Sparkles, CheckCircle2, DollarSign, Award, FileText, Image as ImageIcon, Star, Play
+  Sparkles, CheckCircle2, IndianRupee, Award, FileText, Image as ImageIcon, Star, Play
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -595,7 +595,7 @@ export function AdminWorkshops() {
             <div className="rounded-3xl border border-border bg-card p-5 text-left shadow-soft">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Revenue</p>
               <h3 className="text-2xl font-bold mt-1 text-foreground flex items-center">
-                <DollarSign className="h-5 w-5 text-success shrink-0" /> {totalRevenue.toLocaleString()}
+                <IndianRupee className="h-5 w-5 text-success shrink-0" /> {totalRevenue.toLocaleString('en-IN')}
               </h3>
             </div>
             <div className="rounded-3xl border border-border bg-card p-5 text-left shadow-soft">
