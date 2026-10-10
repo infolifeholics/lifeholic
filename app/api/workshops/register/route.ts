@@ -4,6 +4,7 @@ import { collection, doc, getDoc, addDoc } from 'firebase/firestore';
 import { getExchangeRates } from '@/lib/exchange-rates';
 import { convertInrToCurrency, getCurrencyForCountryCode, toRazorpayAmount } from '@/lib/currency';
 import { getCountryByName } from '@/lib/countries';
+import { calculateCouponDiscount, isCouponExpired } from '@/lib/coupons';
 
 export async function POST(req: Request) {
   try {
@@ -83,14 +84,14 @@ export async function POST(req: Request) {
     }
 
     // 4. Calculate dynamic pricing checking Early Bird
-    let finalPrice = ws.price_inr || 0;
+    let finalPriceInr = ws.price_inr || 0;
     if (ws.offer_expiry && nowStr <= ws.offer_expiry && ws.early_bird_price_inr !== undefined && ws.early_bird_price_inr > 0) {
-      finalPrice = ws.early_bird_price_inr;
+      finalPriceInr = ws.early_bird_price_inr;
     }
 
-    if (currency !== 'INR' && targetRate) {
-      finalPrice = convertInrToCurrency(finalPrice, targetRate);
-    }
+    let finalPrice = currency !== 'INR' && targetRate
+      ? convertInrToCurrency(finalPriceInr, targetRate, currency)
+      : finalPriceInr;
 
     // Check coupon code
     let discount = 0;
@@ -108,26 +109,21 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Coupon is not applicable to workshops.' }, { status: 400 });
       }
       // Check expiry
-      if (coupon.expiry_date && new Date() > new Date(coupon.expiry_date)) {
+      if (isCouponExpired(coupon.expiry_date)) {
         return NextResponse.json({ error: 'Coupon has expired.' }, { status: 400 });
       }
       // Check limit
       if (coupon.usage_limit && (coupon.usage_count || 0) >= coupon.usage_limit) {
         return NextResponse.json({ error: 'Sorry, you are late! Coupon usage limit reached.' }, { status: 400 });
       }
-      // Calculate discount
-      if (coupon.type === 'percent') {
-        discount = (finalPrice * (coupon.value || 0)) / 100;
-        if (coupon.max_discount && discount > coupon.max_discount) {
-          discount = coupon.max_discount;
-        }
-      } else {
-        if (currency !== 'INR' && targetRate) {
-          discount = (coupon.value || 0) * targetRate;
-        } else {
-          discount = coupon.value || 0;
-        }
+      const minAmount = Number(coupon.min_amount || 0);
+      if (finalPriceInr < minAmount) {
+        return NextResponse.json({ error: `Minimum order value is ₹${minAmount}.` }, { status: 400 });
       }
+      const discountInr = calculateCouponDiscount(finalPriceInr, coupon);
+      discount = currency !== 'INR' && targetRate
+        ? convertInrToCurrency(discountInr, targetRate, currency)
+        : discountInr;
       finalPrice = Math.max(0, finalPrice - discount);
     }
 

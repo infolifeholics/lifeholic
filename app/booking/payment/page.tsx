@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/format';
+import { convertInrToCurrency } from '@/lib/currency';
 import Script from 'next/script';
 
 function PaymentPageContent() {
@@ -140,6 +141,7 @@ function PaymentPageContent() {
           code: couponCode,
           amount: bookingData.amount,
           context: 'sessions',
+          currency: bookingData.currency,
         }),
       });
       const data = await res.json();
@@ -167,6 +169,7 @@ function PaymentPageContent() {
           code: codeToApply,
           amount: bookingData.amount,
           context: 'sessions',
+          currency: bookingData.currency,
         }),
       });
       const data = await res.json();
@@ -484,8 +487,8 @@ function PaymentPageContent() {
                             {c.code}
                           </span>
                           <span className="text-[11px] text-muted-foreground mt-1 font-medium leading-normal">
-                            {c.type === 'percent' ? `${c.value}% OFF` : `${formatPrice(c.value, currency)} OFF`}
-                            {c.min_amount > 0 && ` on orders above ${formatPrice(c.min_amount, currency)}`}
+                            {`${formatPrice(convertInrToCurrency(c.value, rates[currency] || 0, currency), currency)} OFF`}
+                            {c.min_amount > 0 && ` on orders above ${formatPrice(convertInrToCurrency(c.min_amount, rates[currency] || 0, currency), currency)}`}
                           </span>
                         </button>
                       ))}

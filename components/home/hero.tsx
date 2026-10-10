@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AuthModal } from '@/components/auth/auth-modal';
 import { formatPrice } from '@/lib/format';
+import { convertInrToCurrency } from '@/lib/currency';
+import { useCurrency } from '@/components/providers/currency-provider';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -239,6 +241,7 @@ const RECOMMENDATIONS: Record<string, {
 };
 
 export function HomeHero() {
+  const { currentCurrency, exchangeRate } = useCurrency();
   const ref = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
@@ -1043,10 +1046,10 @@ export function HomeHero() {
                 {promoCoupon.code}
               </div>
               <p className="text-xs font-semibold text-foreground mt-2 uppercase tracking-wide">
-                SAVE {promoCoupon.value}{promoCoupon.type === 'percent' ? '%' : ' INR'} OFF
+                SAVE {formatPrice(convertInrToCurrency(promoCoupon.value, exchangeRate || 0, currentCurrency), currentCurrency)} OFF
               </p>
               {promoCoupon.min_amount > 0 && (
-                <p className="text-[9px] text-muted-foreground mt-1">Min booking value: ₹{promoCoupon.min_amount}</p>
+                <p className="text-[9px] text-muted-foreground mt-1">Min booking value: {formatPrice(convertInrToCurrency(promoCoupon.min_amount, exchangeRate || 0, currentCurrency), currentCurrency)}</p>
               )}
             </div>
 

@@ -144,8 +144,9 @@ export default function WorkshopDetailsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: couponCode,
-          amount: ws?.offer_expiry && new Date().toISOString() <= ws.offer_expiry && ws.early_bird_price_inr && ws.early_bird_price_inr > 0 ? ws.early_bird_price_inr : (ws?.price_inr || 0),
+          amount: displayBasePrice,
           context: 'workshops',
+          currency,
         }),
       });
       const data = await res.json();
@@ -642,7 +643,7 @@ export default function WorkshopDetailsPage() {
                       <span>Hurry up! Grab your coupon!</span>
                     </p>
                     <p className="leading-relaxed">
-                      Only <span className="font-bold text-gold">{activeCouponBanner.remaining} slots</span> remaining to get {activeCouponBanner.value}{activeCouponBanner.type === 'percent' ? '%' : ' INR'} off using code <span className="font-mono font-bold bg-amber-500/20 px-1.5 py-0.5 rounded text-white">{activeCouponBanner.code}</span>!
+                      Only <span className="font-bold text-gold">{activeCouponBanner.remaining} slots</span> remaining to get {formatPrice(convertInrToCurrency(activeCouponBanner.value, exchangeRate || 0, currency), currency)} off using code <span className="font-mono font-bold bg-amber-500/20 px-1.5 py-0.5 rounded text-white">{activeCouponBanner.code}</span>!
                     </p>
                   </div>
                 )}

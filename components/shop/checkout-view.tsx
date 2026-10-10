@@ -149,7 +149,8 @@ export function CheckoutView() {
       const data = await res.json();
       if (!res.ok) { toast.error(data.error || 'Could not apply code.'); setApplied(null); return; }
       setApplied({ code: data.code, discount: data.discount });
-      toast.success(`Code ${data.code} applied — you saved ${formatPrice(data.discount * (exchangeRate || 1), currentCurrency)}.`);
+      const displayedDiscount = convertInrToCurrency(data.discount, exchangeRate || 0, currentCurrency);
+      toast.success(`Code ${data.code} applied — you saved ${formatPrice(displayedDiscount, currentCurrency)}.`);
     } catch { toast.error('Something went wrong.'); } finally { setCouponLoading(false); }
   };
 
@@ -429,7 +430,7 @@ export function CheckoutView() {
                 <dt className="font-medium text-foreground">Total</dt>
                 <span className="text-[10px] text-muted-foreground block mt-0.5 font-normal">(GST Included)</span>
               </div>
-              <dd className="font-display text-2xl font-medium text-gold">{formatPrice(displayTotal, displayCurrency)}</dd>
+              <dd className="font-display text-2xl font-semibold text-foreground">{formatPrice(displayTotal, displayCurrency)}</dd>
             </div>
             {isInternational && process.env.NEXT_PUBLIC_RAZORPAY_SUPPORT_USD !== 'true' && (
               <div className="mt-2 inline-flex self-end rounded-full px-3 py-1 text-[10px] font-semibold" style={{ backgroundColor: 'rgba(10,8,6,0.85)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>

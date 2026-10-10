@@ -13,10 +13,8 @@ import { Switch } from '@/components/ui/switch';
 type Coupon = {
   id: string; // uppercase code
   code: string;
-  type: 'flat' | 'percent';
   value: number;
   min_amount: number;
-  max_discount: number;
   usage_limit: number;
   usage_count: number;
   expiry_date: string;
@@ -30,10 +28,8 @@ export function AdminCoupons() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [code, setCode] = useState('');
-  const [type, setType] = useState<'flat' | 'percent'>('percent');
   const [value, setValue] = useState(10);
   const [minAmount, setMinAmount] = useState(0);
-  const [maxDiscount, setMaxDiscount] = useState(0);
   const [usageLimit, setUsageLimit] = useState(100);
   const [expiryDate, setExpiryDate] = useState('');
   const [featuredPromo, setFeaturedPromo] = useState(false);
@@ -45,10 +41,8 @@ export function AdminCoupons() {
   const handleStartEdit = (c: Coupon) => {
     setEditingId(c.id);
     setCode(c.code);
-    setType(c.type);
     setValue(c.value);
     setMinAmount(c.min_amount || 0);
-    setMaxDiscount(c.max_discount || 0);
     setUsageLimit(c.usage_limit || 100);
     setExpiryDate(c.expiry_date || '');
     setFeaturedPromo(c.featured_promo || false);
@@ -92,10 +86,9 @@ export function AdminCoupons() {
       const payload: any = {
         id: targetId,
         code: targetId,
-        type,
+        type: 'flat',
         value,
         min_amount: minAmount,
-        max_discount: maxDiscount,
         usage_limit: usageLimit,
         expiry_date: expiryDate,
         featured_promo: featuredPromo,
@@ -115,7 +108,7 @@ export function AdminCoupons() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             code: targetId,
-            discount: `${value}${type === 'percent' ? '%' : ' INR'}`
+            discount: `₹${value}`
           })
         }).catch(console.error);
       }
@@ -204,7 +197,7 @@ export function AdminCoupons() {
             </Button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label>Promo Code</Label>
               <Input
@@ -214,17 +207,6 @@ export function AdminCoupons() {
                 disabled={!!editingId}
                 className="mt-1.5 rounded-xl uppercase font-semibold disabled:opacity-60"
               />
-            </div>
-            <div>
-              <Label>Discount Type</Label>
-              <select
-                value={type}
-                onChange={(e: any) => setType(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
-              >
-                <option value="percent">Percentage (%)</option>
-                <option value="flat">Flat Amount (Currency)</option>
-              </select>
             </div>
             <div>
               <Label>Applicable To (Scope)</Label>
@@ -241,9 +223,9 @@ export function AdminCoupons() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <Label>Discount Value</Label>
+              <Label>Discount Amount (INR)</Label>
               <Input
                 type="number"
                 value={value}
@@ -252,22 +234,12 @@ export function AdminCoupons() {
               />
             </div>
             <div>
-              <Label>Min Order Value</Label>
+              <Label>Min Order Value (INR)</Label>
               <Input
                 type="number"
                 value={minAmount}
                 onChange={(e) => setMinAmount(parseFloat(e.target.value) || 0)}
                 className="mt-1.5 rounded-xl"
-              />
-            </div>
-            <div>
-              <Label>Max Discount Limit</Label>
-              <Input
-                type="number"
-                value={maxDiscount}
-                onChange={(e) => setMaxDiscount(parseFloat(e.target.value) || 0)}
-                className="mt-1.5 rounded-xl"
-                placeholder="0 for unlimited"
               />
             </div>
           </div>
@@ -353,12 +325,8 @@ export function AdminCoupons() {
                   <span className="font-semibold text-foreground capitalize">{c.applicable_to || 'all'}</span>
                 </li>
                 <li className="flex justify-between">
-                  <span>Type:</span>
-                  <span className="font-semibold text-foreground capitalize">{c.type}</span>
-                </li>
-                <li className="flex justify-between">
                   <span>Value:</span>
-                  <span className="font-semibold text-foreground">{c.value}{c.type === 'percent' ? '%' : ''}</span>
+                  <span className="font-semibold text-foreground">₹{c.value}</span>
                 </li>
                 <li className="flex justify-between">
                   <span>Usage Count:</span>

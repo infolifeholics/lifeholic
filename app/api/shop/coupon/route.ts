@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { calculateCouponDiscount, isCouponExpired } from '@/lib/coupons';
 
 export async function POST(req: Request) {
   try {
     const { code, subtotal } = await req.json();
     if (!code) return NextResponse.json({ error: 'Code required.' }, { status: 400 });
+    const amount = Number(subtotal);
+    if (!Number.isFinite(amount) || amount < 0) {
+      return NextResponse.json({ error: 'Invalid order subtotal.' }, { status: 400 });
+    }
 
     const snap = await adminDb.collection('coupons')
       .where('code', '==', code.toUpperCase())
-      .where('active', '==', true)
       .get();
 
     if (snap.empty) {
@@ -16,6 +20,9 @@ export async function POST(req: Request) {
     }
 
     const data = snap.docs[0].data();
+    if (data.active === false) {
+      return NextResponse.json({ error: 'This coupon is inactive.' }, { status: 400 });
+    }
 
     // Check scope
     if (data.applicable_to && data.applicable_to !== 'all') {
@@ -24,24 +31,25 @@ export async function POST(req: Request) {
       }
     }
 
-    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+    if (isCouponExpired(data.expiry_date ?? data.expires_at)) {
       return NextResponse.json({ error: 'This code has expired.' }, { status: 400 });
     }
-    if (data.max_uses !== null && data.uses >= data.max_uses) {
+    const usageLimit = Number(data.usage_limit ?? data.max_uses ?? 0);
+    const usageCount = Number(data.usage_count ?? data.uses ?? 0);
+    if (usageLimit > 0 && usageCount >= usageLimit) {
       return NextResponse.json({ error: 'This code has reached its limit.' }, { status: 400 });
     }
-    if (Number(subtotal) < Number(data.min_subtotal)) {
+    const minAmount = Number(data.min_amount ?? data.min_subtotal ?? 0);
+    if (amount < minAmount) {
       return NextResponse.json(
-        { error: `Minimum subtotal is ₹${data.min_subtotal}.` },
+        { error: `Minimum subtotal is ₹${minAmount}.` },
         { status: 400 }
       );
     }
 
-    const sub = Number(subtotal) || 0;
-    const discount =
-      data.kind === 'percent' ? Math.round((sub * Number(data.value)) / 100) : Math.min(Number(data.value), sub);
+    const discount = calculateCouponDiscount(amount, data);
 
-    return NextResponse.json({ ok: true, code: data.code, discount, kind: data.kind, value: Number(data.value) });
+    return NextResponse.json({ ok: true, code: data.code || code.toUpperCase(), discount, type: data.type ?? data.kind, value: Number(data.value) });
   } catch (error: any) {
     console.error('Coupon validation error:', error);
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });

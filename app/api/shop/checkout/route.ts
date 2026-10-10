@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getExchangeRates } from '@/lib/exchange-rates';
 import { convertInrToCurrency, getUserCurrency, getCurrencyForCountryCode, toRazorpayAmount, getEffectivePriceInr } from '@/lib/currency';
+import { calculateCouponDiscount, isCouponExpired } from '@/lib/coupons';
 
 function orderNumber() {
   const t = Date.now().toString(36).toUpperCase();
@@ -132,27 +133,36 @@ export async function POST(req: Request) {
     if (coupon_code) {
       try {
         const couponSnap = await adminDb.collection('coupons').doc(coupon_code.toUpperCase()).get();
-        if (couponSnap.exists) {
-          const coupon = couponSnap.data() || {};
-          const now = new Date();
-          const isExpired = coupon.expiry_date && now > new Date(coupon.expiry_date);
-          const limitReached = coupon.usage_limit && (coupon.usage_count || 0) >= coupon.usage_limit;
-          const isContextValid = !coupon.applicable_to || coupon.applicable_to === 'all' || coupon.applicable_to === 'shop';
-          const isMinAmountValid = !coupon.min_amount || calculatedSubtotalInr >= coupon.min_amount;
-
-          if (coupon.active !== false && !isExpired && !limitReached && isContextValid && isMinAmountValid) {
-            if (coupon.type === 'percent') {
-              calculatedDiscountInr = (calculatedSubtotalInr * coupon.value) / 100;
-              if (coupon.max_discount && calculatedDiscountInr > coupon.max_discount) {
-                calculatedDiscountInr = coupon.max_discount;
-              }
-            } else {
-              calculatedDiscountInr = coupon.value;
-            }
-          }
+        if (!couponSnap.exists) {
+          return NextResponse.json({ error: 'Invalid coupon code.' }, { status: 400 });
         }
+
+        const coupon = couponSnap.data() || {};
+        const usageLimit = Number(coupon.usage_limit ?? coupon.max_uses ?? 0);
+        const usageCount = Number(coupon.usage_count ?? coupon.uses ?? 0);
+        const minAmount = Number(coupon.min_amount ?? coupon.min_subtotal ?? 0);
+        const isContextValid = !coupon.applicable_to || coupon.applicable_to === 'all' || coupon.applicable_to === 'shop';
+
+        if (coupon.active === false) {
+          return NextResponse.json({ error: 'This coupon is inactive.' }, { status: 400 });
+        }
+        if (isCouponExpired(coupon.expiry_date ?? coupon.expires_at)) {
+          return NextResponse.json({ error: 'This coupon has expired.' }, { status: 400 });
+        }
+        if (usageLimit > 0 && usageCount >= usageLimit) {
+          return NextResponse.json({ error: 'This coupon usage limit has been reached.' }, { status: 400 });
+        }
+        if (!isContextValid) {
+          return NextResponse.json({ error: 'This coupon is not applicable to shop purchases.' }, { status: 400 });
+        }
+        if (calculatedSubtotalInr < minAmount) {
+          return NextResponse.json({ error: `Minimum order value is ₹${minAmount}.` }, { status: 400 });
+        }
+
+        calculatedDiscountInr = calculateCouponDiscount(calculatedSubtotalInr, coupon);
       } catch (err) {
         console.error('Error applying coupon in checkout:', err);
+        return NextResponse.json({ error: 'Could not validate coupon code.' }, { status: 500 });
       }
     }
 
