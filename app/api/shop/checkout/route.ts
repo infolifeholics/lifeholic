@@ -13,7 +13,7 @@ function orderNumber() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, full_name, phone, address, items, coupon_code, user_id } = body || {};
+    const { email, full_name, phone, address, items, coupon_code, user_id, is_gift } = body || {};
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Valid email is required.' }, { status: 400 });
@@ -110,6 +110,8 @@ export async function POST(req: Request) {
       
       calculatedSubtotalInr += effectivePriceInr * item.quantity;
       
+      const isItemGift = Boolean(item.is_gift) || Boolean(is_gift);
+
       validatedItems.push({
         id: item.id,
         slug: item.slug || product.slug,
@@ -121,8 +123,11 @@ export async function POST(req: Request) {
         quantity: item.quantity,
         image: item.image || product.image || '',
         type: itemType,
+        is_gift: isItemGift,
       });
     }
+
+    const isOrderGift = Boolean(is_gift) || validatedItems.some((i) => i.is_gift);
 
     const calculatedSubtotal = currency !== 'INR'
       ? convertInrToCurrency(calculatedSubtotalInr, targetRate || 0, currency)
@@ -231,6 +236,8 @@ export async function POST(req: Request) {
       full_name: full_name || null,
       phone: phone || null,
       address: address || null,
+      is_gift: isOrderGift,
+      gift_note: isOrderGift ? 'Complimentary Gifting Bag Included' : null,
       items: validatedItems,
       subtotal: calculatedSubtotal,
       subtotal_inr: calculatedSubtotalInr,

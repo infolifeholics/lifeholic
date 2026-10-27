@@ -111,11 +111,27 @@ export default async function ThankYouPage({
               <ul className="space-y-2 text-sm">
                 {order.items?.map((i: any, idx: number) => (
                   <li key={idx} className="flex items-center justify-between">
-                    <span className="text-muted-foreground">{i.name} × {i.quantity}</span>
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      {i.name} × {i.quantity}
+                      {(i.is_gift || order.is_gift) && (
+                        <span className="text-[10px] font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded border border-gold/30">
+                          [Gift 🎁]
+                        </span>
+                      )}
+                    </span>
                     <span className="font-medium text-foreground">{formatPrice(i.price * i.quantity, order.currency)}</span>
                   </li>
                 ))}
               </ul>
+
+              {(order.is_gift || order.items?.some((i: any) => i.is_gift)) && (
+                <div className="flex items-center gap-2 rounded-xl border border-gold/30 bg-gold/10 p-3 text-xs text-gold">
+                  <span>🎁</span>
+                  <span className="font-medium text-white/90">
+                    Gifting requested — 1 complimentary gifting bag will be included with your order!
+                  </span>
+                </div>
+              )}
 
               <div className="flex items-center justify-between border-t border-border/50 pt-4">
                 <span className="font-medium text-foreground">Total</span>

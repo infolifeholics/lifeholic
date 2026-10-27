@@ -383,6 +383,7 @@ export async function POST(req: NextRequest) {
         created_at: mergedOrder.created_at,
         updated_at: mergedOrder.updated_at,
         address: mergedOrder.address,
+        is_gift: Boolean(mergedOrder.is_gift || (mergedOrder.items || []).some((i: any) => i.is_gift)),
       });
     } catch (gsErr) {
       console.error('[VerifyPayment] Google Sheets sync error (non-fatal):', gsErr);

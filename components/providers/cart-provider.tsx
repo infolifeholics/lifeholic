@@ -16,6 +16,7 @@ export type CartItem = {
   image: string;
   quantity: number;
   type: 'digital' | 'physical';
+  is_gift?: boolean;
 };
 
 type CartContextValue = {
@@ -23,6 +24,7 @@ type CartContextValue = {
   add: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void;
   remove: (id: string) => void;
   setQuantity: (id: string, quantity: number) => void;
+  setGift: (id: string, is_gift: boolean) => void;
   clear: () => void;
   count: number;
   subtotal: number;
@@ -47,7 +49,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({
           userId: user.id,
           productId: item.id,
-          productName: item.name,
+          productName: item.is_gift ? `${item.name} [Gift]` : item.name,
           quantity: qty,
           unitPrice: item.price,
           currency: 'INR',
@@ -139,12 +141,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setItems((prev) => {
           const existing = prev.find((p) => p.id === item.id);
           const newQty = existing ? existing.quantity + quantity : quantity;
-          const fullItem: CartItem = { ...item, quantity: newQty };
+          const isGift = typeof item.is_gift === 'boolean' ? item.is_gift : existing?.is_gift;
+          const fullItem: CartItem = { ...item, quantity: newQty, is_gift: isGift };
           syncCartItemApi(fullItem, newQty);
           if (existing) {
-            return prev.map((p) => (p.id === item.id ? { ...p, quantity: newQty } : p));
+            return prev.map((p) => (p.id === item.id ? { ...p, quantity: newQty, is_gift: isGift } : p));
           }
-          return [...prev, { ...item, quantity }];
+          return [...prev, { ...item, quantity, is_gift: isGift }];
         });
       },
       remove: (id) => {
@@ -160,6 +163,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           }
           return prev.map((p) => (p.id === id ? { ...p, quantity: qty } : p));
         });
+      },
+      setGift: (id, is_gift) => {
+        setItems((prev) => prev.map((p) => (p.id === id ? { ...p, is_gift } : p)));
       },
       clear: () => setItems([]),
       count: items.reduce((n, i) => n + i.quantity, 0),

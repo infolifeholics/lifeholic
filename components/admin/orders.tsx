@@ -17,6 +17,7 @@ type OrderItem = {
   quantity: number;
   image?: string;
   type?: 'digital' | 'physical';
+  is_gift?: boolean;
 };
 
 type Order = {
@@ -38,6 +39,8 @@ type Order = {
   user_id: string | null;
   created_at: string;
   items: OrderItem[];
+  is_gift?: boolean;
+  gift_note?: string | null;
 };
 
 type Profile = {
@@ -159,7 +162,14 @@ export function AdminOrders() {
             <div className="rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft space-y-4">
               <div className="flex items-center justify-between border-b border-border/50 pb-4">
                 <div>
-                  <h3 className="font-display text-lg font-medium text-foreground">Order Items</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display text-lg font-medium text-foreground">Order Items</h3>
+                    {(order.is_gift || order.items?.some((i) => i.is_gift)) && (
+                      <span className="rounded-full bg-gold/20 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-gold border border-gold/40 flex items-center gap-1">
+                        🎁 Gift Order
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">Order Ref: {order.number}</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -188,6 +198,21 @@ export function AdminOrders() {
                 </div>
               </div>
 
+              {(order.is_gift || order.items?.some((i) => i.is_gift)) && (
+                <div className="rounded-2xl border border-gold/40 bg-gold/10 p-3.5 flex items-center justify-between gap-3 text-xs text-gold">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl">🎁</span>
+                    <div>
+                      <p className="font-semibold text-white text-sm">GIFT ORDER (Complimentary Bag Requested)</p>
+                      <p className="text-white/80 text-xs">Customer checked the gifting box. Please include 1 complimentary gifting bag with this shipment.</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-gold/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-gold border border-gold/40">
+                    Gifting Bag Included
+                  </span>
+                </div>
+              )}
+
               <ul className="divide-y divide-border/40">
                 {order.items?.map((item, idx) => {
                   const itemSlug = item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -203,7 +228,14 @@ export function AdminOrders() {
                           </div>
                         )}
                         <div>
-                          <p className="font-medium text-sm text-foreground">{item.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm text-foreground">{item.name}</p>
+                            {(item.is_gift || order.is_gift) && (
+                              <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold border border-gold/30 flex items-center gap-1">
+                                🎁 Gift
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground capitalize">{item.type || 'Physical'} · Qty {item.quantity}</p>
                         </div>
                       </div>
@@ -403,7 +435,14 @@ export function AdminOrders() {
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="font-medium text-foreground group-hover:text-primary transition-colors">{o.number}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-foreground group-hover:text-primary transition-colors">{o.number}</p>
+                {(o.is_gift || o.items?.some((i) => i.is_gift)) && (
+                  <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold border border-gold/30 flex items-center gap-1">
+                    🎁 Gift
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground mt-0.5">{o.full_name || o.email}</p>
             </div>
             <div className="flex items-center gap-3">
@@ -413,8 +452,15 @@ export function AdminOrders() {
           </div>
           <ul className="mt-3 text-sm text-muted-foreground divide-y divide-border/20">
             {o.items?.map((i, idx) => (
-              <li key={idx} className="py-1 flex justify-between">
-                <span>{i.name} × {i.quantity}</span>
+              <li key={idx} className="py-1 flex justify-between items-center">
+                <span className="flex items-center gap-1.5">
+                  {i.name} × {i.quantity}
+                  {(i.is_gift || o.is_gift) && (
+                    <span className="text-[10px] font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded border border-gold/30">
+                      [Gift 🎁]
+                    </span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>

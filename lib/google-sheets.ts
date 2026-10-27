@@ -133,7 +133,7 @@ async function ensureHeaders(sheets: any) {
     // 4. Ensure headers for each tab
     const targetSheets = [
       { name: USERS_SHEET, headers: ['User ID', 'Name', 'Email', 'Phone', 'Country', 'Currency', 'Profile Data', 'Created At', 'Updated At', 'Location', 'Last Activity'] },
-      { name: ORDERS_SHEET, headers: ['Order ID', 'User ID', 'Customer Name', 'Email', 'Phone', 'Product(s)', 'Quantity', 'Subtotal', 'Shipping', 'Total', 'Currency', 'Payment Status', 'Order Status', 'Razorpay Payment ID', 'Created At', 'Updated At', 'Location'] },
+      { name: ORDERS_SHEET, headers: ['Order ID', 'User ID', 'Customer Name', 'Email', 'Phone', 'Product(s)', 'Quantity', 'Subtotal', 'Shipping', 'Total', 'Currency', 'Payment Status', 'Order Status', 'Razorpay Payment ID', 'Created At', 'Updated At', 'Location', 'Gift'] },
       { name: CART_SHEET, headers: ['User ID', 'Customer Name', 'Email', 'Product ID', 'Product Name', 'Quantity', 'Unit Price', 'Currency', 'Cart Total', 'Added At', 'Updated At', 'Location'] },
     ];
 
@@ -144,6 +144,13 @@ async function ensureHeaders(sheets: any) {
       });
 
       if (!res.data.values || res.data.values.length === 0) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SPREADSHEET_ID,
+          range: `'${sheetDef.name}'!A1`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: [sheetDef.headers] },
+        });
+      } else if (sheetDef.name === ORDERS_SHEET && !res.data.values[0]?.includes('Gift')) {
         await sheets.spreadsheets.values.update({
           spreadsheetId: SPREADSHEET_ID,
           range: `'${sheetDef.name}'!A1`,
@@ -268,7 +275,7 @@ export async function syncOrderToGoogleSheet(orderData: {
   full_name?: string | null;
   email?: string | null;
   phone?: string | null;
-  items?: Array<{ name: string; quantity: number; price?: number }>;
+  items?: Array<{ name: string; quantity: number; price?: number; is_gift?: boolean }>;
   subtotal?: number;
   shipping?: number;
   total?: number;
@@ -280,6 +287,7 @@ export async function syncOrderToGoogleSheet(orderData: {
   created_at?: string;
   updated_at?: string;
   address?: any;
+  is_gift?: boolean;
 }) {
   try {
     const sheets = getGoogleSheetsClient();
@@ -291,15 +299,17 @@ export async function syncOrderToGoogleSheet(orderData: {
 
     const readRes = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `'${sheetName}'!A:Q`,
+      range: `'${sheetName}'!A:R`,
     });
 
     const rows = readRes.data.values || [];
     const { fullFormatted: createdFormatted } = formatDate(orderData.created_at || new Date());
     const { fullFormatted: updatedFormatted } = formatDate(orderData.updated_at || new Date());
 
+    const isGift = Boolean(orderData.is_gift || (orderData.items || []).some((i) => i.is_gift));
+
     const productsSummary = (orderData.items || [])
-      .map((item) => `${item.name} (x${item.quantity})`)
+      .map((item) => `${item.name}${item.is_gift ? ' [Gift 🎁]' : ''} (x${item.quantity})`)
       .join(', ') || 'N/A';
 
     const totalQty = (orderData.items || []).reduce((acc, i) => acc + (i.quantity || 1), 0);
@@ -333,6 +343,7 @@ export async function syncOrderToGoogleSheet(orderData: {
       createdFormatted,
       updatedFormatted,
       location,
+      isGift ? 'Yes (Gift Bag 🎁)' : '',
     ];
 
     let existingRowIndex = -1;
@@ -351,7 +362,7 @@ export async function syncOrderToGoogleSheet(orderData: {
       // Update existing order row
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `'${sheetName}'!A${existingRowIndex}:Q${existingRowIndex}`,
+        range: `'${sheetName}'!A${existingRowIndex}:R${existingRowIndex}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [rowValues] },
       });
@@ -382,7 +393,7 @@ export async function syncOrderToGoogleSheet(orderData: {
 
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `'${sheetName}'!A2:Q2`,
+        range: `'${sheetName}'!A2:R2`,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [rowValues] },
       });

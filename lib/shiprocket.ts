@@ -324,7 +324,7 @@ export function buildShiprocketPayload(
       country: address.country || 'India',
     },
     items: (order.items || []).map((item: any, idx: number) => ({
-      name: item.name || `Product ${idx + 1}`,
+      name: `${item.name || `Product ${idx + 1}`}${item.is_gift || order.is_gift ? ' [Gift]' : ''}`,
       sku: item.id || `SKU-${idx + 1}`,
       units: item.quantity || 1,
       sellingPrice: typeof item.effective_price_inr === 'number'

@@ -30,7 +30,7 @@ export function AddToCart({
     stock: number | null;
   };
 }) {
-  const { items, add, setQuantity, remove } = useCart();
+  const { items, add, setQuantity, remove, setGift } = useCart();
   const { user } = useAuth();
   const { currentCurrency, exchangeRate, isLoading, rates } = useCurrency();
   const router = useRouter();
@@ -38,6 +38,15 @@ export function AddToCart({
   const [qty, setQty] = useState(1);
   const [adding, setAdding] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isGift, setIsGift] = useState(false);
+
+  const cartItem = items.find((item) => item.id === product.id);
+
+  useEffect(() => {
+    if (cartItem) {
+      setIsGift(Boolean(cartItem.is_gift));
+    }
+  }, [cartItem]);
 
   const isInternational = currentCurrency !== 'INR';
   const hasError = isInternational && Object.keys(rates).length === 0;
@@ -53,7 +62,6 @@ export function AddToCart({
     : null;
 
   const outOfStock = product.stock !== null && product.stock <= 0;
-  const cartItem = items.find((item) => item.id === product.id);
   const handleIncrement = () => {
     if (!cartItem) return;
     setQuantity(product.id, cartItem.quantity + 1);
@@ -89,6 +97,7 @@ export function AddToCart({
           compare_at_inr: product.compare_at_inr,
           image: product.image,
           type: product.type,
+          is_gift: isGift,
         },
         qty
       );
@@ -107,6 +116,37 @@ export function AddToCart({
     }, 450);
   };
 
+  const renderGiftingOption = () => (
+    <div className="rounded-2xl border border-gold/30 bg-gold/5 p-4 text-xs text-amber-200/90 leading-relaxed space-y-2">
+      <label className="flex items-center gap-2.5 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={isGift}
+          onChange={(e) => {
+            const checked = e.target.checked;
+            setIsGift(checked);
+            if (cartItem) {
+              setGift(product.id, checked);
+              toast.success(checked ? 'Gifting added for this item!' : 'Gifting option removed.');
+            }
+          }}
+          className="h-4 w-4 rounded border-border bg-black/40 text-gold focus:ring-gold accent-[#d4af37] cursor-pointer"
+        />
+        <span className="font-semibold text-white flex items-center gap-1.5">
+          <span>🎁</span> Gifting
+        </span>
+        {isGift && (
+          <span className="ml-auto text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium">
+            Complimentary Bag Included
+          </span>
+        )}
+      </label>
+      <p className="text-[11.5px] text-white/80 pl-6 leading-relaxed">
+        ✨ Note: If you’re purchasing this as a gift, please tick the “Gifting” box at checkout. We’ll include one complimentary gifting bag with every complete order. 🎁
+      </p>
+    </div>
+  );
+
   // If already in cart, show quantity edit controls + Go to Cart button
   if (cartItem) {
     return (
@@ -121,6 +161,7 @@ export function AddToCart({
           )}
           <span className="text-xs text-white/50 font-normal self-end mb-1">(incl. GST)</span>
         </div>
+        {renderGiftingOption()}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center w-full">
           <div className="inline-flex items-center rounded-full border border-border bg-card">
             <button
@@ -178,6 +219,7 @@ export function AddToCart({
           </>
         )}
       </div>
+      {renderGiftingOption()}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         {product.type === 'physical' && (
           <div className="inline-flex items-center rounded-full border border-border bg-card">

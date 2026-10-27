@@ -15,7 +15,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
 export function CartView() {
-  const { items, setQuantity, remove, clear, count } = useCart();
+  const { items, setQuantity, remove, clear, count, setGift } = useCart();
   const { user } = useAuth();
   const { currentCurrency, exchangeRate, isLoading, rates } = useCurrency();
   const [shippingIndia, setShippingIndia] = useState<number>(200);
@@ -102,77 +102,106 @@ export function CartView() {
             const unitActual = isOnSale ? (isInternational ? convertInrToCurrency(actualPrice, exchangeRate || 0, currentCurrency) : actualPrice) : null;
 
             return (
-              <div key={i.id} className="flex gap-4 rounded-3xl border border-border/60 bg-card/60 p-4 shadow-soft">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={i.image} alt={i.name} className="h-24 w-24 rounded-2xl object-cover" />
-                <div className="flex flex-1 flex-col">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-foreground">{i.name}</p>
+              <div key={i.id} className="rounded-3xl border border-border/60 bg-card/60 p-4 shadow-soft space-y-3">
+                <div className="flex gap-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={i.image} alt={i.name} className="h-24 w-24 rounded-2xl object-cover" />
+                  <div className="flex flex-1 flex-col">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground">{i.name}</p>
+                          {isOnSale && (
+                            <span className="rounded bg-gold/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gold">
+                              Discounted
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground capitalize">{i.type}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          remove(i.id);
+                          toast.success(`${i.name} removed from cart`);
+                        }}
+                        aria-label="Remove"
+                        className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="mt-auto flex items-center justify-between">
+                      {i.type === 'physical' ? (
+                        <div className="inline-flex items-center rounded-full border border-border bg-card">
+                          <button
+                            onClick={() => {
+                              if (i.quantity <= 1) {
+                                remove(i.id);
+                                toast.success(`${i.name} removed from cart`);
+                              } else {
+                                setQuantity(i.id, i.quantity - 1);
+                                toast.success(`${i.name} quantity updated`);
+                              }
+                            }}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-l-full hover:bg-secondary"
+                            aria-label="Decrease"
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="w-8 text-center text-sm font-semibold">{i.quantity}</span>
+                          <button
+                            onClick={() => {
+                              setQuantity(i.id, i.quantity + 1);
+                              toast.success(`${i.name} quantity updated`);
+                            }}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-r-full hover:bg-secondary"
+                            aria-label="Increase"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Digital · {i.quantity} ×</span>
+                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         {isOnSale && (
-                          <span className="rounded bg-gold/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gold">
-                            Discounted
+                          <span className="text-xs text-muted-foreground line-through">
+                            {formatPrice((unitActual as number) * i.quantity, currentCurrency)}
                           </span>
                         )}
-                      </div>
-                      <p className="text-xs text-muted-foreground capitalize">{i.type}</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        remove(i.id);
-                        toast.success(`${i.name} removed from cart`);
-                      }}
-                      aria-label="Remove"
-                      className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="mt-auto flex items-center justify-between">
-                    {i.type === 'physical' ? (
-                      <div className="inline-flex items-center rounded-full border border-border bg-card">
-                        <button
-                          onClick={() => {
-                            if (i.quantity <= 1) {
-                              remove(i.id);
-                              toast.success(`${i.name} removed from cart`);
-                            } else {
-                              setQuantity(i.id, i.quantity - 1);
-                              toast.success(`${i.name} quantity updated`);
-                            }
-                          }}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-l-full hover:bg-secondary"
-                          aria-label="Decrease"
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </button>
-                        <span className="w-8 text-center text-sm font-semibold">{i.quantity}</span>
-                        <button
-                          onClick={() => {
-                            setQuantity(i.id, i.quantity + 1);
-                            toast.success(`${i.name} quantity updated`);
-                          }}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-r-full hover:bg-secondary"
-                          aria-label="Increase"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Digital · {i.quantity} ×</span>
-                    )}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {isOnSale && (
-                        <span className="text-xs text-muted-foreground line-through">
-                          {formatPrice((unitActual as number) * i.quantity, currentCurrency)}
+                        <span className="font-medium text-foreground">
+                          {formatPrice(unitPrimary * i.quantity, currentCurrency)}
                         </span>
-                      )}
-                      <span className="font-medium text-foreground">
-                        {formatPrice(unitPrimary * i.quantity, currentCurrency)}
-                      </span>
+                      </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Gifting Checkbox & Message Option */}
+                <div className="rounded-2xl border border-gold/30 bg-gold/5 p-3.5 text-xs text-amber-200/90 leading-relaxed space-y-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(i.is_gift)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setGift(i.id, checked);
+                        toast.success(checked ? `${i.name} marked for gifting!` : `Gifting removed for ${i.name}`);
+                      }}
+                      className="h-4 w-4 rounded border-border bg-black/40 text-gold focus:ring-gold accent-[#d4af37] cursor-pointer"
+                    />
+                    <span className="font-semibold text-white flex items-center gap-1.5">
+                      <span>🎁</span> Gifting
+                    </span>
+                    {i.is_gift && (
+                      <span className="ml-auto text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium">
+                        Complimentary Bag Included
+                      </span>
+                    )}
+                  </label>
+                  <p className="text-[11px] text-white/80 pl-6 leading-relaxed">
+                    ✨ Note: If you’re purchasing this as a gift, please tick the “Gifting” box at checkout. We’ll include one complimentary gifting bag with every complete order. 🎁
+                  </p>
                 </div>
               </div>
             );
@@ -189,6 +218,14 @@ export function CartView() {
 
         <aside className="h-fit rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft lg:sticky lg:top-28">
           <h2 className="font-display text-xl font-medium text-foreground">Order summary</h2>
+          {items.some((item) => item.is_gift) && (
+            <div className="mt-3 flex items-center gap-2 rounded-2xl border border-gold/30 bg-gold/10 p-3 text-xs text-gold">
+              <span className="text-base">🎁</span>
+              <span className="font-medium text-white/90">
+                Complimentary gifting bag included with order
+              </span>
+            </div>
+          )}
           {hasError && (
             <div className="mt-4 text-xs text-rose-400 border border-rose-500/20 bg-rose-500/5 p-3 rounded-xl">
               Pricing is temporarily unavailable for your region. Please try again later.
