@@ -323,25 +323,28 @@ export function CheckoutView() {
           )}
 
           {/* Gifting Option */}
-          <div className="rounded-3xl border border-gold/30 bg-gold/5 p-6 shadow-soft space-y-2.5">
+          <div
+            className="rounded-3xl border border-gold/40 p-6 shadow-xl space-y-2.5"
+            style={{ backgroundColor: 'rgba(10, 8, 6, 0.95)' }}
+          >
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={orderGifting}
                 onChange={(e) => setOrderGifting(e.target.checked)}
-                className="h-4.5 w-4.5 rounded border-border bg-black/40 text-gold focus:ring-gold accent-[#d4af37] cursor-pointer"
+                className="h-4.5 w-4.5 rounded border-gold/50 bg-black text-gold focus:ring-gold accent-[#d4af37] cursor-pointer"
               />
               <div className="flex items-center gap-2">
                 <span className="text-base">🎁</span>
-                <span className="font-semibold text-foreground text-sm">Gifting</span>
+                <span className="font-semibold text-[#D4AF37] text-base">Gifting</span>
                 {orderGifting && (
-                  <span className="text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium">
+                  <span className="text-[10px] bg-gold/20 text-[#D4AF37] px-2.5 py-0.5 rounded-full font-semibold border border-gold/30">
                     Complimentary Gifting Bag Included
                   </span>
                 )}
               </div>
             </label>
-            <p className="text-xs text-white/80 pl-7 leading-relaxed">
+            <p className="text-xs font-medium text-[#D4AF37] pl-7 leading-relaxed">
               ✨ Note: If you’re purchasing this as a gift, please tick the “Gifting” box at checkout. We’ll include one complimentary gifting bag with every complete order. 🎁
             </p>
           </div>

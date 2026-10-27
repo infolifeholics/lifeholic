@@ -117,7 +117,10 @@ export function AddToCart({
   };
 
   const renderGiftingOption = () => (
-    <div className="rounded-2xl border border-gold/30 bg-gold/5 p-4 text-xs text-amber-200/90 leading-relaxed space-y-2">
+    <div
+      className="rounded-2xl border border-gold/40 p-4 text-xs leading-relaxed space-y-2 shadow-xl"
+      style={{ backgroundColor: 'rgba(10, 8, 6, 0.95)' }}
+    >
       <label className="flex items-center gap-2.5 cursor-pointer select-none">
         <input
           type="checkbox"
@@ -130,18 +133,18 @@ export function AddToCart({
               toast.success(checked ? 'Gifting added for this item!' : 'Gifting option removed.');
             }
           }}
-          className="h-4 w-4 rounded border-border bg-black/40 text-gold focus:ring-gold accent-[#d4af37] cursor-pointer"
+          className="h-4 w-4 rounded border-gold/50 bg-black text-gold focus:ring-gold accent-[#d4af37] cursor-pointer"
         />
-        <span className="font-semibold text-white flex items-center gap-1.5">
+        <span className="font-semibold text-[#D4AF37] flex items-center gap-1.5 text-sm">
           <span>🎁</span> Gifting
         </span>
         {isGift && (
-          <span className="ml-auto text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium">
+          <span className="ml-auto text-[10px] bg-gold/20 text-[#D4AF37] px-2.5 py-0.5 rounded-full font-semibold border border-gold/30">
             Complimentary Bag Included
           </span>
         )}
       </label>
-      <p className="text-[11.5px] text-white/80 pl-6 leading-relaxed">
+      <p className="text-[12px] font-medium text-[#D4AF37] pl-6 leading-relaxed">
         ✨ Note: If you’re purchasing this as a gift, please tick the “Gifting” box at checkout. We’ll include one complimentary gifting bag with every complete order. 🎁
       </p>
     </div>
