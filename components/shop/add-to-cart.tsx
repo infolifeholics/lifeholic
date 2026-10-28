@@ -164,7 +164,8 @@ export function AddToCart({
           )}
           <span className="text-xs text-white/50 font-normal self-end mb-1">(incl. GST)</span>
         </div>
-        {renderGiftingOption()}
+        {/* Gifting option removed from individual product page as it is handled in Cart Order Summary */}
+        {/* {renderGiftingOption()} */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center w-full">
           <div className="inline-flex items-center rounded-full border border-border bg-card">
             <button
@@ -222,7 +223,8 @@ export function AddToCart({
           </>
         )}
       </div>
-      {renderGiftingOption()}
+      {/* Gifting option removed from individual product page as it is handled in Cart Order Summary */}
+      {/* {renderGiftingOption()} */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         {product.type === 'physical' && (
           <div className="inline-flex items-center rounded-full border border-border bg-card">
