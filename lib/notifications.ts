@@ -228,6 +228,8 @@ export async function triggerOrderNotification(orderId: string, orderData: any) 
     ? `${orderData.address.line1 || ''}, ${orderData.address.city || ''}, ${orderData.address.state || ''}, ${orderData.address.postal_code || ''}, ${orderData.address.country || ''}`
     : 'Digital Delivery';
 
+  const isGift = Boolean(orderData.is_gift || (items || []).some((i: any) => i.is_gift));
+
   const vars = {
     memberName: full_name || 'Customer',
     orderNumber: orderNumber || 'N/A',
@@ -237,6 +239,7 @@ export async function triggerOrderNotification(orderId: string, orderData: any) 
     shippingAddress: formattedAddress,
     clientEmail: email || '',
     clientPhone: phone || '',
+    isGift,
   };
 
   try {

@@ -25,6 +25,7 @@ export interface TemplateVars {
   orderTotal?: number;
   orderCurrency?: string;
   shippingAddress?: string;
+  isGift?: boolean;
 }
 
 const DEFAULT_VARS = {
@@ -396,10 +397,16 @@ export const EMAIL_TEMPLATES = {
     const items = vars.orderItems || [];
     const total = vars.orderTotal || 0;
     const currency = vars.orderCurrency || 'INR';
+    const isGift = Boolean(vars.isGift || items.some((item: any) => item.is_gift));
     const content = `
       <h2 style="color: #c5a880; margin-bottom: 20px;">Lifeholics Order Confirmation</h2>
       <p>Hello ${vars.memberName || 'Customer'}, thank you for your order! Your trust is received with deep gratitude 🙏</p> 
       <p>We are processing your order <strong>${vars.orderNumber || 'N/A'}</strong>. Here are the details:</p>
+      ${isGift ? `
+        <div style="background-color: #0a0806; border: 1px solid #d4af37; border-radius: 8px; padding: 12px 16px; margin: 15px 0; color: #d4af37; font-weight: bold; font-size: 14px;">
+          🎁 Complimentary gifting bag included with order
+        </div>
+      ` : ''}
       <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
       <h3 style="color: #333; margin-bottom: 10px;">Order Items</h3>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
@@ -413,7 +420,7 @@ export const EMAIL_TEMPLATES = {
         <tbody>
           ${items.map((item: any) => `
             <tr style="border-bottom: 1px solid #eee;">
-              <td style="padding: 8px;">${item.title || item.name || 'Product'}</td>
+              <td style="padding: 8px;">${item.title || item.name || 'Product'}${item.is_gift || isGift ? ' <span style="color: #d4af37; font-weight: bold; font-size: 11px;">[Gift 🎁]</span>' : ''}</td>
               <td style="text-align: center; padding: 8px;">${item.quantity || 1}</td>
               <td style="text-align: right; padding: 8px;">${item.price} ${currency}</td>
             </tr>
@@ -423,6 +430,7 @@ export const EMAIL_TEMPLATES = {
       <div style="margin-top: 15px; text-align: right; font-weight: bold; font-size: 16px; color: #333;">
         Total: ${total} ${currency}
       </div>
+      ${isGift ? `<p style="margin-top: 15px; font-weight: bold; color: #d4af37;">Complimentary gifting bag included with order</p>` : ''}
       ${vars.shippingAddress ? `<p style="margin-top: 20px;"><strong>Shipping Address:</strong><br/>${vars.shippingAddress}</p>` : ''}
     `;
     return getBaseHtml('Order Confirmed', content, vars);
@@ -432,12 +440,18 @@ export const EMAIL_TEMPLATES = {
     const items = vars.orderItems || [];
     const total = vars.orderTotal || 0;
     const currency = vars.orderCurrency || 'INR';
+    const isGift = Boolean(vars.isGift || items.some((item: any) => item.is_gift));
     const content = `
       <h2 style="color: #c5a880; margin-bottom: 20px;">New Product Order Placed</h2>
       <p>A new order has been placed by <strong>${vars.memberName || 'Customer'}</strong>.</p>
       <p><strong>Order ID:</strong> ${vars.orderNumber || 'N/A'}</p>
       <p><strong>Email:</strong> ${vars.clientEmail || 'N/A'}</p>
       <p><strong>Phone:</strong> ${vars.clientPhone || 'N/A'}</p>
+      ${isGift ? `
+        <div style="background-color: #0a0806; border: 1px solid #d4af37; border-radius: 8px; padding: 12px 16px; margin: 15px 0; color: #d4af37; font-weight: bold; font-size: 14px;">
+          🎁 Complimentary gifting bag included with order
+        </div>
+      ` : ''}
       <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
       <h3 style="color: #333; margin-bottom: 10px;">Order Items</h3>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
@@ -451,7 +465,7 @@ export const EMAIL_TEMPLATES = {
         <tbody>
           ${items.map((item: any) => `
             <tr style="border-bottom: 1px solid #eee;">
-              <td style="padding: 8px;">${item.title || item.name || 'Product'}</td>
+              <td style="padding: 8px;">${item.title || item.name || 'Product'}${item.is_gift || isGift ? ' <span style="color: #d4af37; font-weight: bold; font-size: 11px;">[Gift 🎁]</span>' : ''}</td>
               <td style="text-align: center; padding: 8px;">${item.quantity || 1}</td>
               <td style="text-align: right; padding: 8px;">${item.price} ${currency}</td>
             </tr>
@@ -461,6 +475,7 @@ export const EMAIL_TEMPLATES = {
       <div style="margin-top: 15px; text-align: right; font-weight: bold; font-size: 16px; color: #333;">
         Total: ${total} ${currency}
       </div>
+      ${isGift ? `<p style="margin-top: 15px; font-weight: bold; color: #d4af37;">Complimentary gifting bag included with order</p>` : ''}
       ${vars.shippingAddress ? `<p style="margin-top: 20px;"><strong>Shipping Address:</strong><br/>${vars.shippingAddress}</p>` : ''}
     `;
     return getBaseHtml('New Order Alert', content, vars);

@@ -102,11 +102,10 @@ export function CartView() {
             const unitActual = isOnSale ? (isInternational ? convertInrToCurrency(actualPrice, exchangeRate || 0, currentCurrency) : actualPrice) : null;
 
             return (
-              <div key={i.id} className="rounded-3xl border border-border/60 bg-card/60 p-4 shadow-soft space-y-3">
-                <div className="flex gap-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={i.image} alt={i.name} className="h-24 w-24 rounded-2xl object-cover" />
-                  <div className="flex flex-1 flex-col">
+              <div key={i.id} className="flex gap-4 rounded-3xl border border-border/60 bg-card/60 p-4 shadow-soft">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={i.image} alt={i.name} className="h-24 w-24 rounded-2xl object-cover" />
+                <div className="flex flex-1 flex-col">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2">
@@ -176,37 +175,6 @@ export function CartView() {
                     </div>
                   </div>
                 </div>
-
-                {/* Gifting Checkbox & Message Option */}
-                <div
-                  className="rounded-2xl border border-gold/40 p-4 text-xs leading-relaxed space-y-2 shadow-xl"
-                  style={{ backgroundColor: 'rgba(10, 8, 6, 0.95)' }}
-                >
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(i.is_gift)}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setGift(i.id, checked);
-                        toast.success(checked ? `${i.name} marked for gifting!` : `Gifting removed for ${i.name}`);
-                      }}
-                      className="h-4 w-4 rounded border-gold/50 bg-black text-gold focus:ring-gold accent-[#d4af37] cursor-pointer"
-                    />
-                    <span className="font-semibold text-[#D4AF37] flex items-center gap-1.5 text-sm">
-                      <span>🎁</span> Gifting
-                    </span>
-                    {i.is_gift && (
-                      <span className="ml-auto text-[10px] bg-gold/20 text-[#D4AF37] px-2.5 py-0.5 rounded-full font-semibold border border-gold/30">
-                        Complimentary Bag Included
-                      </span>
-                    )}
-                  </label>
-                  <p className="text-[12px] font-medium text-[#D4AF37] pl-6 leading-relaxed">
-                    ✨ Note: If you’re purchasing this as a gift, please tick the “Gifting” box at checkout. We’ll include one complimentary gifting bag with every complete order. 🎁
-                  </p>
-                </div>
-              </div>
             );
           })}
           <div className="flex justify-between rounded-2xl px-2 py-1" style={{ backgroundColor: 'rgba(10, 8, 6, 0.75)' }}>
@@ -221,14 +189,36 @@ export function CartView() {
 
         <aside className="h-fit rounded-3xl border border-border/60 bg-card/60 p-6 shadow-soft lg:sticky lg:top-28">
           <h2 className="font-display text-xl font-medium text-foreground">Order summary</h2>
-          {items.some((item) => item.is_gift) && (
-            <div className="mt-3 flex items-center gap-2 rounded-2xl border border-gold/30 bg-gold/10 p-3 text-xs text-gold">
-              <span className="text-base">🎁</span>
-              <span className="font-medium text-white/90">
-                Complimentary gifting bag included with order
+
+          {/* Gifting Checkbox & Message Option */}
+          <div
+            className="mt-4 rounded-2xl border border-gold/40 p-4 text-xs leading-relaxed space-y-2 shadow-xl"
+            style={{ backgroundColor: 'rgba(10, 8, 6, 0.95)' }}
+          >
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={items.some((item) => item.is_gift)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  items.forEach((item) => setGift(item.id, checked));
+                  toast.success(checked ? 'Gifting added for this order!' : 'Gifting option removed.');
+                }}
+                className="h-4 w-4 rounded border-gold/50 bg-black text-gold focus:ring-gold accent-[#d4af37] cursor-pointer"
+              />
+              <span className="font-semibold text-[#D4AF37] flex items-center gap-1.5 text-sm">
+                <span>🎁</span> Gifting
               </span>
-            </div>
-          )}
+              {items.some((item) => item.is_gift) && (
+                <span className="ml-auto text-[10px] bg-gold/20 text-[#D4AF37] px-2.5 py-0.5 rounded-full font-semibold border border-gold/30">
+                  Bag Included
+                </span>
+              )}
+            </label>
+            <p className="text-[11.5px] font-medium text-[#D4AF37] pl-6.5 leading-relaxed">
+              ✨ Note: If you’re purchasing this as a gift, please tick the “Gifting” box at checkout. We’ll include one complimentary gifting bag with every complete order. 🎁
+            </p>
+          </div>
           {hasError && (
             <div className="mt-4 text-xs text-rose-400 border border-rose-500/20 bg-rose-500/5 p-3 rounded-xl">
               Pricing is temporarily unavailable for your region. Please try again later.
