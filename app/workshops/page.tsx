@@ -6,12 +6,15 @@ import { collection, onSnapshot, query } from 'firebase/firestore';
 import Link from 'next/link';
 import { CalendarDays, Clock, Sparkles, Loader2, ArrowRight, MapPin } from 'lucide-react';
 import { formatPrice } from '@/lib/format';
+import { useCurrency } from '@/components/providers/currency-provider';
+import { convertInrToCurrency } from '@/lib/currency';
 import type { Workshop } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { WorkshopFaq } from '@/components/shop/workshop-faq';
 
 export default function WorkshopsPage() {
+  const { currentCurrency, exchangeRate } = useCurrency();
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'completed'>('upcoming');
@@ -138,6 +141,7 @@ export default function WorkshopsPage() {
 }
 
 function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }) {
+  const { currentCurrency, exchangeRate } = useCurrency();
   const left = Math.max(0, w.seats_total - w.seats_booked);
   const pct = Math.round((w.seats_booked / w.seats_total) * 100);
 
@@ -220,7 +224,14 @@ function WorkshopCard({ w, isCompleted }: { w: Workshop; isCompleted?: boolean }
         <div className="flex justify-between items-center pt-1">
           <div>
             <p className="text-[9px] text-muted-foreground uppercase">Energy Exchange </p>
-            <p className="text-sm font-bold text-foreground">{formatPrice(w.price_inr, 'INR')}</p>
+            <p className="text-sm font-bold text-foreground">
+              {formatPrice(
+                currentCurrency !== 'INR'
+                  ? convertInrToCurrency(w.price_inr, exchangeRate || 0, currentCurrency)
+                  : w.price_inr,
+                currentCurrency
+              )}
+            </p>
           </div>
           <Link href={`/workshops/${w.slug}`}>
             <Button size="sm" className="rounded-full bg-gold hover:bg-gold-hover text-gold-foreground">

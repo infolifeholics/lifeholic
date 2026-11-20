@@ -590,7 +590,9 @@ export default function SomaticPlansPage() {
                           {cardTitle}
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1 font-medium">
-                          {cardShort}
+                          {isInternational && cardShort
+                            ? cardShort.replace(/₹\s*[\d,]+/g, formatPrice(priceVal, currentCurrency))
+                            : cardShort}
                         </p>
                       </div>
                     </div>

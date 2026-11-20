@@ -176,12 +176,37 @@ export async function triggerBookingNotification(
       created_at: serverTimestamp(),
     }).catch((err) => console.error('[Notifications] Failed to save DB notification:', err));
 
-    // Admin Alert: Only alert admin when a session is fully paid and confirmed
+    // Admin Alert:
+    // 1. Alert admin when a session is fully paid and confirmed
+    // 2. Alert admin when a package session is scheduled (e.g. Somatic package 2nd/3rd/4th session rebooked)
+    // 3. Alert admin when a session is rescheduled (date/time updated)
+    const isPackageSession = Boolean(bookingData.package_id || bookingData.is_somatic_plan);
+    const isAutoBooked = (bookingData.status === 'booked' || bookingData.status === 'confirmed') && bookingData.payment_status === 'paid';
+
     if (eventType === 'confirmed') {
       await notifyAdmins(
         'New Confirmed Booking',
         client_name,
-        `Session for ${service_title} scheduled on ${dateStr} at ${timeStr} IST. Payment confirmed.`,
+        `Session for ${service_title}${sessionSuffix} scheduled on ${dateStr} at ${timeStr} IST. Payment confirmed.`,
+        bookingId
+      );
+    } else if (eventType === 'created' && isAutoBooked && isPackageSession) {
+      // Re-booked / package session
+      const sessionLabel = bookingData.session_number ? `Session ${bookingData.session_number}` : 'Next Session';
+      await notifyAdmins(
+        `Package Session Scheduled (${sessionLabel})`,
+        client_name,
+        `${sessionLabel} for ${service_title}${sessionSuffix} has been booked for ${dateStr} at ${timeStr} IST. Package status: active/paid.`,
+        bookingId
+      );
+    } else if (eventType === 'meeting_updated') {
+      const rescheduleDetails = oldDateStr
+        ? `Session for ${service_title}${sessionSuffix} has been rescheduled from ${oldDateStr} ${oldTimeStr} IST to ${dateStr} at ${timeStr} IST.`
+        : `Session for ${service_title}${sessionSuffix} has been rescheduled to ${dateStr} at ${timeStr} IST.`;
+      await notifyAdmins(
+        'Booking Rescheduled',
+        client_name,
+        rescheduleDetails,
         bookingId
       );
     }

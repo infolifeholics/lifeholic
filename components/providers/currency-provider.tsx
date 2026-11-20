@@ -74,8 +74,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     fetchRates();
   }, []);
 
-  const setOverrideCountry = (countryCode: string) => {
-    const expiresAt = Date.now() + 2 * 60 * 60 * 1000; // 2 hours
+  const setOverrideCountry = async (countryCode: string) => {
+    const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days persistence
     const data: OverrideData = {
       country: countryCode.toUpperCase(),
       source: 'manual',
@@ -85,6 +85,17 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('currency_override', JSON.stringify(data));
     } catch (e) {}
     setOverride(data);
+
+    // Sync to user profile if user is logged in so it persists everywhere
+    if (profile?.id) {
+      try {
+        const { doc, setDoc } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase');
+        await setDoc(doc(db, 'profiles', profile.id), { country: countryCode.toUpperCase() }, { merge: true });
+      } catch (err) {
+        console.error('Failed to sync country override to profile:', err);
+      }
+    }
   };
 
   const clearOverrideCountry = () => {

@@ -193,7 +193,7 @@ export async function POST(req: Request) {
       newStart: start.toISOString()
     }).catch((err) => console.error('[Background Audit Error]:', err));
 
-    triggerBookingNotification(booking_id, updatedBooking, 'meeting_updated')
+    triggerBookingNotification(booking_id, updatedBooking, 'meeting_updated', b.start_time)
       .catch((err) => console.error('[Background Notification Trigger Error]:', err));
 
     return NextResponse.json({ ok: true });

@@ -39,6 +39,7 @@ import {
   Compass
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
+import { useCurrency } from '@/components/providers/currency-provider';
 import { getOptimizedCloudinaryUrl } from '@/lib/utils';
 import { CartView } from '@/components/shop/cart-view';
 import { Button } from '@/components/ui/button';
@@ -119,6 +120,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function AccountDashboard() {
   const { user, profile, loading, signOut, refreshProfile, sendVerification, refreshUser } = useAuth();
+  const { setOverrideCountry } = useCurrency();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { count: cartCount } = useCart();
@@ -484,6 +486,9 @@ export function AccountDashboard() {
         },
         { merge: true }
       );
+      if (country) {
+        setOverrideCountry(country);
+      }
       await refreshProfile();
       try {
         fetch('/api/sync/user', {

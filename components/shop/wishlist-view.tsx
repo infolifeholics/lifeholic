@@ -7,8 +7,12 @@ import { ProductWishlistButton } from '@/components/shop/product-wishlist-button
 import { formatPrice } from '@/lib/format';
 import { getProductRoute } from '@/lib/routes';
 import type { Product } from '@/lib/types';
+import { useCurrency } from '@/components/providers/currency-provider';
+import { convertInrToCurrency } from '@/lib/currency';
 
 export function WishlistView({ products }: { products: Product[] }) {
+  const { currentCurrency, exchangeRate } = useCurrency();
+  const isInternational = currentCurrency !== 'INR';
   const { ids } = useWishlist();
   const list = products.filter((p) => ids.includes(p.id));
 
@@ -49,7 +53,12 @@ export function WishlistView({ products }: { products: Product[] }) {
               </div>
               <div className="p-5">
                 <h3 className="font-display text-lg font-medium text-foreground">{p.name}</h3>
-                <p className="mt-1 text-sm font-medium text-foreground">{formatPrice(p.price_inr, 'INR')}</p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {formatPrice(
+                    isInternational ? convertInrToCurrency(p.price_inr, exchangeRate || 0, currentCurrency) : p.price_inr,
+                    currentCurrency
+                  )}
+                </p>
               </div>
             </article>
           </Link>

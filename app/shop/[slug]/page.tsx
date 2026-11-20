@@ -7,8 +7,10 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { AddToCart } from '@/components/shop/add-to-cart';
 import { ProductFaq } from '@/components/shop/product-faq';
+import { RelatedProductsList } from '@/components/shop/related-products-list';
 import { ProductWishlistButton } from '@/components/shop/product-wishlist-button';
 import { formatPrice } from '@/lib/format';
+// Server component, related products rendered in list
 import { getProductRoute } from '@/lib/routes';
 import { SectionHeading } from '@/components/site/section-heading';
 import { getEffectivePriceInr } from '@/lib/currency';
@@ -161,23 +163,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         {/* Related */}
         <section className="mt-20 pb-10">
           <SectionHeading align="left" eyebrow="You may also love" title="Related products" />
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {relatedFinal.map((p) => (
-              <Link key={p.id} href={getProductRoute(p.slug)} className="group block h-full">
-                <article className="group h-full overflow-hidden rounded-3xl border border-border/60 bg-card/60 shadow-soft transition-all duration-500 ease-soft hover:-translate-y-1.5 hover:shadow-float">
-                  <div className="p-3">
-                    <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border/40 bg-secondary/10">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.image} alt={p.name} className="h-full w-full object-contain transition-transform duration-1000 ease-soft group-hover:scale-105" />
-                    </div>
-                  </div>
-                  <div className="p-4 pt-1">
-                    <h3 className="font-display text-base font-medium text-foreground">{p.name}</h3>
-                    <p className="mt-1 text-sm font-medium text-foreground">{formatPrice(p.price_inr, 'INR')}</p>
-                  </div>
-                </article>
-              </Link>
-            ))}
+          <div className="mt-8">
+            <RelatedProductsList products={relatedFinal} />
           </div>
         </section>
       </div>

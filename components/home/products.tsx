@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { ArrowUpRight, Heart } from 'lucide-react';
 import type { Product } from '@/lib/types';
@@ -7,9 +9,11 @@ import { StarRating } from '@/components/site/star-rating';
 import { formatPrice } from '@/lib/format';
 import { getProductRoute } from '@/lib/routes';
 import { ProductWishlistButton } from '@/components/shop/product-wishlist-button';
-import { getEffectivePriceInr } from '@/lib/currency';
+import { getEffectivePriceInr, convertInrToCurrency } from '@/lib/currency';
+import { useCurrency } from '@/components/providers/currency-provider';
 
 export function HomeProducts({ products }: { products: Product[] }) {
+  const { currentCurrency, exchangeRate } = useCurrency();
   const list = products.slice(0, 4);
   if (!list.length) return null;
 
@@ -34,6 +38,10 @@ export function HomeProducts({ products }: { products: Product[] }) {
         <Stagger className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4" gap={0.06}>
           {list.map((p) => {
             const { actualPrice, discountedPrice, effectivePrice, isOnSale } = getEffectivePriceInr(p);
+            const isInternational = currentCurrency !== 'INR';
+            const displayActual = isInternational ? convertInrToCurrency(actualPrice, exchangeRate || 0, currentCurrency) : actualPrice;
+            const displayEffective = isInternational ? convertInrToCurrency(effectivePrice, exchangeRate || 0, currentCurrency) : effectivePrice;
+
             return (
               <StaggerItem key={p.id}>
                 <Link href={getProductRoute(p.slug)} className="group block h-full">
@@ -66,14 +74,14 @@ export function HomeProducts({ products }: { products: Product[] }) {
                         {isOnSale ? (
                           <>
                             <span className="text-xs text-muted-foreground line-through">
-                              {formatPrice(actualPrice, 'INR')}
+                              {formatPrice(displayActual, currentCurrency)}
                             </span>
                             <span className="font-semibold text-foreground">
-                              {formatPrice(effectivePrice, 'INR')}
+                              {formatPrice(displayEffective, currentCurrency)}
                             </span>
                           </>
                         ) : (
-                          <span className="font-medium text-foreground">{formatPrice(actualPrice, 'INR')}</span>
+                          <span className="font-medium text-foreground">{formatPrice(displayActual, currentCurrency)}</span>
                         )}
                       </div>
                     </div>

@@ -1,11 +1,16 @@
+'use client';
+
 import Link from 'next/link';
 import { CalendarDays, Clock, MapPin } from 'lucide-react';
 import type { Workshop } from '@/lib/types';
 import { SectionHeading } from '@/components/site/section-heading';
 import { Stagger, StaggerItem, Reveal } from '@/components/site/reveal';
 import { formatPrice } from '@/lib/format';
+import { useCurrency } from '@/components/providers/currency-provider';
+import { convertInrToCurrency } from '@/lib/currency';
 
 export function HomeWorkshops({ items }: { items: Workshop[] }) {
+  const { currentCurrency, exchangeRate } = useCurrency();
   if (!items.length) return null;
   return (
     <section className="relative py-24 sm:py-32">
@@ -19,6 +24,11 @@ export function HomeWorkshops({ items }: { items: Workshop[] }) {
         <Stagger className="mt-14 grid gap-6 md:grid-cols-3" gap={0.08}>
           {items.map((w) => {
             const date = new Date(w.date);
+            const isInternational = currentCurrency !== 'INR';
+            const displayPrice = isInternational
+              ? convertInrToCurrency(w.price_inr, exchangeRate || 0, currentCurrency)
+              : w.price_inr;
+
             return (
               <StaggerItem key={w.id}>
                 <Link href={`/workshops/${w.slug}`} className="block h-full group">
@@ -56,7 +66,7 @@ export function HomeWorkshops({ items }: { items: Workshop[] }) {
                       <div className="mt-2">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground">Completed</span>
-                          <span className="font-medium text-foreground">from {formatPrice(w.price_inr, 'INR')}</span>
+                          <span className="font-medium text-foreground">from {formatPrice(displayPrice, currentCurrency)}</span>
                         </div>
                       </div>
                       <div className="mt-4 pt-3 border-t border-white/5 flex justify-end">
