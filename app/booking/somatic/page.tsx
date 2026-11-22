@@ -258,8 +258,7 @@ function SomaticBookingFlowContent() {
           client_timezone: tz,
           start_time: selectedSlot.start,
           end_time: new Date(
-            new Date(selectedSlot.start).getTime() +
-            (planName.toLowerCase().includes('elite') ? 90 : 30) * 60_000
+            new Date(selectedSlot.start).getTime() + 30 * 60_000
           ).toISOString(),
           mode,
           notes: details.notes,
@@ -641,7 +640,7 @@ function SomaticBookingFlowContent() {
                 <span className="text-xs text-muted-foreground uppercase tracking-widest block font-bold">Session Duration</span>
                 <span className="text-sm text-foreground flex items-center gap-1.5 mt-0.5">
                   <Clock className="h-4 w-4 text-gold" />
-                  {planName.toLowerCase().includes('elite') ? '90 minutes' : '30 minutes'}
+                  30 minutes
                 </span>
               </div>
 

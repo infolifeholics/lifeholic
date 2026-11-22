@@ -60,28 +60,8 @@ export async function GET(req: Request) {
       end: new Date(b.end_time).getTime()
     }));
 
-    // Fetch service duration
-    let duration = 30;
-    if (serviceId) {
-      if (serviceId.startsWith('somatic_')) {
-        const planNameLower = serviceId.substring('somatic_'.length).toLowerCase();
-        if (planNameLower.includes('essential')) {
-          duration = 30;
-        } else if (planNameLower.includes('elite')) {
-          duration = 90;
-        } else {
-          duration = 60;
-        }
-      } else {
-        const serviceDoc = await adminDb.collection('services').doc(serviceId).get();
-        if (serviceDoc.exists) {
-          const serviceData = serviceDoc.data();
-          if (serviceData && typeof serviceData.duration_minutes === 'number') {
-            duration = serviceData.duration_minutes;
-          }
-        }
-      }
-    }
+    // Fetch service duration - all session slots are strictly 30 minutes
+    const duration = 30;
 
     // 4. Map and filter slots
     const now = Date.now();

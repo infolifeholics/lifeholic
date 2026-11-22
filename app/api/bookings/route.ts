@@ -87,14 +87,12 @@ export async function POST(req: Request) {
 
     let service: any;
     if (isSomatic) {
-      // Setup dynamic virtual service for somatic plan
-      let duration = 60;
+      // Setup dynamic virtual service for somatic plan - all sessions are strictly 30 minutes
+      const duration = 30;
       let friendlyTitle = '4-Week Deep Transformation Program';
       if (somaticPlanName.toLowerCase().includes('essential')) {
-        duration = 30;
         friendlyTitle = 'Personal Healing & Clarity Session';
       } else if (somaticPlanName.toLowerCase().includes('elite')) {
-        duration = 90;
         friendlyTitle = 'Ancestral Healing Session';
       }
       
