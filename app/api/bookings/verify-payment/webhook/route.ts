@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, adminAuth } from '@/lib/firebase-admin';
 import { triggerBookingNotification, triggerOrderNotification, triggerWorkshopNotification } from '@/lib/notifications';
 
 export async function POST(req: Request) {
@@ -137,7 +137,21 @@ export async function POST(req: Request) {
             }
           }
 
-          if (totalSessions >= 1 && b.user_id) {
+          // Resolve user_id if null by looking up user by client_email
+          let resolvedUserId = b.user_id;
+          if (!resolvedUserId && b.client_email) {
+            try {
+              const userRecord = await adminAuth.getUserByEmail(b.client_email);
+              if (userRecord && userRecord.uid) {
+                resolvedUserId = userRecord.uid;
+                await adminDb.collection('bookings').doc(bookingId).update({ user_id: resolvedUserId });
+              }
+            } catch (authErr) {
+              // User might not have registered an account yet
+            }
+          }
+
+          if (totalSessions >= 1 && resolvedUserId) {
             try {
               const purchaseDate = new Date();
               const session1Start = b.start_time ? new Date(b.start_time) : purchaseDate;
@@ -146,14 +160,14 @@ export async function POST(req: Request) {
               let packageDocRef;
               if (isSomatic) {
                 // Use user_id as doc ID for somatic plans to retain backward compatibility
-                packageDocRef = adminDb.collection('somatic_packages').doc(b.user_id);
+                packageDocRef = adminDb.collection('somatic_packages').doc(resolvedUserId);
               } else {
                 // Create new unique document for services
                 packageDocRef = adminDb.collection('somatic_packages').doc();
               }
 
               await packageDocRef.set({
-                user_id: b.user_id,
+                user_id: resolvedUserId,
                 client_name: b.client_name,
                 client_email: b.client_email,
                 purchase_date: purchaseDate.toISOString(),
