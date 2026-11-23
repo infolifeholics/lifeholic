@@ -57,7 +57,8 @@ export async function sendEmailNotification(options: { to: string; subject: stri
   let targetTo = options.to;
   let finalSubject = options.subject;
   const isDummy = options.to.includes('example.com') || options.to.includes('test.com') || options.to.includes('dummy');
-  if (process.env.EMAIL_DEMO_MODE === 'true' && isDummy) {
+  const isAdminEmail = options.to.toLowerCase() === (process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || 'support@thelifeholics.com').toLowerCase();
+  if (process.env.EMAIL_DEMO_MODE === 'true' && isDummy && !isAdminEmail) {
     targetTo = process.env.EMAIL_DEMO_RECIPIENT || 'support@thelifeholics.com';
     finalSubject = `DEMO - [To: ${options.to}] - ${options.subject}`;
   }
@@ -190,7 +191,7 @@ export async function triggerBookingNotification(
         `Session for ${service_title}${sessionSuffix} scheduled on ${dateStr} at ${timeStr} IST. Payment confirmed.`,
         bookingId
       );
-    } else if (eventType === 'created' && isAutoBooked && isPackageSession) {
+    } else if (eventType === 'created' && (isAutoBooked || isPackageSession || bookingData.status === 'booked')) {
       // Re-booked / package session
       const sessionLabel = bookingData.session_number ? `Session ${bookingData.session_number}` : 'Next Session';
       await notifyAdmins(

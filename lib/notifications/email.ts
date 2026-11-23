@@ -87,7 +87,8 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
   let targetTo = to;
   let finalSubject = subject;
   const isDummy = to.includes('example.com') || to.includes('test.com') || to.includes('dummy');
-  if (process.env.EMAIL_DEMO_MODE === 'true' && isDummy) {
+  const isAdminEmail = to.toLowerCase() === (process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL || 'support@thelifeholics.com').toLowerCase();
+  if (process.env.EMAIL_DEMO_MODE === 'true' && isDummy && !isAdminEmail) {
     targetTo = process.env.EMAIL_DEMO_RECIPIENT || 'support@thelifeholics.com';
     finalSubject = `DEMO - [To: ${to}] - ${subject}`;
   }
